@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Gather — Meetings & community, one place (Twin Cities)</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 <style>
   :root{
     --bg:#0f1419; --panel:#171d26; --panel2:#1f2734; --line:#2a3441;
@@ -69,6 +71,14 @@
   .pop a{color:#0284c7;font-weight:600;font-size:12.5px}
   .footer{padding:7px 14px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);background:var(--panel)}
   .empty{padding:30px 18px;text-align:center;color:var(--muted);font-size:13px}
+  .showmore{margin:10px 14px 16px;padding:10px;text-align:center;background:var(--panel2);border:1px dashed var(--line);border-radius:10px;color:var(--accent2);font-size:13px;font-weight:600}
+  .showmore:hover{border-color:var(--accent2)}
+  .loading{display:inline-block;color:var(--muted)}
+  .loading .spin{display:inline-block;width:9px;height:9px;border:2px solid var(--line);border-top-color:var(--accent2);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-1px;margin-right:5px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .crisis{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)}
+  .crisis a{color:#fca5a5;font-weight:700;text-decoration:none;border:1px solid #5b2330;background:#2a1318;padding:5px 10px;border-radius:8px;white-space:nowrap}
+  .crisis a:hover{border-color:#fca5a5}
   @media(max-width:760px){
     main{flex-direction:column} #sidebar{width:100%;max-width:100%;height:55%} #map{height:45%}
   }
@@ -87,6 +97,7 @@
       <button class="btn" id="nearme">📍 Near me</button>
       <button class="btn" id="nowbtn">🕒 Now</button>
     </div>
+    <div class="crisis" title="Free, confidential, 24/7">🆘 <a href="tel:988">Crisis? Call or text 988</a></div>
   </header>
   <main>
     <div id="sidebar">
@@ -104,6 +115,7 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
 const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
@@ -196,8 +208,9 @@ const PLAY = [
 
 /* ===== engine ===== */
 let DATA=[], META=FELLOWSHIPS;
-let LIVE=[], LIVE_CATS=new Set(), LAST_UPDATED=null, SOURCE_INFO=[];
-const state={mode:"support",cat:new Set(),day:null,fmt:null,nowOnly:false,q:"",near:null};
+let LIVE=[], LIVE_CATS=new Set(), LAST_UPDATED=null, SOURCE_INFO=[], LIVE_LOADING=true;
+const RENDER_STEP=150;
+const state={mode:"support",cat:new Set(),day:null,fmt:null,nowOnly:false,q:"",near:null,limit:RENDER_STEP};
 
 // Support listings = live feeds (verified) + curated samples for fellowships
 // that don't have a live feed yet (clearly marked unverified).
@@ -249,13 +262,18 @@ function filtered(){
   return list;
 }
 
+let _lastSig="";
 function render(){
+  const sig=[state.mode,[...state.cat].sort().join(","),state.day,state.fmt,state.nowOnly,state.q,state.near].join("|");
+  if(sig!==_lastSig){state.limit=RENDER_STEP;_lastSig=sig;}
   const list=filtered();
   const el=document.getElementById("list");el.innerHTML="";
   const word=state.mode==="support"?"fellowships":"activity types";
-  document.getElementById("count").innerHTML=`<b>${list.length}</b> ${state.mode==="support"?"meeting":"group/event"}${list.length!==1?"s":""} ${state.near?"near you":"across "+new Set(DATA.map(m=>m.cat)).size+" "+word}`;
+  const loading=state.mode==="support"&&LIVE_LOADING?'<span class="loading"><span class="spin"></span>loading live…</span> ':"";
+  document.getElementById("count").innerHTML=loading+`<b>${list.length}</b> ${state.mode==="support"?"meeting":"group/event"}${list.length!==1?"s":""} ${state.near?"near you":"across "+new Set(DATA.map(m=>m.cat)).size+" "+word}`;
   if(!list.length)el.innerHTML='<div class="empty">Nothing matches these filters.<br>Try removing one.</div>';
-  list.forEach(m=>{
+  const shown=list.slice(0,state.limit);
+  shown.forEach(m=>{
     const id=m._id,fc=META[m.cat].color,now=isNow(m);
     const card=document.createElement("div");card.className="card"+(activeId===id?" active":"");
     const trust=m.mode==="play"?"":(m.verified?'<span class="b ok">✓ VERIFIED</span>':'<span class="b warn">⚠ UNVERIFIED</span>');
@@ -270,6 +288,13 @@ function render(){
     card.onclick=()=>{activeId=id;render();if(m.lat){map.setView([m.lat,m.lng],14);m._marker?.openPopup();}};
     el.appendChild(card);
   });
+  if(list.length>state.limit){
+    const more=document.createElement("div");more.className="showmore";
+    const rest=list.length-state.limit;
+    more.textContent=`Show ${Math.min(RENDER_STEP,rest)} more (${rest} hidden) ↓`;
+    more.onclick=()=>{state.limit+=RENDER_STEP;render();};
+    el.appendChild(more);
+  }
   drawMarkers(list);
 }
 
@@ -318,14 +343,21 @@ async function loadLive(){
     LIVE_CATS=new Set(LIVE.map(m=>m.cat));
     LAST_UPDATED=data.updated||null;
     SOURCE_INFO=data.sources||[];
-    if(state.mode==="support"){setMode("support");}
   }catch(e){/* backend unavailable (e.g. opened as a local file) — curated samples still show */}
+  finally{
+    LIVE_LOADING=false;
+    if(state.mode==="support"){
+      // swap in live data without wiping the user's active filters
+      DATA=supportMeetings().map((m,i)=>({...m,_id:"s"+i}));
+      updateFooter();render();
+    }
+  }
 }
 
 function init(){
   map=L.map("map",{zoomControl:true}).setView([44.9537,-93.0900],11);
   L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",{attribution:"© OpenStreetMap © CARTO",maxZoom:19}).addTo(map);
-  markers=L.layerGroup().addTo(map);
+  markers=L.markerClusterGroup({chunkedLoading:true,maxClusterRadius:50,spiderfyOnMaxZoom:true,showCoverageOnHover:false}).addTo(map);
   document.getElementById("mSupport").onclick=()=>setMode("support");
   document.getElementById("mPlay").onclick=()=>setMode("activities");
   document.getElementById("q").addEventListener("input",e=>{state.q=e.target.value;render();});
