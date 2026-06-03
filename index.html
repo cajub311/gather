@@ -57,6 +57,10 @@
   .b.hybrid{background:#3a2f10;color:#fcd34d}
   .b.now{background:var(--now);color:#3a2a00}
   .b.live{background:#0c3a2a;color:var(--live)}
+  .b.ok{background:#0c3a2a;color:var(--live)}
+  .b.warn{background:#3a2410;color:#fbbf24}
+  .verify{display:inline-block;margin-top:6px;font-size:11.5px;color:var(--accent2);font-weight:600;text-decoration:none}
+  .verify:hover{text-decoration:underline}
   #map{flex:1;min-height:0}
   .leaflet-popup-content{font-family:inherit;margin:12px 14px}
   .pop .pn{font-weight:700;font-size:14px;color:#0f1419}
@@ -192,7 +196,16 @@ const PLAY = [
 
 /* ===== engine ===== */
 let DATA=[], META=FELLOWSHIPS;
+let LIVE=[], LIVE_CATS=new Set(), LAST_UPDATED=null, SOURCE_INFO=[];
 const state={mode:"support",cat:new Set(),day:null,fmt:null,nowOnly:false,q:"",near:null};
+
+// Support listings = live feeds (verified) + curated samples for fellowships
+// that don't have a live feed yet (clearly marked unverified).
+function supportMeetings(){
+  const curated=SUPPORT.map(m=>({...m,verified:false}));
+  const keep=curated.filter(m=>!LIVE_CATS.has(m.cat));
+  return [...LIVE,...keep];
+}
 let map,markers,userMarker,activeId=null;
 
 function fmtTime(t){let[h,m]=t.split(":").map(Number);const ap=h<12?"AM":"PM";h=h%12||12;return `${h}:${String(m).padStart(2,"0")} ${ap}`;}
@@ -245,13 +258,15 @@ function render(){
   list.forEach(m=>{
     const id=m._id,fc=META[m.cat].color,now=isNow(m);
     const card=document.createElement("div");card.className="card"+(activeId===id?" active":"");
+    const trust=m.mode==="play"?"":(m.verified?'<span class="b ok">✓ VERIFIED</span>':'<span class="b warn">⚠ UNVERIFIED</span>');
     card.innerHTML=`<div class="top"><div class="name">${m.name}</div><div class="fell" style="background:${fc}">${m.cat}</div></div>
       <div class="when">${DAYS[m.day]} · ${fmtTime(m.time)}${m._d!=null?` · ${m._d.toFixed(1)} mi`:""}</div>
       <div class="where">${m.loc} — ${m.addr}</div>
       <div class="badges">${now?'<span class="b now">● HAPPENING NOW</span>':''}
         ${m.fmt==="online"?'<span class="b online">ONLINE</span>':m.fmt==="hybrid"?'<span class="b hybrid">HYBRID</span>':'<span class="b">IN-PERSON</span>'}
-        ${m.live?'<span class="b live">◉ LIVE FEED</span>':''}
-        ${(m.types||[]).map(t=>`<span class="b">${t}</span>`).join("")}</div>`;
+        ${state.mode==="support"?trust:''}
+        ${(m.types||[]).map(t=>`<span class="b">${t}</span>`).join("")}</div>
+      ${m.url?`<a class="verify" href="${m.url}" target="_blank" rel="noopener">${m.fmt==="in-person"?"Details":"Join / details"} ↗</a>`:(state.mode==="support"&&!m.verified?'<a class="verify" href="https://www.aastpaul.org/meetings" target="_blank" rel="noopener">Verify on official source ↗</a>':'')}`;
     card.onclick=()=>{activeId=id;render();if(m.lat){map.setView([m.lat,m.lng],14);m._marker?.openPopup();}};
     el.appendChild(card);
   });
@@ -272,7 +287,7 @@ function setMode(mode){
   state.mode=mode;state.cat.clear();activeId=null;
   document.getElementById("mSupport").classList.toggle("on",mode==="support");
   const mp=document.getElementById("mPlay");mp.classList.toggle("on",mode==="activities");mp.classList.toggle("play",mode==="activities");
-  if(mode==="support"){META=FELLOWSHIPS;DATA=SUPPORT.map((m,i)=>({...m,_id:"s"+i}));if(window.__live)window.__live.forEach((m,i)=>DATA.push({...m,_id:"l"+i}));}
+  if(mode==="support"){META=FELLOWSHIPS;DATA=supportMeetings().map((m,i)=>({...m,_id:"s"+i}));}
   else{META=ACTIVITIES;DATA=PLAY.map((m,i)=>({...m,_id:"p"+i}));}
   document.getElementById("q").placeholder=mode==="support"?"Search name, city, or topic (women's, beginners…)":"Search name, venue, or interest (chess, yoga, French…)";
   buildFilters();updateFooter();render();
@@ -280,27 +295,31 @@ function setMode(mode){
 function updateFooter(){
   const s=document.getElementById("src");
   if(state.mode==="support"){
-    const liveN=window.__live?window.__live.length:0;
-    s.innerHTML=`Sources: <b>${SUPPORT.length} sample</b> support meetings`+(liveN?` + <span style="color:var(--live)">◉ ${liveN} live</span> from NA Minnesota BMLT`:` <span style="color:var(--muted)">(live NA feed proxied via backend in the real app)</span>`)+`. Not affiliated with any program.`;
+    const liveN=LIVE.length;
+    const curatedN=SUPPORT.filter(m=>!LIVE_CATS.has(m.cat)).length;
+    if(liveN){
+      const when=LAST_UPDATED?new Date(LAST_UPDATED).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):"";
+      const ok=SOURCE_INFO.filter(x=>x.ok).map(x=>`${x.name} (${x.count})`).join(", ");
+      s.innerHTML=`<span style="color:var(--live)">◉ ${liveN} live verified</span> meetings`+(curatedN?` + ${curatedN} curated <span style="color:#fbbf24">⚠ unverified</span>`:"")+`. Live: ${ok}.`+(when?` Updated ${when}.`:"")+` Always confirm details on the official source. Not affiliated with any program.`;
+    }else{
+      s.innerHTML=`<b>${SUPPORT.length} curated</b> support meetings <span style="color:#fbbf24">⚠ unverified</span> — live feeds load from <code>/api/meetings</code> when deployed. Not affiliated with any program.`;
+    }
   }else{
     s.innerHTML=`Sources: <b>${PLAY.length} sample</b> community activities & groups (Twin Cities). In the real app these come from Meetup, library/parks calendars &amp; venue listings.`;
   }
 }
 
-async function loadLiveBMLT(){
+async function loadLive(){
   try{
-    const res=await fetch("https://bmlt.naminnesota.org/main_server/client_interface/json/?switcher=GetSearchResults",{headers:{Accept:"application/json"}});
-    if(!res.ok)throw 0;const data=await res.json();const live=[];
-    data.forEach(r=>{const lat=parseFloat(r.latitude),lng=parseFloat(r.longitude);if(!lat||!lng)return;
-      const wd=parseInt(r.weekday_tbl_id,10);const day=isNaN(wd)?0:(wd-1+7)%7;
-      const online=!!(r.virtual_meeting_link||r.conference_url);
-      live.push({cat:"NA",name:r.meeting_name||"NA Meeting",day,time:(r.start_time||"19:00").slice(0,5),dur:60,
-        fmt:online?(r.location_text?"hybrid":"online"):"in-person",loc:r.location_text||r.location_municipality||"NA Group",
-        addr:[r.location_street,r.location_municipality,r.location_province].filter(Boolean).join(", ")||"Minnesota",
-        lat,lng,types:[],live:true,url:r.virtual_meeting_link||undefined});});
-    window.__live=live;
-    if(state.mode==="support"){live.forEach((m,i)=>DATA.push({...m,_id:"l"+i}));updateFooter();render();}
-  }catch(e){/* CORS in offline demo — sample data still shows */}
+    const res=await fetch("/api/meetings",{headers:{Accept:"application/json"}});
+    if(!res.ok)throw 0;
+    const data=await res.json();
+    LIVE=(data.meetings||[]).map(m=>({...m,verified:true}));
+    LIVE_CATS=new Set(LIVE.map(m=>m.cat));
+    LAST_UPDATED=data.updated||null;
+    SOURCE_INFO=data.sources||[];
+    if(state.mode==="support"){setMode("support");}
+  }catch(e){/* backend unavailable (e.g. opened as a local file) — curated samples still show */}
 }
 
 function init(){
@@ -320,7 +339,7 @@ function init(){
       map.setView(state.near,12);render();},()=>{state.near=[44.9537,-93.0900];me.classList.add("on");render();});
   };
   setMode("support");
-  loadLiveBMLT();
+  loadLive();
 }
 init();
 </script>
