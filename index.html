@@ -209,6 +209,7 @@ const PLAY = [
 /* ===== engine ===== */
 let DATA=[], META=FELLOWSHIPS;
 let LIVE=[], LIVE_CATS=new Set(), LAST_UPDATED=null, SOURCE_INFO=[], LIVE_LOADING=true;
+let LIVE_EVENTS=[], EVENTS_UPDATED=null, EVENT_SOURCES=[], EVENTS_LOADING=true;
 const RENDER_STEP=150;
 const state={mode:"support",cat:new Set(),day:null,fmt:null,nowOnly:false,q:"",near:null,limit:RENDER_STEP};
 
@@ -218,6 +219,11 @@ function supportMeetings(){
   const curated=SUPPORT.map(m=>({...m,verified:false}));
   const keep=curated.filter(m=>!LIVE_CATS.has(m.cat));
   return [...LIVE,...keep];
+}
+// Activities = live venue/calendar events (verified) + curated sample groups (unverified)
+function activityItems(){
+  const curated=PLAY.map(m=>({...m,verified:false}));
+  return [...LIVE_EVENTS,...curated];
 }
 let map,markers,userMarker,activeId=null;
 
@@ -269,20 +275,22 @@ function render(){
   const list=filtered();
   const el=document.getElementById("list");el.innerHTML="";
   const word=state.mode==="support"?"fellowships":"activity types";
-  const loading=state.mode==="support"&&LIVE_LOADING?'<span class="loading"><span class="spin"></span>loading live…</span> ':"";
+  const loadingNow=state.mode==="support"?LIVE_LOADING:EVENTS_LOADING;
+  const loading=loadingNow?'<span class="loading"><span class="spin"></span>loading live…</span> ':"";
   document.getElementById("count").innerHTML=loading+`<b>${list.length}</b> ${state.mode==="support"?"meeting":"group/event"}${list.length!==1?"s":""} ${state.near?"near you":"across "+new Set(DATA.map(m=>m.cat)).size+" "+word}`;
   if(!list.length)el.innerHTML='<div class="empty">Nothing matches these filters.<br>Try removing one.</div>';
   const shown=list.slice(0,state.limit);
   shown.forEach(m=>{
     const id=m._id,fc=META[m.cat].color,now=isNow(m);
     const card=document.createElement("div");card.className="card"+(activeId===id?" active":"");
-    const trust=m.mode==="play"?"":(m.verified?'<span class="b ok">✓ VERIFIED</span>':'<span class="b warn">⚠ UNVERIFIED</span>');
+    const trust=m.verified?'<span class="b ok">✓ VERIFIED</span>':'<span class="b warn">⚠ UNVERIFIED</span>';
+    const whenLbl=m.dateLabel?m.dateLabel:DAYS[m.day];
     card.innerHTML=`<div class="top"><div class="name">${m.name}</div><div class="fell" style="background:${fc}">${m.cat}</div></div>
-      <div class="when">${DAYS[m.day]} · ${fmtTime(m.time)}${m._d!=null?` · ${m._d.toFixed(1)} mi`:""}</div>
+      <div class="when">${whenLbl} · ${fmtTime(m.time)}${m._d!=null?` · ${m._d.toFixed(1)} mi`:""}</div>
       <div class="where">${m.loc} — ${m.addr}</div>
       <div class="badges">${now?'<span class="b now">● HAPPENING NOW</span>':''}
         ${m.fmt==="online"?'<span class="b online">ONLINE</span>':m.fmt==="hybrid"?'<span class="b hybrid">HYBRID</span>':'<span class="b">IN-PERSON</span>'}
-        ${state.mode==="support"?trust:''}
+        ${trust}
         ${(m.types||[]).map(t=>`<span class="b">${t}</span>`).join("")}</div>
       ${m.url?`<a class="verify" href="${m.url}" target="_blank" rel="noopener">${m.fmt==="in-person"?"Details":"Join / details"} ↗</a>`:(state.mode==="support"&&!m.verified?'<a class="verify" href="https://www.aastpaul.org/meetings" target="_blank" rel="noopener">Verify on official source ↗</a>':'')}`;
     card.onclick=()=>{activeId=id;render();if(m.lat){map.setView([m.lat,m.lng],14);m._marker?.openPopup();}};
@@ -313,7 +321,7 @@ function setMode(mode){
   document.getElementById("mSupport").classList.toggle("on",mode==="support");
   const mp=document.getElementById("mPlay");mp.classList.toggle("on",mode==="activities");mp.classList.toggle("play",mode==="activities");
   if(mode==="support"){META=FELLOWSHIPS;DATA=supportMeetings().map((m,i)=>({...m,_id:"s"+i}));}
-  else{META=ACTIVITIES;DATA=PLAY.map((m,i)=>({...m,_id:"p"+i}));}
+  else{META=ACTIVITIES;DATA=activityItems().map((m,i)=>({...m,_id:"p"+i}));}
   document.getElementById("q").placeholder=mode==="support"?"Search name, city, or topic (women's, beginners…)":"Search name, venue, or interest (chess, yoga, French…)";
   buildFilters();updateFooter();render();
 }
@@ -330,7 +338,14 @@ function updateFooter(){
       s.innerHTML=`<b>${SUPPORT.length} curated</b> support meetings <span style="color:#fbbf24">⚠ unverified</span> — live feeds load from <code>/api/meetings</code> when deployed. Not affiliated with any program.`;
     }
   }else{
-    s.innerHTML=`Sources: <b>${PLAY.length} sample</b> community activities & groups (Twin Cities). In the real app these come from Meetup, library/parks calendars &amp; venue listings.`;
+    const liveN=LIVE_EVENTS.length;
+    if(liveN){
+      const when=EVENTS_UPDATED?new Date(EVENTS_UPDATED).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):"";
+      const ok=EVENT_SOURCES.filter(x=>x.ok).map(x=>x.name).join(", ");
+      s.innerHTML=`<span style="color:var(--live)">◉ ${liveN} live verified</span> events (next 45 days) + ${PLAY.length} curated <span style="color:#fbbf24">⚠ unverified</span> groups. Venues: ${ok}.`+(when?` Updated ${when}.`:"");
+    }else{
+      s.innerHTML=`<b>${PLAY.length} curated</b> activities <span style="color:#fbbf24">⚠ unverified</span> — live venue & calendar events load from <code>/api/events</code> when deployed.`;
+    }
   }
 }
 
@@ -354,6 +369,24 @@ async function loadLive(){
   }
 }
 
+async function loadEvents(){
+  try{
+    const res=await fetch("/api/events",{headers:{Accept:"application/json"}});
+    if(!res.ok)throw 0;
+    const data=await res.json();
+    LIVE_EVENTS=(data.events||[]).map(m=>({...m,verified:true}));
+    EVENTS_UPDATED=data.updated||null;
+    EVENT_SOURCES=data.sources||[];
+  }catch(e){/* backend unavailable — curated samples still show */}
+  finally{
+    EVENTS_LOADING=false;
+    if(state.mode==="activities"){
+      DATA=activityItems().map((m,i)=>({...m,_id:"p"+i}));
+      updateFooter();render();
+    }
+  }
+}
+
 function init(){
   map=L.map("map",{zoomControl:true}).setView([44.9537,-93.0900],11);
   L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",{attribution:"© OpenStreetMap © CARTO",maxZoom:19}).addTo(map);
@@ -372,6 +405,7 @@ function init(){
   };
   setMode("support");
   loadLive();
+  loadEvents();
 }
 init();
 </script>
