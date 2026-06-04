@@ -61,8 +61,11 @@
   .b.live{background:#0c3a2a;color:var(--live)}
   .b.ok{background:#0c3a2a;color:var(--live)}
   .b.warn{background:#3a2410;color:#fbbf24}
-  .verify{display:inline-block;margin-top:6px;font-size:11.5px;color:var(--accent2);font-weight:600;text-decoration:none}
+  .linkrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:7px}
+  .verify{display:inline-block;font-size:11.5px;color:var(--accent2);font-weight:600;text-decoration:none}
   .verify:hover{text-decoration:underline}
+  .verify.vbtn{color:var(--live);border:1px solid #1f5040;background:#0c241c;padding:3px 9px;border-radius:7px}
+  .verify.vbtn:hover{border-color:var(--live);text-decoration:none}
   #map{flex:1;min-height:0}
   .leaflet-popup-content{font-family:inherit;margin:12px 14px}
   .pop .pn{font-weight:700;font-size:14px;color:#0f1419}
@@ -129,11 +132,41 @@ const FELLOWSHIPS = {
   CoDA:{name:"CoDA (Co-Dependents Anonymous)",color:"#fb923c"},
   OA:{name:"OA (Overeaters Anonymous)",color:"#22d3ee"},
   GA:{name:"GA (Gamblers Anonymous)",color:"#f87171"},
-  SMART:{name:"SMART Recovery",color:"#c084fc"},
+  SMART:{name:"SMART Recovery (non-12-step)",color:"#c084fc"},
   Dharma:{name:"Recovery Dharma (Buddhist)",color:"#94e0c0"},
-  Refuge:{name:"Refuge Recovery",color:"#f0abfc"},
+  Refuge:{name:"Refuge Recovery (Buddhist)",color:"#f0abfc"},
+  LifeRing:{name:"LifeRing Secular Recovery",color:"#7dd3fc"},
+  WFS:{name:"Women for Sobriety",color:"#fb7185"},
+  Wellbriety:{name:"Wellbriety / White Bison (Native)",color:"#fcd34d"},
+  CR:{name:"Celebrate Recovery (Christian)",color:"#86efac"},
+  SOS:{name:"Secular Org. for Sobriety (SOS)",color:"#a3e635"},
+  CA:{name:"Cocaine Anonymous",color:"#fca5a5"},
+  MA:{name:"Marijuana Anonymous",color:"#bef264"},
   DDA:{name:"Dual Diagnosis Anonymous",color:"#fda4af"},
 };
+// Official meeting finders per program — powers the "verify" button.
+const FINDERS={
+  AA:"https://aaminneapolis.org/meetings/",
+  NA:"https://naminnesota.org/meetings/",
+  "Al-Anon":"https://al-anon.org/al-anon-meetings/",
+  ACA:"https://adultchildren.org/meeting-search/",
+  EA:"https://emotionsanonymous.org/find-a-meeting/",
+  CoDA:"https://coda.org/coda-meetings/",
+  OA:"https://oa.org/find-a-meeting/",
+  GA:"https://www.gamblersanonymous.org/ga/locations",
+  SMART:"https://meetings.smartrecovery.org/meetings/",
+  Dharma:"https://recoverydharma.org/find-a-meeting/",
+  Refuge:"https://www.refugerecovery.org/meetings",
+  LifeRing:"https://lifering.org/find-a-meeting/",
+  WFS:"https://womenforsobriety.org/find-meetings/",
+  Wellbriety:"https://wellbriety.com/",
+  CR:"https://locator.crgroups.info/",
+  SOS:"https://www.sossobriety.org/meetings/",
+  CA:"https://ca.org/meetings/",
+  MA:"https://www.marijuana-anonymous.org/meetings/",
+  DDA:"https://draonline.org/",
+};
+function finderFor(m){return (m.url)||FINDERS[m.cat]||"https://www.211.org/";}
 const SUPPORT = [
   {cat:"EA",name:"Dayton Ave Chapter",day:5,time:"19:00",dur:90,fmt:"hybrid",loc:"Twin Cities Friends Meeting",addr:"1725 Grand Ave, St Paul",lat:44.9401,lng:-93.1684,types:["Open"]},
   {cat:"EA",name:"Serenity Tuesdays",day:2,time:"18:30",dur:60,fmt:"in-person",loc:"Goodwill Easter Seals",addr:"553 Fairview Ave N, St Paul",lat:44.9540,lng:-93.1760,types:["Open","Beginners"]},
@@ -163,6 +196,16 @@ const SUPPORT = [
   {cat:"Dharma",name:"Mindful Recovery",day:0,time:"10:00",dur:60,fmt:"hybrid",loc:"MN Zen Meditation Center",addr:"3343 E Calhoun Pkwy, Minneapolis",lat:44.9430,lng:-93.3060,types:["Open"]},
   {cat:"Refuge",name:"Refuge Recovery Sit",day:1,time:"18:00",dur:75,fmt:"in-person",loc:"Common Ground Meditation",addr:"2700 E 26th St, Minneapolis",lat:44.9560,lng:-93.2300,types:["Open","Secular"]},
   {cat:"DDA",name:"Dual Diagnosis Anonymous",day:4,time:"17:30",dur:60,fmt:"hybrid",loc:"Guild Recovery",addr:"130 S Wabasha St, St Paul",lat:44.9430,lng:-93.0890,types:["Open","Mental Health"]},
+  // ----- Non-12-step programs: official online meetings (verify on source) -----
+  {cat:"SMART",name:"SMART Recovery Daily Online",day:0,time:"19:00",dur:90,fmt:"online",loc:"SMART Recovery (online)",addr:"Online · meetings.smartrecovery.org",lat:44.95,lng:-93.09,types:["Open","Secular","Science-based"],url:"https://meetings.smartrecovery.org/meetings/"},
+  {cat:"Dharma",name:"Recovery Dharma Online Sit",day:2,time:"20:00",dur:60,fmt:"online",loc:"Recovery Dharma (online)",addr:"Online · recoverydharma.online",lat:44.95,lng:-93.09,types:["Open","Buddhist","Meditation"],url:"https://recoverydharma.online/"},
+  {cat:"LifeRing",name:"LifeRing Online Meeting",day:3,time:"18:00",dur:60,fmt:"online",loc:"LifeRing Secular Recovery",addr:"Online · lifering.org",lat:44.95,lng:-93.09,types:["Open","Secular","Abstinence"],url:"https://lifering.org/find-a-meeting/"},
+  {cat:"WFS",name:"Women for Sobriety Online",day:1,time:"19:00",dur:60,fmt:"online",loc:"Women for Sobriety",addr:"Online · womenforsobriety.org",lat:44.95,lng:-93.09,types:["Closed","Women","New Life"],url:"https://womenforsobriety.org/find-meetings/"},
+  {cat:"Wellbriety",name:"Wellbriety Talking Circle",day:4,time:"18:30",dur:90,fmt:"online",loc:"White Bison Wellbriety",addr:"Online · wellbriety.com",lat:44.95,lng:-93.09,types:["Open","Native American","Medicine Wheel"],url:"https://wellbriety.com/"},
+  {cat:"SOS",name:"SOS Secular Sobriety (online)",day:6,time:"10:00",dur:60,fmt:"online",loc:"Secular Organizations for Sobriety",addr:"Online · sossobriety.org",lat:44.95,lng:-93.09,types:["Open","Secular"],url:"https://www.sossobriety.org/meetings/"},
+  {cat:"CR",name:"Celebrate Recovery — St Paul",day:5,time:"19:00",dur:120,fmt:"hybrid",loc:"Substance Church",addr:"1390 Arcade St, St Paul",lat:44.9810,lng:-93.0640,types:["Open","Christian"],url:"https://locator.crgroups.info/"},
+  {cat:"CA",name:"Cocaine Anonymous MN",day:2,time:"19:30",dur:60,fmt:"hybrid",loc:"CA Minnesota",addr:"Online + Twin Cities · ca-mn.org",lat:44.95,lng:-93.09,types:["Open"],url:"https://ca.org/meetings/"},
+  {cat:"MA",name:"Marijuana Anonymous Online",day:0,time:"18:00",dur:60,fmt:"online",loc:"Marijuana Anonymous",addr:"Online · marijuana-anonymous.org",lat:44.95,lng:-93.09,types:["Open"],url:"https://www.marijuana-anonymous.org/meetings/"},
 ];
 
 /* ===== ACTIVITIES & GROUPS ===== */
@@ -285,6 +328,10 @@ function render(){
     const card=document.createElement("div");card.className="card"+(activeId===id?" active":"");
     const trust=m.verified?'<span class="b ok">✓ VERIFIED</span>':'<span class="b warn">⚠ UNVERIFIED</span>';
     const whenLbl=m.dateLabel?m.dateLabel:DAYS[m.day];
+    // link row: join/details (if the meeting has its own link) + a verify button to the official finder
+    const join=m.url?`<a class="verify" href="${m.url}" target="_blank" rel="noopener">${m.fmt==="in-person"?"Details":"Join / details"} ↗</a>`:"";
+    const official=state.mode==="support"?FINDERS[m.cat]:null;
+    const verify=(official&&official!==m.url)?`<a class="verify vbtn" href="${official}" target="_blank" rel="noopener">✓ Verify on official source ↗</a>`:"";
     card.innerHTML=`<div class="top"><div class="name">${m.name}</div><div class="fell" style="background:${fc}">${m.cat}</div></div>
       <div class="when">${whenLbl} · ${fmtTime(m.time)}${m._d!=null?` · ${m._d.toFixed(1)} mi`:""}</div>
       <div class="where">${m.loc} — ${m.addr}</div>
@@ -292,7 +339,7 @@ function render(){
         ${m.fmt==="online"?'<span class="b online">ONLINE</span>':m.fmt==="hybrid"?'<span class="b hybrid">HYBRID</span>':'<span class="b">IN-PERSON</span>'}
         ${trust}
         ${(m.types||[]).map(t=>`<span class="b">${t}</span>`).join("")}</div>
-      ${m.url?`<a class="verify" href="${m.url}" target="_blank" rel="noopener">${m.fmt==="in-person"?"Details":"Join / details"} ↗</a>`:(state.mode==="support"&&!m.verified?'<a class="verify" href="https://www.aastpaul.org/meetings" target="_blank" rel="noopener">Verify on official source ↗</a>':'')}`;
+      <div class="linkrow">${join}${verify}</div>`;
     card.onclick=()=>{activeId=id;render();if(m.lat){map.setView([m.lat,m.lng],14);m._marker?.openPopup();}};
     el.appendChild(card);
   });
