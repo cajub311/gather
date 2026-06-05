@@ -111,7 +111,9 @@
   .card .timepill{display:block;font-size:13px;font-weight:700;color:var(--txt);line-height:1.2}
   .card .timeap{font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase}
   .card .body{min-width:0}
-  .card .top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+  .card .top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap}
+  .card .savebtn{order:2;margin-left:auto}
+  .card .fell{order:3}
   .card .name{font-weight:600;font-size:14px;line-height:1.35;color:var(--txt);flex:1}
   .card .fell{font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;color:#0a1218;white-space:nowrap;letter-spacing:.02em}
   .card .when{font-size:12.5px;color:var(--accent);margin-top:5px;font-weight:500}
@@ -168,12 +170,42 @@
   .crisis a{color:#fca5a5;font-size:12px;font-weight:600;text-decoration:none;border:1px solid rgba(252,165,165,.2);padding:6px 12px;border-radius:var(--radius);white-space:nowrap;transition:background .15s,border-color .15s}
   .crisis a:hover{background:rgba(252,165,165,.06);border-color:rgba(252,165,165,.35)}
   .marker-cluster-small,.marker-cluster-medium,.marker-cluster-large{width:44px!important;height:44px!important}
+  .presetrow{display:flex;gap:6px;padding:4px 14px 8px;overflow-x:auto;scrollbar-width:none}
+  .presetrow::-webkit-scrollbar{display:none}
+  .pchip{flex-shrink:0;background:transparent;border:1px dashed var(--line);color:var(--muted);padding:5px 11px;border-radius:999px;font-size:11.5px;font-weight:600}
+  .pchip:hover{color:var(--txt);border-style:solid}
+  .pchip.on{border-style:solid;border-color:var(--accent-dim);color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
+  .guide{padding:12px 14px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--accent) 6%,var(--bg));font-size:12.5px;line-height:1.5;color:var(--muted)}
+  .guide[hidden]{display:none!important}
+  .guide h3{margin:0 0 8px;font-size:13px;color:var(--txt)}
+  .guide ul{margin:0;padding-left:18px}
+  .guide li{margin-bottom:4px}
+  .guide-actions{display:flex;gap:8px;margin-top:10px}
+  .savebtn{background:transparent;border:none;padding:4px;font-size:16px;line-height:1;cursor:pointer;opacity:.45}
+  .savebtn.on{opacity:1}
+  .card.saved .body{border-left:2px solid var(--accent2);padding-left:8px;margin-left:-10px}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);z-index:9999;padding:10px 18px;background:var(--surface2);border:1px solid var(--line);border-radius:var(--radius);font-size:13px;font-weight:600;color:var(--txt);box-shadow:0 8px 30px rgba(0,0,0,.4);opacity:0;transition:transform .25s,opacity .25s;pointer-events:none}
+  .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+  .viewtabs{display:none}
+  .hdr-actions{display:flex;gap:6px;margin-left:auto}
+  .iconbtn{background:var(--bg);border:1px solid var(--line);color:var(--muted);padding:7px 10px;border-radius:9px;font-size:12px;font-weight:600}
+  .iconbtn:hover{color:var(--txt)}
+  .iconbtn.on{color:var(--accent);border-color:var(--accent-dim)}
+  @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
   @media(max-width:760px){
     .header-top{padding:12px 14px 8px}
     .header-controls{padding:0 14px 12px}
+    .viewtabs{display:flex;padding:8px 14px 0;gap:6px;background:var(--surface);border-bottom:1px solid var(--line)}
+    .viewtabs button{flex:1;padding:10px;border-radius:9px;border:1px solid var(--line);background:var(--bg);color:var(--muted);font-weight:600;font-size:13px}
+    .viewtabs button.on{background:var(--surface2);color:var(--accent);border-color:var(--accent-dim)}
     main{flex-direction:column}
-    #sidebar{width:100%;max-width:100%;height:52%;order:2}
-    #map{height:48%;order:1}
+    #sidebar{width:100%;max-width:100%;order:2;flex:1;min-height:0}
+    #map{order:1;flex:1;min-height:0}
+    body.mobile-view-list #map{display:none}
+    body.mobile-view-list #sidebar{order:1}
+    body.mobile-view-map #sidebar{display:none}
+    body.mobile-view-map #map{display:block;flex:1}
+    .daypick.all-week{margin-left:0}
   }
 </style>
 </head>
@@ -184,6 +216,10 @@
       <div class="brand">
         <div class="logo"><span class="dot"></span>Gather</div>
         <div class="tagline">Support groups &amp; things to do — Minneapolis, St. Paul &amp; suburbs</div>
+      </div>
+      <div class="hdr-actions">
+        <button type="button" class="iconbtn" id="btnSaved" title="Show saved">Saved</button>
+        <button type="button" class="iconbtn" id="btnShare" title="Copy link to this view">Share</button>
       </div>
       <div class="crisis" title="Free, confidential, 24/7"><a href="tel:988">Crisis support: 988</a></div>
     </div>
@@ -200,13 +236,31 @@
     </div>
   </header>
   <main>
+    <div class="viewtabs" id="viewtabs" role="tablist" aria-label="Map or list">
+      <button type="button" role="tab" class="on" data-view="map" aria-selected="true">Map</button>
+      <button type="button" role="tab" data-view="list">List</button>
+    </div>
     <div id="sidebar">
       <div class="tips" id="tips" hidden>
         <p><strong style="color:var(--txt)">How Gather works:</strong> Pick a day, tap a map dot, or use quick filters. Verified listings come from official feeds — always confirm before you go.</p>
         <button type="button" id="tipsDismiss">Got it</button>
       </div>
       <div class="daybar" id="daybar"></div>
+      <div class="presetrow" id="presetrow"></div>
       <div class="quickrow" id="quickrow"></div>
+      <div class="guide" id="guide" hidden>
+        <h3>First time at a support meeting?</h3>
+        <ul>
+          <li><strong>Open</strong> meetings welcome anyone interested; <strong>closed</strong> are for members only.</li>
+          <li>Arrive a few minutes early — someone can explain format and traditions.</li>
+          <li>Online? Use the join link; keep your camera off if you prefer.</li>
+          <li>Gather lists times from official sources — double-check before you go.</li>
+        </ul>
+        <div class="guide-actions">
+          <button type="button" class="btn" id="guideOpenFilter">Show open meetings</button>
+          <button type="button" class="btn" id="guideDismiss">Hide guide</button>
+        </div>
+      </div>
       <div class="todbar" id="todbar">
         <button class="tod on" data-tod="">All day</button>
         <button class="tod" data-tod="morning">Morning</button>
@@ -233,6 +287,7 @@
     </div>
   </main>
 </div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
@@ -385,13 +440,85 @@ const QUICK={
     {id:"social",label:"Social",match:m=>m.cat==="Social"},
   ],
 };
-const state={mode:"support",cat:new Set(),day:null,fmt:null,tod:"",nowOnly:false,q:"",near:null,nearGps:false,quick:new Set(),limit:RENDER_STEP};
+let SAVED=new Set();
+try{SAVED=new Set(JSON.parse(localStorage.getItem("gather-saved")||"[]"));}catch(e){}
+const state={mode:"support",cat:new Set(),day:null,daySet:null,fmt:null,tod:"",nowOnly:false,q:"",near:null,nearGps:false,quick:new Set(),savedOnly:false,preset:"",limit:RENDER_STEP};
+let _urlTimer=null;
 function todayDay(){return nowInfo().day;}
-function isAllWeek(){return state.day===null;}
 function dayViewLabel(){
+  if(state.daySet)return "Fri–Sun";
   if(isAllWeek())return "all week";
   const t=todayDay();
   return state.day===t?`today (${DAYS[t]})`:DAYS[state.day];
+}
+function isWeekendView(){return !!state.daySet;}
+function isAllWeek(){return state.day===null&&!state.daySet;}
+function hasMapPin(m){
+  if(m.fmt==="online"&&/online|zoom/i.test((m.addr||"").toLowerCase()))return false;
+  if(!m.lat||!m.lng)return false;
+  if(Math.abs(m.lat-44.95)<0.015&&Math.abs(m.lng+93.09)<0.015&&(m.fmt==="online"||/online/i.test(m.loc||"")))return false;
+  return true;
+}
+function toast(msg){
+  const t=document.getElementById("toast");
+  if(!t)return;
+  t.textContent=msg;
+  t.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t=setTimeout(()=>t.classList.remove("show"),2200);
+}
+function persistSaved(){
+  try{localStorage.setItem("gather-saved",JSON.stringify([...SAVED]));}catch(e){}
+}
+function toggleSaved(id,e){
+  if(e){e.stopPropagation();}
+  SAVED.has(id)?SAVED.delete(id):SAVED.add(id);
+  persistSaved();
+  updateSavedBtn();
+  render();
+}
+function updateSavedBtn(){
+  const b=document.getElementById("btnSaved");
+  if(!b)return;
+  const n=SAVED.size;
+  b.textContent=n?`Saved (${n})`:"Saved";
+  b.classList.toggle("on",state.savedOnly);
+}
+function meetingBlurb(m){
+  const when=m.dateLabel?m.dateLabel:(m.day===todayDay()?"Today":DAYS[m.day]);
+  return `${m.name}\n${when} · ${fmtTime(m.time)} · ${fmtLabel(m.fmt)}\n${m.loc}\n${m.addr}${m.url?"\n"+m.url:""}`;
+}
+function pushUrl(){
+  clearTimeout(_urlTimer);
+  _urlTimer=setTimeout(()=>{
+    const p=new URLSearchParams();
+    p.set("mode",state.mode);
+    if(state.daySet)p.set("weekend","1");
+    else if(state.day!==null)p.set("day",state.day);
+    else p.set("week","1");
+    if(state.tod)p.set("tod",state.tod);
+    if(state.q)p.set("q",state.q);
+    if(state.fmt)p.set("fmt",state.fmt);
+    if(state.nowOnly)p.set("now","1");
+    if(state.savedOnly)p.set("saved","1");
+    if([...state.quick].length)p.set("quick",[...state.quick].join(","));
+    if(activeId)p.set("id",activeId);
+    history.replaceState(null,"",location.pathname+"?"+p);
+  },200);
+}
+function readUrl(){
+  const p=new URLSearchParams(location.search);
+  if(p.get("mode")==="activities")state.mode="activities";
+  if(p.get("weekend")==="1")state.daySet=new Set([5,6,0]);
+  else if(p.get("week")==="1"){state.day=null;state.daySet=null;}
+  else if(p.has("day")){state.day=+p.get("day");state.daySet=null;}
+  if(p.get("tod"))state.tod=p.get("tod");
+  if(p.get("q"))state.q=p.get("q");
+  if(p.get("fmt"))state.fmt=p.get("fmt");
+  if(p.get("now")==="1")state.nowOnly=true;
+  if(p.get("saved")==="1")state.savedOnly=true;
+  if(p.get("quick"))state.quick=new Set(p.get("quick").split(",").filter(Boolean));
+  return p.get("id");
 }
 function inTod(time,tod){if(!tod)return true;const h=parseInt(time.split(":")[0],10);
   if(tod==="morning")return h>=5&&h<12;
@@ -447,7 +574,7 @@ function sectionTitle(m){
   return DAYS[m.day];
 }
 function enrichSort(list){
-  const n=nowInfo(),pin=state.day!==null,useNear=!!state.near;
+  const n=nowInfo(),pin=state.day!==null&&!state.daySet,useNear=!!state.near;
   list.forEach(m=>{
     m._dayOff=pin?0:dayOffset(m.day,n.day);
     m._minsUntil=minutesUntil(m,n);
@@ -457,9 +584,9 @@ function enrichSort(list){
 }
 function smartSort(list){
   enrichSort(list);
-  const pin=state.day!==null,useNear=!!state.near;
+  const pin=state.day!==null&&!state.daySet,useNear=!!state.near;
   list.sort((a,b)=>{
-    if(!pin&&a._dayOff!==b._dayOff)return a._dayOff-b._dayOff;
+    if(!pin&&!state.daySet&&a._dayOff!==b._dayOff)return a._dayOff-b._dayOff;
     if(!pin&&a._dayOff===0&&b._dayOff===0){
       const aNow=isNow(a),bNow=isNow(b);
       if(aNow!==bNow)return aNow?-1:1;
@@ -482,16 +609,22 @@ function sortHint(){
   else parts.push("by time");
   return parts.join(" · ");
 }
+function syncTodUI(){
+  document.querySelectorAll("#todbar .tod").forEach(b=>{
+    const bv=b.dataset.tod||"";
+    b.classList.toggle("on", bv==="" ? !state.tod : bv===state.tod);
+  });
+}
 function setViewDay(dayOrNull){
-  state.day=dayOrNull;
-  syncDayUI();
-  render();
+  state.daySet=null;state.day=dayOrNull;state.preset="";
+  syncDayUI();render();
 }
 function syncDayUI(){
   const today=todayDay();
   document.querySelectorAll("#daybar .daypick").forEach(btn=>{
     const v=btn.dataset.day;
     if(v==="all")btn.classList.toggle("on",isAllWeek());
+    else if(state.daySet)btn.classList.toggle("on",false);
     else btn.classList.toggle("on",!isAllWeek()&&state.day===Number(v));
   });
   const dc=document.getElementById("dayFilters");
@@ -499,8 +632,34 @@ function syncDayUI(){
   [...dc.querySelectorAll(".chip")].forEach(chip=>{
     const v=chip.dataset.day;
     if(v==="all")chip.classList.toggle("on",isAllWeek());
-    else if(v!=null)chip.classList.toggle("on",!isAllWeek()&&state.day===Number(v));
+    else if(v!=null)chip.classList.toggle("on",!isAllWeek()&&!state.daySet&&state.day===Number(v));
   });
+}
+function buildPresets(){
+  const row=document.getElementById("presetrow");
+  if(!row)return;
+  row.innerHTML="";
+  const items=[
+    {id:"tonight",label:"Tonight"},
+    {id:"weekend",label:"This weekend"},
+    {id:"saved",label:state.savedOnly?"Show all":"Saved only"},
+  ];
+  if(state.mode==="support")items.push({id:"first",label:"First visit"});
+  items.forEach(pr=>{
+    const b=document.createElement("button");
+    b.type="button";b.className="pchip"+(state.preset===pr.id?" on":"");
+    b.textContent=pr.label;
+    b.onclick=()=>applyPreset(pr.id);
+    row.appendChild(b);
+  });
+}
+function applyPreset(id){
+  if(id==="saved"){state.savedOnly=!state.savedOnly;state.preset=state.savedOnly?"saved":"";updateSavedBtn();buildPresets();render();return;}
+  state.preset=id;state.savedOnly=false;state.cat.clear();state.quick.clear();
+  if(id==="tonight"){state.daySet=null;state.day=todayDay();state.tod="evening";state.nowOnly=false;}
+  else if(id==="weekend"){state.day=null;state.daySet=new Set([5,6,0]);state.tod="";}
+  else if(id==="first"){state.daySet=null;state.day=todayDay();state.tod="";state.quick.add("open");document.getElementById("guide").hidden=false;}
+  syncTodUI();syncDayUI();buildQuickFilters();buildPresets();updateSavedBtn();render();
 }
 function buildDayBar(){
   const bar=document.getElementById("daybar");
@@ -555,7 +714,9 @@ function filtered(){
   const quicks=QUICK[state.mode]||[];
   let list=DATA.filter(m=>{
     if(state.cat.size&&!state.cat.has(m.cat))return false;
-    if(state.day!==null&&m.day!==state.day)return false;
+    if(state.daySet&&!state.daySet.has(m.day))return false;
+    else if(state.day!==null&&m.day!==state.day)return false;
+    if(state.savedOnly&&!SAVED.has(m._id))return false;
     if(state.fmt&&m.fmt!==state.fmt)return false;
     if(state.tod&&!inTod(m.time,state.tod))return false;
     if(state.nowOnly&&!isNow(m))return false;
@@ -570,8 +731,8 @@ function filtered(){
 }
 
 function activeFilterCount(){
-  const dayExtra=isAllWeek()?1:(state.day!==todayDay()?1:0);
-  return state.cat.size+dayExtra+state.quick.size+(state.fmt?1:0)+(state.tod?1:0)+(state.nowOnly?1:0);
+  const dayExtra=state.daySet?1:(isAllWeek()?1:(state.day!==todayDay()?1:0));
+  return state.cat.size+dayExtra+state.quick.size+(state.fmt?1:0)+(state.tod?1:0)+(state.nowOnly?1:0)+(state.savedOnly?1:0);
 }
 function buildQuickFilters(){
   const row=document.getElementById("quickrow");
@@ -597,6 +758,7 @@ function updateInsight(list){
     verified?`<span class="insight-pill live"><strong>${verified}</strong> verified live</span>`:"",
     state.mode==="support"&&openCt?`<span class="insight-pill"><strong>${openCt}</strong> open meetings</span>`:"",
     state.near?`<span class="insight-pill">sorted near you</span>`:"",
+    list.some(m=>!hasMapPin(m))?`<span class="insight-pill"><strong>${list.filter(m=>!hasMapPin(m)).length}</strong> online only</span>`:"",
   ].filter(Boolean);
   el.innerHTML=pills.join("");
 }
@@ -647,11 +809,56 @@ function updateFilterUI(){
   document.getElementById("fClear").classList.toggle("show",n>0);
 }
 function clearFilters(){
-  state.cat.clear();state.quick.clear();state.day=todayDay();state.fmt=null;state.tod="";state.nowOnly=false;
+  state.cat.clear();state.quick.clear();state.daySet=null;state.day=todayDay();state.fmt=null;state.tod="";state.nowOnly=false;state.savedOnly=false;state.preset="";state.q="";
+  document.getElementById("q").value="";
   document.querySelectorAll("#fmtFilters .chip").forEach(x=>x.classList.remove("on"));
-  document.querySelectorAll("#todbar .tod").forEach((b,i)=>b.classList.toggle("on",i===0));
+  syncTodUI();
   document.getElementById("nowbtn").classList.remove("on");
-  syncDayUI();buildQuickFilters();buildFilters();render();
+  syncDayUI();buildQuickFilters();buildPresets();buildFilters();updateSavedBtn();render();
+}
+function focusFromId(id){
+  const m=DATA.find(x=>x._id===id)||lastFilteredList.find(x=>x._id===id);
+  if(m)focusMeeting(m);
+}
+function renderOnlineSection(el,items){
+  const h=document.createElement("div");
+  h.className="list-section";
+  h.textContent=`Online (${items.length}) — not on map`;
+  el.appendChild(h);
+  items.forEach(m=>renderCard(el,m));
+}
+function renderCard(el,m){
+  const id=m._id,fc=META[m.cat].color,now=isNow(m);
+  const card=document.createElement("div");
+  card.className="card"+(activeId===id?" active":"")+(SAVED.has(id)?" saved":"");card.dataset.id=id;
+  const trust=m.verified?'<span class="b ok">Live</span>':'<span class="b warn">Sample</span>';
+  const whenLbl=m.dateLabel?m.dateLabel:(m.day===todayDay()?"Today":DAYS[m.day]);
+  const rel=relWhen(m);
+  const tp=fmtParts(m.time);
+  const join=m.url?`<a class="verify" href="${m.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${m.fmt==="online"?"Join link":"Details"} ↗</a>`:"";
+  const official=state.mode==="support"?FINDERS[m.cat]:null;
+  const verify=(official&&official!==m.url)?`<a class="verify vbtn" href="${official}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Official list ↗</a>`:"";
+  const dir=hasMapPin(m)?`<a class="dir" href="${mapsDir(m)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Directions ↗</a>`:"";
+  const saved=SAVED.has(id)?"★":"☆";
+  card.innerHTML=`<div class="timecol"><span class="timepill">${tp.hr}</span><span class="timeap">${tp.ap}</span></div>
+    <div class="body"><div class="top"><div class="name">${m.name}</div>
+      <button type="button" class="savebtn${SAVED.has(id)?" on":""}" title="Save" aria-label="Save">${saved}</button>
+      <div class="fell" style="background:${fc}">${m.cat}</div></div>
+    <div class="when">${whenLbl}${rel?` · <span style="color:var(--now)">${rel}</span>`:""}${m._d!=null?` · ${m._d.toFixed(1)} mi`:""}</div>
+    <div class="where">${m.loc}</div>
+    <div class="badges">${now?'<span class="b now">Now</span>':''}
+      <span class="b ${m.fmt==="online"?"online":m.fmt==="hybrid"?"hybrid":""}">${fmtLabel(m.fmt)}</span>
+      ${trust}
+      ${(m.types||[]).slice(0,3).map(t=>`<span class="b">${t}</span>`).join("")}</div>
+    <div class="linkrow">${dir}${join}${verify}
+      <button type="button" class="dir" style="border:none;background:none;padding:0;cursor:pointer" data-copy="${id}">Copy info</button></div></div>`;
+  card.querySelector(".savebtn").onclick=e=>toggleSaved(id,e);
+  card.querySelector("[data-copy]")?.addEventListener("click",e=>{
+    e.stopPropagation();
+    navigator.clipboard?.writeText(meetingBlurb(m)).then(()=>toast("Copied to clipboard"));
+  });
+  card.onclick=()=>focusMeeting(m);
+  el.appendChild(card);
 }
 let _lastSig="";
 function render(){
@@ -668,43 +875,28 @@ function render(){
   updateInsight(list);
   updateMapLegend(list);
   updateFilterUI();
-  if(!list.length){renderEmpty(el);drawMarkers(list);return;}
+  if(!list.length){renderEmpty(el);drawMarkers([]);pushUrl();return;}
+  const onMap=list.filter(hasMapPin);
+  const onlineOnly=list.filter(m=>!hasMapPin(m));
   if(list.length>1)renderFeatured(el,list);
   const shown=list.slice(0,state.limit);
   let lastSection=null;
   shown.forEach(m=>{
-    if(isAllWeek()){
-      const sec=sectionTitle(m);
+    if(isAllWeek()||state.daySet){
+      const sec=state.daySet?DAYS[m.day]:sectionTitle(m);
       if(sec!==lastSection){
         lastSection=sec;
         const h=document.createElement("div");
-        h.className="list-section"+(m._dayOff===0?" today":"");
+        h.className="list-section"+(m._dayOff===0&&!state.daySet?" today":"");
         h.textContent=sec;
         el.appendChild(h);
       }
     }
-    const id=m._id,fc=META[m.cat].color,now=isNow(m);
-    const card=document.createElement("div");card.className="card"+(activeId===id?" active":"");card.dataset.id=id;
-    const trust=m.verified?'<span class="b ok">Live</span>':'<span class="b warn">Sample</span>';
-    const whenLbl=m.dateLabel?m.dateLabel:(m.day===todayDay()?"Today":DAYS[m.day]);
-    const rel=relWhen(m);
-    const tp=fmtParts(m.time);
-    const join=m.url?`<a class="verify" href="${m.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${m.fmt==="online"?"Join link":"Details"} ↗</a>`:"";
-    const official=state.mode==="support"?FINDERS[m.cat]:null;
-    const verify=(official&&official!==m.url)?`<a class="verify vbtn" href="${official}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Official list ↗</a>`:"";
-    const dir=m.fmt!=="online"?`<a class="dir" href="${mapsDir(m)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Directions ↗</a>`:"";
-    card.innerHTML=`<div class="timecol"><span class="timepill">${tp.hr}</span><span class="timeap">${tp.ap}</span></div>
-      <div class="body"><div class="top"><div class="name">${m.name}</div><div class="fell" style="background:${fc}">${m.cat}</div></div>
-      <div class="when">${whenLbl}${rel?` · <span style="color:var(--now)">${rel}</span>`:""}${m._d!=null?` · ${m._d.toFixed(1)} mi`:""}</div>
-      <div class="where">${m.loc}</div>
-      <div class="badges">${now?'<span class="b now">Now</span>':''}
-        <span class="b ${m.fmt==="online"?"online":m.fmt==="hybrid"?"hybrid":""}">${fmtLabel(m.fmt)}</span>
-        ${trust}
-        ${(m.types||[]).slice(0,3).map(t=>`<span class="b">${t}</span>`).join("")}</div>
-      <div class="linkrow">${dir}${join}${verify}</div></div>`;
-    card.onclick=()=>focusMeeting(m);
-    el.appendChild(card);
+    renderCard(el,m);
   });
+  const shownIds=new Set(shown.map(x=>x._id));
+  const onlineExtra=onlineOnly.filter(m=>!shownIds.has(m._id));
+  if(onlineExtra.length)renderOnlineSection(el,onlineExtra);
   if(list.length>state.limit){
     const more=document.createElement("div");more.className="showmore";
     const rest=list.length-state.limit;
@@ -712,7 +904,9 @@ function render(){
     more.onclick=()=>{state.limit+=RENDER_STEP;render();};
     el.appendChild(more);
   }
-  drawMarkers(list);
+  document.getElementById("count").setAttribute("aria-label",`${list.length} results`);
+  drawMarkers(onMap);
+  pushUrl();
 }
 
 function popupHtml(m){
@@ -742,15 +936,14 @@ function openMapPopup(m){
   mk.bindPopup(popupHtml(m),{maxWidth:300,minWidth:200,className:"gather-popup"}).openPopup();
 }
 function focusMeeting(m){
-  if(!m||!m.lat)return;
+  if(!m)return;
   activeId=m._id;
   render();
+  scrollCardIntoView(m._id);
+  if(!hasMapPin(m)){map.closePopup();return;}
   const z=Math.max(map.getZoom(),15);
   map.setView([m.lat,m.lng],z,{animate:true});
-  requestAnimationFrame(()=>{
-    openMapPopup(m);
-    scrollCardIntoView(m._id);
-  });
+  requestAnimationFrame(()=>openMapPopup(m));
 }
 function focusSpotMeetings(meetings,latlng){
   if(!meetings.length)return;
@@ -798,16 +991,22 @@ function drawMarkers(list){
   });
 }
 
-function setMode(mode){
-  state.mode=mode;state.cat.clear();state.quick.clear();activeId=null;state.day=todayDay();
+function setMode(mode,opts={}){
+  state.mode=mode;
+  if(!opts.keepFilters){state.cat.clear();state.quick.clear();activeId=null;state.daySet=null;state.day=todayDay();state.savedOnly=false;state.preset="";}
   document.body.classList.toggle("mode-activities",mode==="activities");
+  const guide=document.getElementById("guide");
+  if(guide){
+    if(mode==="support"){try{if(!localStorage.getItem("gather-guide-hide"))guide.hidden=false;}catch(e){}}
+    else guide.hidden=true;
+  }
   const ms=document.getElementById("mSupport");ms.classList.toggle("on",mode==="support");ms.classList.toggle("support",mode==="support");
   const mp=document.getElementById("mPlay");mp.classList.toggle("on",mode==="activities");mp.classList.toggle("play",mode==="activities");
   if(mode==="support"){META=FELLOWSHIPS;DATA=supportMeetings().map((m,i)=>({...m,_id:"s"+i}));}
   else{META=ACTIVITIES;DATA=activityItems().map((m,i)=>({...m,_id:"p"+i}));}
   document.getElementById("q").placeholder=mode==="support"?"Search meetings, neighborhoods, Open, beginners…":"Search activities, free events, yoga, games…";
   document.getElementById("mapHint").textContent=mode==="support"?"Tap a dot — meetings at that place":"Tap a dot — events at that spot";
-  syncDayUI();buildQuickFilters();buildFilters();updateFooter();render();
+  syncDayUI();buildQuickFilters();buildPresets();buildFilters();updateFooter();updateSavedBtn();render();
 }
 function updateFooter(){
   const s=document.getElementById("src");
@@ -912,6 +1111,7 @@ function init(){
   });
   document.getElementById("mSupport").onclick=()=>setMode("support");
   document.getElementById("mPlay").onclick=()=>setMode("activities");
+  buildPresets();
   document.querySelectorAll("#todbar .tod").forEach(btn=>{
     btn.onclick=()=>{
       const v=btn.dataset.tod||"";
@@ -931,20 +1131,53 @@ function init(){
   };
   document.getElementById("fClear").onclick=clearFilters;
   document.getElementById("q").addEventListener("input",e=>{state.q=e.target.value;render();});
+  document.getElementById("btnSaved").onclick=()=>{state.savedOnly=!state.savedOnly;state.preset=state.savedOnly?"saved":"";updateSavedBtn();buildPresets();render();};
+  document.getElementById("btnShare").onclick=()=>{
+    pushUrl();
+    const url=location.href;
+    navigator.clipboard?.writeText(url).then(()=>toast("Link copied — share this view"));
+  };
+  document.getElementById("guideDismiss").onclick=()=>{
+    document.getElementById("guide").hidden=true;
+    try{localStorage.setItem("gather-guide-hide","1");}catch(e){}
+  };
+  document.getElementById("guideOpenFilter").onclick=()=>{
+    state.quick.add("open");buildQuickFilters();render();
+  };
+  document.querySelectorAll("#viewtabs button").forEach(btn=>{
+    btn.onclick=()=>{
+      document.querySelectorAll("#viewtabs button").forEach(b=>{b.classList.remove("on");b.setAttribute("aria-selected","false");});
+      btn.classList.add("on");btn.setAttribute("aria-selected","true");
+      document.body.classList.remove("mobile-view-map","mobile-view-list");
+      document.body.classList.add(btn.dataset.view==="map"?"mobile-view-map":"mobile-view-list");
+    };
+  });
+  document.addEventListener("keydown",e=>{
+    if(e.key==="/"&&document.activeElement!==document.getElementById("q")){
+      e.preventDefault();document.getElementById("q").focus();
+    }
+    if(e.key==="Escape")map?.closePopup();
+  });
   document.getElementById("nowbtn").onclick=function(){state.nowOnly=!state.nowOnly;this.classList.toggle("on");render();};
   document.getElementById("nearme").onclick=function(){toggleMyArea(this);};
   buildDayBar();
-  state.day=todayDay();
-  syncDayUI();
+  const urlId=readUrl();
+  if(!location.search){state.day=todayDay();state.daySet=null;}
+  document.getElementById("q").value=state.q||"";
+  document.getElementById("nowbtn").classList.toggle("on",state.nowOnly);
+  syncTodUI();syncDayUI();updateSavedBtn();
   try{if(!localStorage.getItem("gather-tips-hide"))document.getElementById("tips").hidden=false;}catch(e){}
   document.getElementById("tipsDismiss")?.addEventListener("click",()=>{
     document.getElementById("tips").hidden=true;
     try{localStorage.setItem("gather-tips-hide","1");}catch(e){}
   });
-  setMode("support");
+  if(window.matchMedia("(max-width:760px)").matches)document.body.classList.add("mobile-view-map");
+  setMode(state.mode,{keepFilters:true});
+  buildPresets();
   loadLive();
   loadEvents();
   requestMyArea(document.getElementById("nearme"),{onLoad:true});
+  if(urlId)setTimeout(()=>focusFromId(urlId),800);
 }
 function setUserMarker(){
   if(userMarker)map.removeLayer(userMarker);
