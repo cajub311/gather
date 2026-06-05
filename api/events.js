@@ -18,6 +18,13 @@ const SOURCES = [
   { type: "tribe", name: "Indeed Brewing", base: "https://indeedbrewing.com", lat: 44.9996, lng: -93.2476, addr: "711 NE 15th Ave, Minneapolis" },
   { type: "tribe", name: "Hook & Ladder Theater", base: "https://thehookmpls.com", lat: 44.9486, lng: -93.2308, addr: "3010 Minnehaha Ave, Minneapolis" },
   { type: "tribe", name: "Landmark Center", base: "https://landmarkcenter.org", lat: 44.9462, lng: -93.0969, addr: "75 W 5th St, St Paul" },
+  { type: "tribe", name: "56 Brewing", base: "https://56brewing.com", lat: 45.0156, lng: -93.2410, addr: "3134 California St NE, Minneapolis" },
+
+  // --- Squarespace event collections (?format=json) — confirmed live ---
+  { type: "squarespace", name: "Bad Weather Brewing", base: "https://www.badweatherbrewery.com/events", lat: 44.9276, lng: -93.1310, addr: "1505 7th St W, St Paul" },
+  { type: "squarespace", name: "Lake Monster Brewing", base: "https://www.lakemonsterbrewing.com/events", lat: 44.9636, lng: -93.1880, addr: "550 Vandalia St, St Paul" },
+  { type: "squarespace", name: "Arbeiter Brewing", base: "https://www.arbeiterbrewing.com/events", lat: 44.9487, lng: -93.2310, addr: "3038 Minnehaha Ave, Minneapolis" },
+  { type: "squarespace", name: "Pryes Brewing", base: "https://www.pryesbrewing.com/events", lat: 44.9920, lng: -93.2790, addr: "1401 West River Rd N, Minneapolis" },
 
   // --- Google Calendar / ICS public feeds ---
   // Add real Twin Cities public calendars here, e.g.:
@@ -158,6 +165,67 @@ function parseICS(text, src) {
   return out;
 }
 
+// Squarespace stores event start as an absolute epoch (ms). Convert to the
+// venue's wall-clock time in America/Chicago so day/time are correct.
+function chicagoParts(ms) {
+  const f = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Chicago", year: "numeric", month: "2-digit",
+    day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false,
+  });
+  const o = {};
+  for (const p of f.formatToParts(new Date(ms))) o[p.type] = p.value;
+  let h = +o.hour; if (h === 24) h = 0;
+  return { y: +o.year, mo: +o.month, d: +o.day, h, mi: +o.minute };
+}
+
+async function fromSquarespace(src) {
+  const now = new Date();
+  const months = [];
+  for (let i = 0; i < 3; i++) {
+    const dt = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    months.push(`${String(dt.getMonth() + 1).padStart(2, "0")}-${dt.getFullYear()}`);
+  }
+  const origin = new URL(src.base).origin;
+  const out = [], seen = new Set();
+  for (const m of months) {
+    let j;
+    try { j = await getJSON(`${src.base}?format=json&month=${m}`); } catch { continue; }
+    const items = [...(j.upcoming || []), ...(j.items || [])];
+    for (const e of items) {
+      if (!e.startDate) continue;
+      const title = decode(e.title);
+      if (!title || isNoise(title)) continue;
+      const p = chicagoParts(e.startDate);
+      const date = `${p.y}-${String(p.mo).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`;
+      const k = title + "|" + date;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      const loc = e.location || {};
+      const lat = parseFloat(loc.mapLat), lng = parseFloat(loc.mapLng);
+      out.push({
+        cat: src.cat || classify(title + " " + (e.tags || []).join(" ") + " " + (e.categories || []).join(" ")),
+        name: title,
+        day: dayKey(p),
+        time: `${String(p.h).padStart(2, "0")}:${String(p.mi).padStart(2, "0")}`,
+        dur: 120,
+        fmt: "in-person",
+        loc: decode(loc.addressTitle || src.name),
+        addr: decode([loc.addressLine1, loc.addressLine2].filter(Boolean).join(", ")) || src.addr,
+        lat: isFinite(lat) && lat ? lat : src.lat,
+        lng: isFinite(lng) && lng ? lng : src.lng,
+        types: [],
+        url: e.fullUrl ? origin + e.fullUrl : src.base,
+        date,
+        dateLabel: `${DOW[dayKey(p)]}, ${MON[p.mo - 1]} ${p.d}`,
+        source: src.name,
+        live: true,
+        verified: true,
+      });
+    }
+  }
+  return out;
+}
+
 module.exports = async (req, res) => {
   const now = new Date();
   const end = new Date(now.getTime() + 45 * 864e5); // next 45 days
@@ -171,6 +239,8 @@ module.exports = async (req, res) => {
       const list =
         src.type === "ics"
           ? parseICS(await getText(src.url), src)
+          : src.type === "squarespace"
+          ? await fromSquarespace(src)
           : await fromTribe(src, startISO, endISO);
       return { src, list };
     })
