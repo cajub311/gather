@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Gather — Meetings & community, one place (Twin Cities)</title>
+<title>Gather — Twin Cities meetings &amp; things to do</title>
+<meta name="description" content="Find support meetings and local activities across Minneapolis–St. Paul on one map. Filter by day, time, and distance." />
+<meta name="theme-color" content="#131a24" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
@@ -17,6 +19,7 @@
     --accent2:#60a5fa; --chip:#1e2836; --live:#4ade80; --now:#fbbf24;
     --radius:12px; --shadow:0 1px 0 rgba(255,255,255,.04) inset;
   }
+  body.mode-activities{--accent:#a78bfa;--accent-dim:#6d56b3;--accent2:#c4b5fd}
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;font-family:"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--txt);-webkit-font-smoothing:antialiased}
   #app{display:flex;flex-direction:column;height:100vh}
@@ -25,7 +28,7 @@
   .brand{display:flex;flex-direction:column;gap:2px}
   .logo{font-weight:700;font-size:20px;letter-spacing:-.3px;display:flex;align-items:center;gap:9px}
   .logo .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px rgba(79,209,197,.2)}
-  .tagline{font-size:12.5px;color:var(--muted);font-weight:500}
+  .tagline{font-size:12.5px;color:var(--muted);font-weight:500;max-width:320px;line-height:1.4}
   .header-controls{display:flex;align-items:center;gap:10px;padding:0 20px 14px;flex-wrap:wrap}
   .modes{display:flex;padding:3px;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);gap:2px}
   .modes button{background:transparent;border:none;color:var(--muted);padding:8px 14px;font-size:13px;font-weight:600;border-radius:9px;transition:color .15s,background .15s}
@@ -40,14 +43,35 @@
   button{cursor:pointer;font-family:inherit}
   .btn{background:var(--bg);border:1px solid var(--line);color:var(--muted);padding:9px 12px;border-radius:var(--radius);font-size:13px;font-weight:600;white-space:nowrap;transition:border-color .15s,color .15s,background .15s}
   .btn:hover{color:var(--txt);border-color:#3d4f66}
-  .btn.on{background:rgba(79,209,197,.12);border-color:var(--accent-dim);color:var(--accent)}
+  .btn.on{background:color-mix(in srgb,var(--accent) 14%,transparent);border-color:var(--accent-dim);color:var(--accent)}
+  .btn:focus-visible,.chip:focus-visible,.daypick:focus-visible,.tod:focus-visible,.fbtn:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+  .insight{display:flex;flex-wrap:wrap;gap:8px;padding:10px 14px;background:var(--bg);border-bottom:1px solid var(--line)}
+  .insight-pill{font-size:11.5px;color:var(--muted);background:var(--surface2);border:1px solid var(--line);padding:5px 10px;border-radius:999px}
+  .insight-pill strong{color:var(--txt);font-weight:600}
+  .insight-pill.live{border-color:rgba(74,222,128,.3);color:var(--live)}
+  .tips{display:flex;gap:10px;align-items:flex-start;padding:10px 14px;background:rgba(96,165,250,.08);border-bottom:1px solid var(--line);font-size:12.5px;line-height:1.45;color:var(--muted)}
+  .tips[hidden]{display:none!important}
+  .tips p{margin:0;flex:1}
+  .tips button{flex-shrink:0;background:transparent;border:1px solid var(--line);color:var(--muted);padding:4px 10px;border-radius:8px;font-size:11px;font-weight:600}
+  .tips button:hover{color:var(--txt)}
+  .quickrow{display:flex;gap:6px;padding:8px 14px 4px;overflow-x:auto;scrollbar-width:none}
+  .quickrow::-webkit-scrollbar{display:none}
+  .qchip{flex-shrink:0;background:var(--bg);border:1px solid var(--line);color:var(--muted);padding:6px 12px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+  .qchip:hover{color:var(--txt)}
+  .qchip.on{background:color-mix(in srgb,var(--accent) 16%,transparent);border-color:var(--accent-dim);color:var(--accent)}
+  .featured{margin:10px 14px 4px;padding:14px;border-radius:var(--radius);border:1px solid var(--accent-dim);background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 12%,var(--bg)),var(--bg));cursor:pointer;transition:border-color .15s,transform .12s}
+  .featured:hover{border-color:var(--accent);transform:translateY(-1px)}
+  .featured .eyebrow{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:6px}
+  .featured .fname{font-size:15px;font-weight:700;line-height:1.3}
+  .featured .fmeta{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.4}
+  .featured .fcta{margin-top:10px;font-size:12px;font-weight:600;color:var(--accent2)}
   main{flex:1;display:flex;min-height:0}
   #sidebar{width:400px;max-width:44vw;display:flex;flex-direction:column;border-right:1px solid var(--line);min-height:0;background:var(--surface)}
   .daybar{display:flex;flex-wrap:wrap;gap:5px;padding:10px 14px 6px;background:var(--surface);align-items:center;border-bottom:1px solid var(--line)}
   .daybar-label{margin-right:4px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
   .daypick{background:var(--bg);border:1px solid var(--line);color:var(--muted);padding:6px 11px;font-size:12px;font-weight:600;border-radius:8px;transition:all .12s}
   .daypick:hover{color:var(--txt);border-color:#3d4f66}
-  .daypick.on{background:rgba(79,209,197,.15);color:var(--accent);border-color:var(--accent-dim)}
+  .daypick.on{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent);border-color:var(--accent-dim)}
   .daypick.today-hint{font-weight:700}
   .daypick.all-week{margin-left:auto}
   .todbar{display:flex;gap:4px;padding:6px 14px 0;background:var(--surface)}
@@ -72,7 +96,7 @@
   .flabel{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);width:100%;margin-bottom:4px;font-weight:600}
   .chip{background:var(--chip);border:1px solid var(--line);color:var(--muted);padding:5px 10px;border-radius:999px;font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:5px;transition:all .12s}
   .chip:hover{color:var(--txt);border-color:#3d4f66}
-  .chip.on{background:rgba(79,209,197,.15);color:var(--accent);border-color:var(--accent-dim)}
+  .chip.on{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent);border-color:var(--accent-dim)}
   .chip .swatch{width:7px;height:7px;border-radius:50%;flex-shrink:0}
   .count{padding:10px 14px;font-size:12.5px;color:var(--muted);border-bottom:1px solid var(--line);line-height:1.45}
   .count b{color:var(--txt);font-weight:600}
@@ -80,9 +104,13 @@
   .list-section.today{color:var(--accent)}
   #list{overflow:auto;flex:1;min-height:0}
   .btn.locating{opacity:.7;pointer-events:none}
-  .card{padding:14px 16px;border-bottom:1px solid var(--line);cursor:pointer;transition:background .12s}
+  .card{display:grid;grid-template-columns:56px 1fr;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line);cursor:pointer;transition:background .12s}
   .card:hover{background:var(--surface2)}
   .card.active{background:var(--bg);border-left:3px solid var(--accent);padding-left:13px}
+  .card .timecol{text-align:center}
+  .card .timepill{display:block;font-size:13px;font-weight:700;color:var(--txt);line-height:1.2}
+  .card .timeap{font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase}
+  .card .body{min-width:0}
   .card .top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
   .card .name{font-weight:600;font-size:14px;line-height:1.35;color:var(--txt);flex:1}
   .card .fell{font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;color:#0a1218;white-space:nowrap;letter-spacing:.02em}
@@ -100,7 +128,12 @@
   .verify:hover{text-decoration:underline}
   .verify.vbtn{color:var(--live);border:1px solid rgba(74,222,128,.25);background:rgba(74,222,128,.06);padding:4px 10px;border-radius:8px}
   .verify.vbtn:hover{border-color:rgba(74,222,128,.45);text-decoration:none}
-  #map{flex:1;min-height:0;background:#0a0e14}
+  #map{flex:1;min-height:0;background:#0a0e14;position:relative}
+  .map-legend{position:absolute;bottom:14px;left:14px;z-index:800;max-width:200px;padding:10px 12px;background:rgba(19,26,36,.92);border:1px solid var(--line);border-radius:var(--radius);backdrop-filter:blur(8px);font-size:11px;color:var(--muted);pointer-events:none}
+  .map-legend .lg-title{font-weight:700;color:var(--txt);margin-bottom:6px;font-size:10px;text-transform:uppercase;letter-spacing:.06em}
+  .map-legend .lg-row{display:flex;align-items:center;gap:7px;margin-top:4px}
+  .map-legend .lg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .map-hint{position:absolute;top:12px;right:12px;z-index:800;padding:8px 11px;background:rgba(19,26,36,.9);border:1px solid var(--line);border-radius:9px;font-size:11px;color:var(--muted);pointer-events:none;max-width:160px;line-height:1.35}
   .leaflet-popup-content-wrapper{border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.35)}
   .leaflet-popup-content{font-family:inherit;margin:12px 14px;line-height:1.4}
   .pop .pn{font-weight:600;font-size:14px;color:#0f1419}
@@ -121,7 +154,12 @@
   .leaflet-interactive{cursor:pointer!important}
   .footer{padding:10px 14px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);line-height:1.5}
   .footer code{font-size:10px;background:var(--bg);padding:1px 5px;border-radius:4px;border:1px solid var(--line)}
-  .empty{padding:36px 20px;text-align:center;color:var(--muted);font-size:13px;line-height:1.5}
+  .empty{padding:32px 20px;text-align:center;color:var(--muted);font-size:13px;line-height:1.55}
+  .empty .empty-title{font-size:15px;font-weight:600;color:var(--txt);margin-bottom:8px}
+  .empty-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:14px}
+  .empty-actions .btn{color:var(--txt)}
+  .dir{color:var(--accent2);font-size:12px;font-weight:500;text-decoration:none}
+  .dir:hover{text-decoration:underline}
   .showmore{margin:12px 14px 18px;padding:11px;text-align:center;background:transparent;border:1px solid var(--line);border-radius:var(--radius);color:var(--accent2);font-size:13px;font-weight:600}
   .showmore:hover{background:var(--bg);border-color:#3d4f66}
   .loading{display:inline-block;color:var(--muted)}
@@ -145,7 +183,7 @@
     <div class="header-top">
       <div class="brand">
         <div class="logo"><span class="dot"></span>Gather</div>
-        <div class="tagline">Twin Cities meetings &amp; community, one map</div>
+        <div class="tagline">Support groups &amp; things to do — Minneapolis, St. Paul &amp; suburbs</div>
       </div>
       <div class="crisis" title="Free, confidential, 24/7"><a href="tel:988">Crisis support: 988</a></div>
     </div>
@@ -163,7 +201,12 @@
   </header>
   <main>
     <div id="sidebar">
+      <div class="tips" id="tips" hidden>
+        <p><strong style="color:var(--txt)">How Gather works:</strong> Pick a day, tap a map dot, or use quick filters. Verified listings come from official feeds — always confirm before you go.</p>
+        <button type="button" id="tipsDismiss">Got it</button>
+      </div>
       <div class="daybar" id="daybar"></div>
+      <div class="quickrow" id="quickrow"></div>
       <div class="todbar" id="todbar">
         <button class="tod on" data-tod="">All day</button>
         <button class="tod" data-tod="morning">Morning</button>
@@ -179,11 +222,15 @@
         <div class="frow" id="dayFilters"><span class="flabel">Day</span></div>
         <div class="frow" id="fmtFilters"><span class="flabel">Format</span></div>
       </div>
+      <div class="insight" id="insight"></div>
       <div class="count" id="count"></div>
       <div id="list"></div>
       <div class="footer" id="src"></div>
     </div>
-    <div id="map"></div>
+    <div id="map">
+      <div class="map-hint" id="mapHint">Tap a dot to see details</div>
+      <div class="map-legend" id="mapLegend"></div>
+    </div>
   </main>
 </div>
 
@@ -324,7 +371,21 @@ let DATA=[], META=FELLOWSHIPS;
 let LIVE=[], LIVE_CATS=new Set(), LAST_UPDATED=null, SOURCE_INFO=[], LIVE_LOADING=true;
 let LIVE_EVENTS=[], EVENTS_UPDATED=null, EVENT_SOURCES=[], EVENTS_LOADING=true;
 const RENDER_STEP=150;
-const state={mode:"support",cat:new Set(),day:null,fmt:null,tod:"",nowOnly:false,q:"",near:null,nearGps:false,limit:RENDER_STEP};
+const QUICK={
+  support:[
+    {id:"open",label:"Open",match:m=>(m.types||[]).some(t=>/^open$/i.test(t))},
+    {id:"new",label:"Newcomers",match:m=>/beginner|young|newcomer/i.test(((m.types||[]).join(" "))+" "+m.name)},
+    {id:"online",label:"Online",match:m=>m.fmt==="online"||m.fmt==="hybrid"},
+    {id:"women",label:"Women",match:m=>/women/i.test((m.types||[]).join(" "))},
+  ],
+  activities:[
+    {id:"free",label:"Free",match:m=>(m.types||[]).some(t=>/free/i.test(t))},
+    {id:"new",label:"Welcoming",match:m=>/beginner|newcomer|welcome|all levels|drop-?in/i.test(((m.types||[]).join(" "))+" "+m.name)},
+    {id:"outdoor",label:"Outdoors",match:m=>m.cat==="Outdoors"||/hike|park|trail|garden/i.test(m.name+" "+m.loc)},
+    {id:"social",label:"Social",match:m=>m.cat==="Social"},
+  ],
+};
+const state={mode:"support",cat:new Set(),day:null,fmt:null,tod:"",nowOnly:false,q:"",near:null,nearGps:false,quick:new Set(),limit:RENDER_STEP};
 function todayDay(){return nowInfo().day;}
 function isAllWeek(){return state.day===null;}
 function dayViewLabel(){
@@ -353,6 +414,15 @@ let map,markers,userMarker,activeId=null,markerById=new Map(),lastFilteredList=[
 
 const TC_CENTER=[44.9537,-93.0900];
 function fmtTime(t){let[h,m]=t.split(":").map(Number);const ap=h<12?"AM":"PM";h=h%12||12;return `${h}:${String(m).padStart(2,"0")} ${ap}`;}
+function fmtParts(t){const [h,m]=t.split(":").map(Number);const ap=h<12?"AM":"PM";const hr=h%12||12;return{hr:`${hr}:${String(m).padStart(2,"0")}`,ap};}
+function fmtLabel(f){return f==="online"?"Online":f==="hybrid"?"Hybrid":"In person";}
+function mapsDir(m){return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((m.loc?m.loc+" ":"")+m.addr)}`;}
+function pickNextUp(list){
+  enrichSort(list);
+  for(const m of list){if(isNow(m))return m;}
+  for(const m of list){if(m._minsUntil>=0&&m._minsUntil<=360)return m;}
+  return list[0]||null;
+}
 function timeMins(t){const [h,m]=t.split(":").map(Number);return h*60+m;}
 function nowInfo(){const d=new Date();return{day:d.getDay(),mins:d.getHours()*60+d.getMinutes()};}
 function dayOffset(meetingDay,today){return (meetingDay-today+7)%7;}
@@ -482,12 +552,17 @@ function buildFilters(){
 }
 
 function filtered(){
+  const quicks=QUICK[state.mode]||[];
   let list=DATA.filter(m=>{
     if(state.cat.size&&!state.cat.has(m.cat))return false;
     if(state.day!==null&&m.day!==state.day)return false;
     if(state.fmt&&m.fmt!==state.fmt)return false;
     if(state.tod&&!inTod(m.time,state.tod))return false;
     if(state.nowOnly&&!isNow(m))return false;
+    if(state.quick.size){
+      const ok=[...state.quick].some(id=>quicks.find(q=>q.id===id)?.match(m));
+      if(!ok)return false;
+    }
     if(state.q){const h=(m.name+" "+m.loc+" "+m.addr+" "+(m.types||[]).join(" ")+" "+META[m.cat].name).toLowerCase();if(!h.includes(state.q.toLowerCase()))return false;}
     return true;
   });
@@ -496,7 +571,74 @@ function filtered(){
 
 function activeFilterCount(){
   const dayExtra=isAllWeek()?1:(state.day!==todayDay()?1:0);
-  return state.cat.size+dayExtra+(state.fmt?1:0)+(state.tod?1:0)+(state.nowOnly?1:0);
+  return state.cat.size+dayExtra+state.quick.size+(state.fmt?1:0)+(state.tod?1:0)+(state.nowOnly?1:0);
+}
+function buildQuickFilters(){
+  const row=document.getElementById("quickrow");
+  if(!row)return;
+  row.innerHTML="";
+  (QUICK[state.mode]||[]).forEach(q=>{
+    const b=document.createElement("button");
+    b.type="button";b.className="qchip"+(state.quick.has(q.id)?" on":"");
+    b.textContent=q.label;
+    b.onclick=()=>{state.quick.has(q.id)?state.quick.delete(q.id):state.quick.add(q.id);buildQuickFilters();render();};
+    row.appendChild(b);
+  });
+}
+function updateInsight(list){
+  const el=document.getElementById("insight");
+  if(!el)return;
+  const nowCt=list.filter(isNow).length;
+  const verified=list.filter(m=>m.verified).length;
+  const openCt=state.mode==="support"?list.filter(m=>(m.types||[]).some(t=>/^open$/i.test(t))).length:0;
+  const pills=[
+    `<span class="insight-pill"><strong>${list.length}</strong> on ${dayViewLabel()}</span>`,
+    nowCt?`<span class="insight-pill live"><strong>${nowCt}</strong> happening now</span>`:"",
+    verified?`<span class="insight-pill live"><strong>${verified}</strong> verified live</span>`:"",
+    state.mode==="support"&&openCt?`<span class="insight-pill"><strong>${openCt}</strong> open meetings</span>`:"",
+    state.near?`<span class="insight-pill">sorted near you</span>`:"",
+  ].filter(Boolean);
+  el.innerHTML=pills.join("");
+}
+function updateMapLegend(list){
+  const el=document.getElementById("mapLegend");
+  if(!el)return;
+  const counts={};
+  list.forEach(m=>{counts[m.cat]=(counts[m.cat]||0)+1;});
+  const top=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,7);
+  if(!top.length){el.innerHTML="";return;}
+  el.innerHTML=`<div class="lg-title">On the map</div>${top.map(([k,n])=>
+    `<div class="lg-row"><span class="lg-dot" style="background:${META[k].color}"></span>${k} <span style="opacity:.7">(${n})</span></div>`
+  ).join("")}`;
+}
+function renderFeatured(el,list){
+  const next=pickNextUp(list);
+  if(!next)return;
+  const fc=META[next.cat].color;
+  const tp=fmtParts(next.time);
+  const whenLbl=next.dateLabel?next.dateLabel:(next.day===todayDay()?"Today":DAYS[next.day]);
+  const rel=relWhen(next);
+  const box=document.createElement("div");
+  box.className="featured";
+  box.innerHTML=`<div class="eyebrow">${isNow(next)?"Happening now":"Up next"}</div>
+    <div class="fname">${next.name}</div>
+    <div class="fmeta">${whenLbl} · ${fmtTime(next.time)}${rel?` · ${rel}`:""} · ${next.loc}</div>
+    <div class="fcta">View on map →</div>`;
+  box.onclick=()=>focusMeeting(next);
+  el.appendChild(box);
+}
+function renderEmpty(el){
+  el.innerHTML=`<div class="empty">
+    <div class="empty-title">No matches for ${dayViewLabel()}</div>
+    Try another day, turn off a filter, or search All week.<br>
+    <div class="empty-actions">
+      <button type="button" class="btn" data-empty="today">Today</button>
+      <button type="button" class="btn" data-empty="week">All week</button>
+      <button type="button" class="btn" data-empty="clear">Clear filters</button>
+    </div></div>`;
+  el.querySelector('[data-empty="today"]')?.addEventListener("click",()=>setViewDay(todayDay()));
+  el.querySelector('[data-empty="week"]')?.addEventListener("click",()=>setViewDay(null));
+  el.querySelector('[data-empty="clear"]')?.addEventListener("click",clearFilters);
 }
 function updateFilterUI(){
   const n=activeFilterCount();
@@ -505,15 +647,15 @@ function updateFilterUI(){
   document.getElementById("fClear").classList.toggle("show",n>0);
 }
 function clearFilters(){
-  state.cat.clear();state.day=todayDay();state.fmt=null;state.tod="";state.nowOnly=false;
+  state.cat.clear();state.quick.clear();state.day=todayDay();state.fmt=null;state.tod="";state.nowOnly=false;
   document.querySelectorAll("#fmtFilters .chip").forEach(x=>x.classList.remove("on"));
   document.querySelectorAll("#todbar .tod").forEach((b,i)=>b.classList.toggle("on",i===0));
   document.getElementById("nowbtn").classList.remove("on");
-  syncDayUI();buildFilters();render();
+  syncDayUI();buildQuickFilters();buildFilters();render();
 }
 let _lastSig="";
 function render(){
-  const sig=[state.mode,[...state.cat].sort().join(","),state.day,state.fmt,state.tod,state.nowOnly,state.q,state.near].join("|");
+  const sig=[state.mode,[...state.cat].sort().join(","),[...state.quick].sort().join(","),state.day,state.fmt,state.tod,state.nowOnly,state.q,state.near].join("|");
   if(sig!==_lastSig){state.limit=RENDER_STEP;_lastSig=sig;}
   const list=filtered();
   lastFilteredList=list;
@@ -522,9 +664,12 @@ function render(){
   const loadingNow=state.mode==="support"?LIVE_LOADING:EVENTS_LOADING;
   const loading=loadingNow?'<span class="loading"><span class="spin"></span>loading live…</span> ':"";
   const sortNote=sortHint();
-  document.getElementById("count").innerHTML=loading+`<b>${list.length}</b> ${state.mode==="support"?"meeting":"group/event"}${list.length!==1?"s":""} on map — ${sortNote}`;
+  document.getElementById("count").innerHTML=loading+`<b>${list.length}</b> ${state.mode==="support"?"meeting":"activity"}${list.length!==1?"s":""} · ${sortNote}`;
+  updateInsight(list);
+  updateMapLegend(list);
   updateFilterUI();
-  if(!list.length)el.innerHTML='<div class="empty">Nothing matches these filters.<br>Try removing one.</div>';
+  if(!list.length){renderEmpty(el);drawMarkers(list);return;}
+  if(list.length>1)renderFeatured(el,list);
   const shown=list.slice(0,state.limit);
   let lastSection=null;
   shown.forEach(m=>{
@@ -540,21 +685,23 @@ function render(){
     }
     const id=m._id,fc=META[m.cat].color,now=isNow(m);
     const card=document.createElement("div");card.className="card"+(activeId===id?" active":"");card.dataset.id=id;
-    const trust=m.verified?'<span class="b ok">Verified</span>':'<span class="b warn">Sample data</span>';
+    const trust=m.verified?'<span class="b ok">Live</span>':'<span class="b warn">Sample</span>';
     const whenLbl=m.dateLabel?m.dateLabel:(m.day===todayDay()?"Today":DAYS[m.day]);
     const rel=relWhen(m);
-    // link row: join/details (if the meeting has its own link) + a verify button to the official finder
-    const join=m.url?`<a class="verify" href="${m.url}" target="_blank" rel="noopener">${m.fmt==="in-person"?"Details":"Join / details"} ↗</a>`:"";
+    const tp=fmtParts(m.time);
+    const join=m.url?`<a class="verify" href="${m.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${m.fmt==="online"?"Join link":"Details"} ↗</a>`:"";
     const official=state.mode==="support"?FINDERS[m.cat]:null;
-    const verify=(official&&official!==m.url)?`<a class="verify vbtn" href="${official}" target="_blank" rel="noopener">Official finder ↗</a>`:"";
-    card.innerHTML=`<div class="top"><div class="name">${m.name}</div><div class="fell" style="background:${fc}">${m.cat}</div></div>
-      <div class="when">${whenLbl} · ${fmtTime(m.time)}${rel?` · <span style="color:var(--now)">${rel}</span>`:""}${m._d!=null?` · ${m._d.toFixed(1)} mi`:""}</div>
-      <div class="where">${m.loc} — ${m.addr}</div>
+    const verify=(official&&official!==m.url)?`<a class="verify vbtn" href="${official}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Official list ↗</a>`:"";
+    const dir=m.fmt!=="online"?`<a class="dir" href="${mapsDir(m)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Directions ↗</a>`:"";
+    card.innerHTML=`<div class="timecol"><span class="timepill">${tp.hr}</span><span class="timeap">${tp.ap}</span></div>
+      <div class="body"><div class="top"><div class="name">${m.name}</div><div class="fell" style="background:${fc}">${m.cat}</div></div>
+      <div class="when">${whenLbl}${rel?` · <span style="color:var(--now)">${rel}</span>`:""}${m._d!=null?` · ${m._d.toFixed(1)} mi`:""}</div>
+      <div class="where">${m.loc}</div>
       <div class="badges">${now?'<span class="b now">Now</span>':''}
-        ${m.fmt==="online"?'<span class="b online">Online</span>':m.fmt==="hybrid"?'<span class="b hybrid">Hybrid</span>':'<span class="b">In person</span>'}
+        <span class="b ${m.fmt==="online"?"online":m.fmt==="hybrid"?"hybrid":""}">${fmtLabel(m.fmt)}</span>
         ${trust}
-        ${(m.types||[]).slice(0,2).map(t=>`<span class="b">${t}</span>`).join("")}</div>
-      <div class="linkrow">${join}${verify}</div>`;
+        ${(m.types||[]).slice(0,3).map(t=>`<span class="b">${t}</span>`).join("")}</div>
+      <div class="linkrow">${dir}${join}${verify}</div></div>`;
     card.onclick=()=>focusMeeting(m);
     el.appendChild(card);
   });
@@ -571,8 +718,9 @@ function render(){
 function popupHtml(m){
   const whenLbl=m.dateLabel?m.dateLabel:(m.day===todayDay()?"Today":DAYS[m.day]);
   return `<div class="pop"><div class="pn">${m.name}</div><div class="pf">${META[m.cat].name}</div>
-    <div class="pw">${whenLbl} · ${fmtTime(m.time)} · ${m.fmt}</div><div class="pw">${m.loc}<br>${m.addr}</div>
-    ${m.url?`<a href="${m.url}" target="_blank" rel="noopener">Open link ↗</a>`:""}
+    <div class="pw">${whenLbl} · ${fmtTime(m.time)} · ${fmtLabel(m.fmt)}</div><div class="pw">${m.loc}<br>${m.addr}</div>
+    ${m.fmt!=="online"?`<a href="${mapsDir(m)}" target="_blank" rel="noopener">Directions ↗</a><br>`:""}
+    ${m.url?`<a href="${m.url}" target="_blank" rel="noopener">More info ↗</a>`:""}
     <div class="pw" style="margin-top:6px"><button type="button" class="pop-pick" data-id="${m._id}" style="padding:6px 0;color:#0d9488;font-weight:600">Show in list ↓</button></div></div>`;
 }
 function spotPopupHtml(meetings){
@@ -651,13 +799,15 @@ function drawMarkers(list){
 }
 
 function setMode(mode){
-  state.mode=mode;state.cat.clear();activeId=null;state.day=todayDay();
+  state.mode=mode;state.cat.clear();state.quick.clear();activeId=null;state.day=todayDay();
+  document.body.classList.toggle("mode-activities",mode==="activities");
   const ms=document.getElementById("mSupport");ms.classList.toggle("on",mode==="support");ms.classList.toggle("support",mode==="support");
   const mp=document.getElementById("mPlay");mp.classList.toggle("on",mode==="activities");mp.classList.toggle("play",mode==="activities");
   if(mode==="support"){META=FELLOWSHIPS;DATA=supportMeetings().map((m,i)=>({...m,_id:"s"+i}));}
   else{META=ACTIVITIES;DATA=activityItems().map((m,i)=>({...m,_id:"p"+i}));}
-  document.getElementById("q").placeholder=mode==="support"?"Search name, city, or topic (women's, beginners…)":"Search name, venue, or interest (chess, yoga, French…)";
-  syncDayUI();buildFilters();updateFooter();render();
+  document.getElementById("q").placeholder=mode==="support"?"Search meetings, neighborhoods, Open, beginners…":"Search activities, free events, yoga, games…";
+  document.getElementById("mapHint").textContent=mode==="support"?"Tap a dot — meetings at that place":"Tap a dot — events at that spot";
+  syncDayUI();buildQuickFilters();buildFilters();updateFooter();render();
 }
 function updateFooter(){
   const s=document.getElementById("src");
@@ -667,9 +817,10 @@ function updateFooter(){
     if(liveN){
       const when=LAST_UPDATED?new Date(LAST_UPDATED).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):"";
       const ok=SOURCE_INFO.filter(x=>x.ok).map(x=>`${x.name} (${x.count})`).join(", ");
-      s.innerHTML=`<span style="color:var(--live)">${liveN} verified</span> live meetings`+(curatedN?` + ${curatedN} sample listings`:"")+`. Sources: ${ok}.`+(when?` Updated ${when}.`:"")+` Confirm on official sites. Not affiliated with any program.`;
+      s.innerHTML=`Not affiliated with any fellowship. Confirm time &amp; format on official sites before attending.`+
+        `<br><span style="color:var(--live)">${liveN} live</span> from ${ok}.`+(curatedN?` ${curatedN} sample listings for programs without feeds.`:"")+(when?` Updated ${when}.`:"");
     }else{
-      s.innerHTML=`<b>${SUPPORT.length}</b> sample meetings — live feeds load from <code>/api/meetings</code> when deployed. Not affiliated with any program.`;
+      s.innerHTML=`Not affiliated with any program. Sample listings shown until live feeds connect via <code>/api/meetings</code>.`;
     }
   }else{
     const liveN=LIVE_EVENTS.length;
@@ -785,6 +936,11 @@ function init(){
   buildDayBar();
   state.day=todayDay();
   syncDayUI();
+  try{if(!localStorage.getItem("gather-tips-hide"))document.getElementById("tips").hidden=false;}catch(e){}
+  document.getElementById("tipsDismiss")?.addEventListener("click",()=>{
+    document.getElementById("tips").hidden=true;
+    try{localStorage.setItem("gather-tips-hide","1");}catch(e){}
+  });
   setMode("support");
   loadLive();
   loadEvents();
