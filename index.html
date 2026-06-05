@@ -43,7 +43,14 @@
   .btn.on{background:rgba(79,209,197,.12);border-color:var(--accent-dim);color:var(--accent)}
   main{flex:1;display:flex;min-height:0}
   #sidebar{width:400px;max-width:44vw;display:flex;flex-direction:column;border-right:1px solid var(--line);min-height:0;background:var(--surface)}
-  .todbar{display:flex;gap:4px;padding:10px 14px 0;background:var(--surface)}
+  .daybar{display:flex;flex-wrap:wrap;gap:5px;padding:10px 14px 6px;background:var(--surface);align-items:center;border-bottom:1px solid var(--line)}
+  .daybar-label{margin-right:4px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+  .daypick{background:var(--bg);border:1px solid var(--line);color:var(--muted);padding:6px 11px;font-size:12px;font-weight:600;border-radius:8px;transition:all .12s}
+  .daypick:hover{color:var(--txt);border-color:#3d4f66}
+  .daypick.on{background:rgba(79,209,197,.15);color:var(--accent);border-color:var(--accent-dim)}
+  .daypick.today-hint{font-weight:700}
+  .daypick.all-week{margin-left:auto}
+  .todbar{display:flex;gap:4px;padding:6px 14px 0;background:var(--surface)}
   .todbar .tod{flex:1;background:var(--bg);border:1px solid var(--line);color:var(--muted);padding:7px 6px;font-size:12px;font-weight:600;border-radius:8px;transition:all .15s}
   .todbar .tod:hover{color:var(--txt);border-color:#3d4f66}
   .todbar .tod.on{background:var(--surface2);color:var(--txt);border-color:var(--accent-dim)}
@@ -156,6 +163,7 @@
   </header>
   <main>
     <div id="sidebar">
+      <div class="daybar" id="daybar"></div>
       <div class="todbar" id="todbar">
         <button class="tod on" data-tod="">All day</button>
         <button class="tod" data-tod="morning">Morning</button>
@@ -317,6 +325,13 @@ let LIVE=[], LIVE_CATS=new Set(), LAST_UPDATED=null, SOURCE_INFO=[], LIVE_LOADIN
 let LIVE_EVENTS=[], EVENTS_UPDATED=null, EVENT_SOURCES=[], EVENTS_LOADING=true;
 const RENDER_STEP=150;
 const state={mode:"support",cat:new Set(),day:null,fmt:null,tod:"",nowOnly:false,q:"",near:null,nearGps:false,limit:RENDER_STEP};
+function todayDay(){return nowInfo().day;}
+function isAllWeek(){return state.day===null;}
+function dayViewLabel(){
+  if(isAllWeek())return "all week";
+  const t=todayDay();
+  return state.day===t?`today (${DAYS[t]})`:DAYS[state.day];
+}
 function inTod(time,tod){if(!tod)return true;const h=parseInt(time.split(":")[0],10);
   if(tod==="morning")return h>=5&&h<12;
   if(tod==="afternoon")return h>=12&&h<17;
@@ -351,7 +366,7 @@ function relSoon(mins){
   return r?`in ${h}h ${r}m`:`in ${h}h`;
 }
 function relWhen(m){
-  if(m._dayOff!==0)return null;
+  if(dayOffset(m.day,nowInfo().day)!==0)return null;
   if(isNow(m))return "starting now";
   if(m._minsUntil>0&&m._minsUntil<=240)return relSoon(m._minsUntil);
   return null;
@@ -392,14 +407,54 @@ function smartSort(list){
   return list;
 }
 function sortHint(){
-  const n=nowInfo(),parts=[];
-  if(state.day===null)parts.push(`starting with ${DAYS[n.day]}`);
-  else parts.push(DAYS[state.day]);
+  const parts=[dayViewLabel()];
   if(state.near)parts.push("closest to you");
-  else parts.push("soonest next");
+  else parts.push("by time");
   return parts.join(" · ");
 }
-
+function setViewDay(dayOrNull){
+  state.day=dayOrNull;
+  syncDayUI();
+  render();
+}
+function syncDayUI(){
+  const today=todayDay();
+  document.querySelectorAll("#daybar .daypick").forEach(btn=>{
+    const v=btn.dataset.day;
+    if(v==="all")btn.classList.toggle("on",isAllWeek());
+    else btn.classList.toggle("on",!isAllWeek()&&state.day===Number(v));
+  });
+  const dc=document.getElementById("dayFilters");
+  if(!dc)return;
+  [...dc.querySelectorAll(".chip")].forEach(chip=>{
+    const v=chip.dataset.day;
+    if(v==="all")chip.classList.toggle("on",isAllWeek());
+    else if(v!=null)chip.classList.toggle("on",!isAllWeek()&&state.day===Number(v));
+  });
+}
+function buildDayBar(){
+  const bar=document.getElementById("daybar");
+  if(!bar||bar.dataset.built)return;
+  bar.dataset.built="1";
+  const today=todayDay();
+  bar.innerHTML='<span class="daybar-label">Map &amp; list</span>';
+  DAYS.forEach((d,i)=>{
+    const b=document.createElement("button");
+    b.type="button";
+    b.className="daypick"+(i===today?" today-hint":"");
+    b.dataset.day=String(i);
+    b.textContent=i===today?`Today · ${d}`:d;
+    b.onclick=()=>setViewDay(i);
+    bar.appendChild(b);
+  });
+  const all=document.createElement("button");
+  all.type="button";
+  all.className="daypick all-week";
+  all.dataset.day="all";
+  all.textContent="All week";
+  all.onclick=()=>setViewDay(null);
+  bar.appendChild(all);
+}
 function buildFilters(){
   const cf=document.getElementById("catFilters");
   cf.querySelectorAll(".chip").forEach(n=>n.remove());
@@ -413,8 +468,12 @@ function buildFilters(){
   // day + format only once
   const dc=document.getElementById("dayFilters");
   if(dc.querySelectorAll(".chip").length===0){
-    DAYS.forEach((d,i)=>{const c=document.createElement("button");c.className="chip";c.textContent=d;
-      c.onclick=()=>{state.day=state.day===i?null:i;[...dc.children].forEach(x=>x.classList?.remove?.("on"));if(state.day===i)c.classList.add("on");render();};dc.appendChild(c);});
+    const all=document.createElement("button");
+    all.className="chip";all.dataset.day="all";all.textContent="All week";
+    all.onclick=()=>setViewDay(isAllWeek()?todayDay():null);
+    dc.appendChild(all);
+    DAYS.forEach((d,i)=>{const c=document.createElement("button");c.className="chip";c.dataset.day=String(i);c.textContent=d;
+      c.onclick=()=>setViewDay(state.day===i?todayDay():i);dc.appendChild(c);});
     const mc=document.getElementById("fmtFilters");
     [["in-person","In-person"],["online","Online"],["hybrid","Hybrid"]].forEach(([k,lbl])=>{
       const c=document.createElement("button");c.className="chip";c.textContent=lbl;
@@ -436,7 +495,8 @@ function filtered(){
 }
 
 function activeFilterCount(){
-  return state.cat.size+(state.day!==null?1:0)+(state.fmt?1:0)+(state.tod?1:0)+(state.nowOnly?1:0);
+  const dayExtra=isAllWeek()?1:(state.day!==todayDay()?1:0);
+  return state.cat.size+dayExtra+(state.fmt?1:0)+(state.tod?1:0)+(state.nowOnly?1:0);
 }
 function updateFilterUI(){
   const n=activeFilterCount();
@@ -445,11 +505,11 @@ function updateFilterUI(){
   document.getElementById("fClear").classList.toggle("show",n>0);
 }
 function clearFilters(){
-  state.cat.clear();state.day=null;state.fmt=null;state.tod="";state.nowOnly=false;
-  document.querySelectorAll("#dayFilters .chip,#fmtFilters .chip").forEach(x=>x.classList.remove("on"));
+  state.cat.clear();state.day=todayDay();state.fmt=null;state.tod="";state.nowOnly=false;
+  document.querySelectorAll("#fmtFilters .chip").forEach(x=>x.classList.remove("on"));
   document.querySelectorAll("#todbar .tod").forEach((b,i)=>b.classList.toggle("on",i===0));
   document.getElementById("nowbtn").classList.remove("on");
-  buildFilters();render();
+  syncDayUI();buildFilters();render();
 }
 let _lastSig="";
 function render(){
@@ -461,15 +521,14 @@ function render(){
   const word=state.mode==="support"?"fellowships":"activity types";
   const loadingNow=state.mode==="support"?LIVE_LOADING:EVENTS_LOADING;
   const loading=loadingNow?'<span class="loading"><span class="spin"></span>loading live…</span> ':"";
-  const todayN=list.filter(m=>m._dayOff===0).length;
-  const sortNote=state.day!==null?sortHint():`${todayN} today · ${sortHint()}`;
-  document.getElementById("count").innerHTML=loading+`<b>${list.length}</b> ${state.mode==="support"?"meeting":"group/event"}${list.length!==1?"s":""} — ${sortNote}`;
+  const sortNote=sortHint();
+  document.getElementById("count").innerHTML=loading+`<b>${list.length}</b> ${state.mode==="support"?"meeting":"group/event"}${list.length!==1?"s":""} on map — ${sortNote}`;
   updateFilterUI();
   if(!list.length)el.innerHTML='<div class="empty">Nothing matches these filters.<br>Try removing one.</div>';
   const shown=list.slice(0,state.limit);
   let lastSection=null;
   shown.forEach(m=>{
-    if(state.day===null){
+    if(isAllWeek()){
       const sec=sectionTitle(m);
       if(sec!==lastSection){
         lastSection=sec;
@@ -482,7 +541,7 @@ function render(){
     const id=m._id,fc=META[m.cat].color,now=isNow(m);
     const card=document.createElement("div");card.className="card"+(activeId===id?" active":"");card.dataset.id=id;
     const trust=m.verified?'<span class="b ok">Verified</span>':'<span class="b warn">Sample data</span>';
-    const whenLbl=m.dateLabel?m.dateLabel:(m._dayOff===0?"Today":DAYS[m.day]);
+    const whenLbl=m.dateLabel?m.dateLabel:(m.day===todayDay()?"Today":DAYS[m.day]);
     const rel=relWhen(m);
     // link row: join/details (if the meeting has its own link) + a verify button to the official finder
     const join=m.url?`<a class="verify" href="${m.url}" target="_blank" rel="noopener">${m.fmt==="in-person"?"Details":"Join / details"} ↗</a>`:"";
@@ -510,7 +569,7 @@ function render(){
 }
 
 function popupHtml(m){
-  const whenLbl=m.dateLabel?m.dateLabel:(m._dayOff===0?"Today":DAYS[m.day]);
+  const whenLbl=m.dateLabel?m.dateLabel:(m.day===todayDay()?"Today":DAYS[m.day]);
   return `<div class="pop"><div class="pn">${m.name}</div><div class="pf">${META[m.cat].name}</div>
     <div class="pw">${whenLbl} · ${fmtTime(m.time)} · ${m.fmt}</div><div class="pw">${m.loc}<br>${m.addr}</div>
     ${m.url?`<a href="${m.url}" target="_blank" rel="noopener">Open link ↗</a>`:""}
@@ -520,7 +579,7 @@ function spotPopupHtml(meetings){
   const sorted=[...meetings].sort((a,b)=>(a._minsUntil??0)-(b._minsUntil??0));
   return `<div class="pop spot-pop"><div class="pn">${sorted.length} ${state.mode==="support"?"meetings":"events"} here</div>
     <ul class="pop-list">${sorted.map(m=>{
-      const whenLbl=m.dateLabel?m.dateLabel:(m._dayOff===0?"Today":DAYS[m.day]);
+      const whenLbl=m.dateLabel?m.dateLabel:(m.day===todayDay()?"Today":DAYS[m.day]);
       return `<li><button type="button" class="pop-pick" data-id="${m._id}"><strong>${m.name}</strong><span>${whenLbl} · ${fmtTime(m.time)} · ${META[m.cat].name}</span></button></li>`;
     }).join("")}</ul></div>`;
 }
@@ -592,13 +651,13 @@ function drawMarkers(list){
 }
 
 function setMode(mode){
-  state.mode=mode;state.cat.clear();activeId=null;
+  state.mode=mode;state.cat.clear();activeId=null;state.day=todayDay();
   const ms=document.getElementById("mSupport");ms.classList.toggle("on",mode==="support");ms.classList.toggle("support",mode==="support");
   const mp=document.getElementById("mPlay");mp.classList.toggle("on",mode==="activities");mp.classList.toggle("play",mode==="activities");
   if(mode==="support"){META=FELLOWSHIPS;DATA=supportMeetings().map((m,i)=>({...m,_id:"s"+i}));}
   else{META=ACTIVITIES;DATA=activityItems().map((m,i)=>({...m,_id:"p"+i}));}
   document.getElementById("q").placeholder=mode==="support"?"Search name, city, or topic (women's, beginners…)":"Search name, venue, or interest (chess, yoga, French…)";
-  buildFilters();updateFooter();render();
+  syncDayUI();buildFilters();updateFooter();render();
 }
 function updateFooter(){
   const s=document.getElementById("src");
@@ -723,6 +782,9 @@ function init(){
   document.getElementById("q").addEventListener("input",e=>{state.q=e.target.value;render();});
   document.getElementById("nowbtn").onclick=function(){state.nowOnly=!state.nowOnly;this.classList.toggle("on");render();};
   document.getElementById("nearme").onclick=function(){toggleMyArea(this);};
+  buildDayBar();
+  state.day=todayDay();
+  syncDayUI();
   setMode("support");
   loadLive();
   loadEvents();
