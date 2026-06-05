@@ -69,7 +69,10 @@
   .chip .swatch{width:7px;height:7px;border-radius:50%;flex-shrink:0}
   .count{padding:10px 14px;font-size:12.5px;color:var(--muted);border-bottom:1px solid var(--line);line-height:1.45}
   .count b{color:var(--txt);font-weight:600}
+  .list-section{position:sticky;top:0;z-index:2;padding:8px 16px 6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);background:var(--surface);border-bottom:1px solid var(--line)}
+  .list-section.today{color:var(--accent)}
   #list{overflow:auto;flex:1;min-height:0}
+  .btn.locating{opacity:.7;pointer-events:none}
   .card{padding:14px 16px;border-bottom:1px solid var(--line);cursor:pointer;transition:background .12s}
   .card:hover{background:var(--surface2)}
   .card.active{background:var(--bg);border-left:3px solid var(--accent);padding-left:13px}
@@ -135,7 +138,7 @@
       </div>
       <div class="searchbar">
         <input id="q" type="search" placeholder="Search name, place, or topic…" autocomplete="off" />
-        <button class="btn" id="nearme" type="button">Near me</button>
+        <button class="btn" id="nearme" type="button" title="Use your location to sort by distance">My area</button>
         <button class="btn" id="nowbtn" type="button">Happening now</button>
       </div>
     </div>
@@ -302,7 +305,7 @@ let DATA=[], META=FELLOWSHIPS;
 let LIVE=[], LIVE_CATS=new Set(), LAST_UPDATED=null, SOURCE_INFO=[], LIVE_LOADING=true;
 let LIVE_EVENTS=[], EVENTS_UPDATED=null, EVENT_SOURCES=[], EVENTS_LOADING=true;
 const RENDER_STEP=150;
-const state={mode:"support",cat:new Set(),day:null,fmt:null,tod:"",nowOnly:false,q:"",near:null,limit:RENDER_STEP};
+const state={mode:"support",cat:new Set(),day:null,fmt:null,tod:"",nowOnly:false,q:"",near:null,nearGps:false,limit:RENDER_STEP};
 function inTod(time,tod){if(!tod)return true;const h=parseInt(time.split(":")[0],10);
   if(tod==="morning")return h>=5&&h<12;
   if(tod==="afternoon")return h>=12&&h<17;
@@ -322,10 +325,69 @@ function activityItems(){
 }
 let map,markers,userMarker,activeId=null;
 
+const TC_CENTER=[44.9537,-93.0900];
 function fmtTime(t){let[h,m]=t.split(":").map(Number);const ap=h<12?"AM":"PM";h=h%12||12;return `${h}:${String(m).padStart(2,"0")} ${ap}`;}
+function timeMins(t){const [h,m]=t.split(":").map(Number);return h*60+m;}
 function nowInfo(){const d=new Date();return{day:d.getDay(),mins:d.getHours()*60+d.getMinutes()};}
-function isNow(m){const n=nowInfo();if(m.day!==n.day)return false;let[h,mm]=m.time.split(":").map(Number);const s=h*60+mm;return n.mins>=s-15&&n.mins<=s+m.dur;}
+function dayOffset(meetingDay,today){return (meetingDay-today+7)%7;}
+function minutesUntil(m,n){const off=dayOffset(m.day,n.day);if(off===0)return timeMins(m.time)-n.mins;return off*1440+timeMins(m.time);}
+function isNow(m){const n=nowInfo();if(m.day!==n.day)return false;const s=timeMins(m.time);return n.mins>=s-15&&n.mins<=s+m.dur;}
 function dist(a,b,c,d){const R=3959,r=x=>x*Math.PI/180;const dLat=r(c-a),dLon=r(d-b);const x=Math.sin(dLat/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
+function relSoon(mins){
+  if(mins<=0)return null;
+  if(mins<60)return `in ${mins} min`;
+  const h=Math.floor(mins/60),r=mins%60;
+  return r?`in ${h}h ${r}m`:`in ${h}h`;
+}
+function relWhen(m){
+  if(m._dayOff!==0)return null;
+  if(isNow(m))return "starting now";
+  if(m._minsUntil>0&&m._minsUntil<=240)return relSoon(m._minsUntil);
+  return null;
+}
+function sectionTitle(m){
+  if(m._dayOff===0)return "Today";
+  if(m._dayOff===1)return "Tomorrow";
+  return DAYS[m.day];
+}
+function enrichSort(list){
+  const n=nowInfo(),pin=state.day!==null,useNear=!!state.near;
+  list.forEach(m=>{
+    m._dayOff=pin?0:dayOffset(m.day,n.day);
+    m._minsUntil=minutesUntil(m,n);
+    m._d=useNear&&m.lat!=null?dist(state.near[0],state.near[1],m.lat,m.lng):null;
+  });
+  return list;
+}
+function smartSort(list){
+  enrichSort(list);
+  const pin=state.day!==null,useNear=!!state.near;
+  list.sort((a,b)=>{
+    if(!pin&&a._dayOff!==b._dayOff)return a._dayOff-b._dayOff;
+    if(!pin&&a._dayOff===0&&b._dayOff===0){
+      const aNow=isNow(a),bNow=isNow(b);
+      if(aNow!==bNow)return aNow?-1:1;
+      const aUp=a._minsUntil>=-15,bUp=b._minsUntil>=-15;
+      if(aUp!==bUp)return aUp?-1:1;
+      if(aUp&&bUp&&a._minsUntil!==b._minsUntil)return a._minsUntil-b._minsUntil;
+    }
+    if(useNear&&a._d!=null&&b._d!=null&&Math.abs(a._d-b._d)>0.25)return a._d-b._d;
+    if(a._dayOff===b._dayOff){
+      if(a._minsUntil!==b._minsUntil)return a._minsUntil-b._minsUntil;
+      return timeMins(a.time)-timeMins(b.time);
+    }
+    return a._dayOff-b._dayOff;
+  });
+  return list;
+}
+function sortHint(){
+  const n=nowInfo(),parts=[];
+  if(state.day===null)parts.push(`starting with ${DAYS[n.day]}`);
+  else parts.push(DAYS[state.day]);
+  if(state.near)parts.push("closest to you");
+  else parts.push("soonest next");
+  return parts.join(" · ");
+}
 
 function buildFilters(){
   const cf=document.getElementById("catFilters");
@@ -359,9 +421,7 @@ function filtered(){
     if(state.q){const h=(m.name+" "+m.loc+" "+m.addr+" "+(m.types||[]).join(" ")+" "+META[m.cat].name).toLowerCase();if(!h.includes(state.q.toLowerCase()))return false;}
     return true;
   });
-  if(state.near){list.forEach(m=>m._d=dist(state.near[0],state.near[1],m.lat,m.lng));list.sort((a,b)=>a._d-b._d);}
-  else list.sort((a,b)=>a.day-b.day||a.time.localeCompare(b.time));
-  return list;
+  return smartSort(list);
 }
 
 function activeFilterCount(){
@@ -389,21 +449,35 @@ function render(){
   const word=state.mode==="support"?"fellowships":"activity types";
   const loadingNow=state.mode==="support"?LIVE_LOADING:EVENTS_LOADING;
   const loading=loadingNow?'<span class="loading"><span class="spin"></span>loading live…</span> ':"";
-  document.getElementById("count").innerHTML=loading+`<b>${list.length}</b> ${state.mode==="support"?"meeting":"group/event"}${list.length!==1?"s":""} ${state.near?"near you":"across "+new Set(DATA.map(m=>m.cat)).size+" "+word}`;
+  const todayN=list.filter(m=>m._dayOff===0).length;
+  const sortNote=state.day!==null?sortHint():`${todayN} today · ${sortHint()}`;
+  document.getElementById("count").innerHTML=loading+`<b>${list.length}</b> ${state.mode==="support"?"meeting":"group/event"}${list.length!==1?"s":""} — ${sortNote}`;
   updateFilterUI();
   if(!list.length)el.innerHTML='<div class="empty">Nothing matches these filters.<br>Try removing one.</div>';
   const shown=list.slice(0,state.limit);
+  let lastSection=null;
   shown.forEach(m=>{
+    if(state.day===null){
+      const sec=sectionTitle(m);
+      if(sec!==lastSection){
+        lastSection=sec;
+        const h=document.createElement("div");
+        h.className="list-section"+(m._dayOff===0?" today":"");
+        h.textContent=sec;
+        el.appendChild(h);
+      }
+    }
     const id=m._id,fc=META[m.cat].color,now=isNow(m);
     const card=document.createElement("div");card.className="card"+(activeId===id?" active":"");
     const trust=m.verified?'<span class="b ok">Verified</span>':'<span class="b warn">Sample data</span>';
-    const whenLbl=m.dateLabel?m.dateLabel:DAYS[m.day];
+    const whenLbl=m.dateLabel?m.dateLabel:(m._dayOff===0?"Today":DAYS[m.day]);
+    const rel=relWhen(m);
     // link row: join/details (if the meeting has its own link) + a verify button to the official finder
     const join=m.url?`<a class="verify" href="${m.url}" target="_blank" rel="noopener">${m.fmt==="in-person"?"Details":"Join / details"} ↗</a>`:"";
     const official=state.mode==="support"?FINDERS[m.cat]:null;
     const verify=(official&&official!==m.url)?`<a class="verify vbtn" href="${official}" target="_blank" rel="noopener">Official finder ↗</a>`:"";
     card.innerHTML=`<div class="top"><div class="name">${m.name}</div><div class="fell" style="background:${fc}">${m.cat}</div></div>
-      <div class="when">${whenLbl} · ${fmtTime(m.time)}${m._d!=null?` · ${m._d.toFixed(1)} mi`:""}</div>
+      <div class="when">${whenLbl} · ${fmtTime(m.time)}${rel?` · <span style="color:var(--now)">${rel}</span>`:""}${m._d!=null?` · ${m._d.toFixed(1)} mi`:""}</div>
       <div class="where">${m.loc} — ${m.addr}</div>
       <div class="badges">${now?'<span class="b now">Now</span>':''}
         ${m.fmt==="online"?'<span class="b online">Online</span>':m.fmt==="hybrid"?'<span class="b hybrid">Hybrid</span>':'<span class="b">In person</span>'}
@@ -530,17 +604,53 @@ function init(){
   document.getElementById("fClear").onclick=clearFilters;
   document.getElementById("q").addEventListener("input",e=>{state.q=e.target.value;render();});
   document.getElementById("nowbtn").onclick=function(){state.nowOnly=!state.nowOnly;this.classList.toggle("on");render();};
-  document.getElementById("nearme").onclick=function(){
-    const me=this;
-    if(!navigator.geolocation){state.near=[44.9537,-93.0900];me.classList.add("on");render();return;}
-    navigator.geolocation.getCurrentPosition(p=>{state.near=[p.coords.latitude,p.coords.longitude];me.classList.add("on");
-      if(userMarker)map.removeLayer(userMarker);
-      userMarker=L.circleMarker(state.near,{radius:8,fillColor:"#60a5fa",color:"#eef2f6",weight:2,fillOpacity:.95}).addTo(map).bindPopup("You are here");
-      map.setView(state.near,12);render();},()=>{state.near=[44.9537,-93.0900];me.classList.add("on");render();});
-  };
+  document.getElementById("nearme").onclick=function(){toggleMyArea(this);};
   setMode("support");
   loadLive();
   loadEvents();
+  requestMyArea(document.getElementById("nearme"),{onLoad:true});
+}
+function setUserMarker(){
+  if(userMarker)map.removeLayer(userMarker);
+  userMarker=L.circleMarker(state.near,{radius:8,fillColor:"#60a5fa",color:"#eef2f6",weight:2,fillOpacity:.95})
+    .addTo(map).bindPopup("Your area");
+}
+function applyMyArea(btn){
+  if(btn){btn.classList.add("on");btn.classList.remove("locating");btn.textContent="My area";}
+  setUserMarker();
+  map.setView(state.near,state.nearGps?12:11);
+  render();
+}
+function requestMyArea(btn,opts={}){
+  if(btn){btn.classList.add("locating");btn.textContent="Locating…";}
+  const finish=(coords,gps)=>{
+    state.near=coords;state.nearGps=gps;
+    applyMyArea(btn);
+  };
+  if(!navigator.geolocation){
+    if(opts.onLoad){if(btn){btn.classList.remove("locating");btn.textContent="My area";}return;}
+    finish(TC_CENTER,false);
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    p=>finish([p.coords.latitude,p.coords.longitude],true),
+    ()=>{
+      if(opts.onLoad){if(btn){btn.classList.remove("locating");btn.textContent="My area";}return;}
+      finish(TC_CENTER,false);
+    },
+    {enableHighAccuracy:true,timeout:12000,maximumAge:300000}
+  );
+}
+function toggleMyArea(btn){
+  if(state.near&&btn.classList.contains("on")){
+    state.near=null;state.nearGps=false;
+    btn.classList.remove("on");
+    if(userMarker){map.removeLayer(userMarker);userMarker=null;}
+    map.setView(TC_CENTER,11);
+    render();
+    return;
+  }
+  requestMyArea(btn);
 }
 init();
 </script>
