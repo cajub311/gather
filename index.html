@@ -23,7 +23,7 @@
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;font-family:"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--txt);-webkit-font-smoothing:antialiased}
   #app{display:flex;flex-direction:column;height:100vh}
-  header{border-bottom:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow)}
+  header{border-bottom:1px solid var(--line);background:linear-gradient(180deg,#17212e,var(--surface));box-shadow:var(--shadow)}
   .header-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px 10px;flex-wrap:wrap}
   .brand{display:flex;flex-direction:column;gap:2px}
   .logo{font-weight:700;font-size:20px;letter-spacing:-.3px;display:flex;align-items:center;gap:9px}
@@ -54,8 +54,10 @@
   .tips p{margin:0;flex:1}
   .tips button{flex-shrink:0;background:transparent;border:1px solid var(--line);color:var(--muted);padding:4px 10px;border-radius:8px;font-size:11px;font-weight:600}
   .tips button:hover{color:var(--txt)}
-  .quickrow{display:flex;gap:6px;padding:8px 14px 4px;overflow-x:auto;scrollbar-width:none}
-  .quickrow::-webkit-scrollbar{display:none}
+  .chiprow{display:flex;align-items:center;gap:6px;padding:8px 14px 6px;overflow-x:auto;scrollbar-width:none}
+  .chiprow::-webkit-scrollbar{display:none}
+  .chipgroup{display:flex;gap:6px;flex-shrink:0}
+  .chipsep{width:1px;height:18px;background:var(--line);flex-shrink:0;margin:0 2px}
   .qchip{flex-shrink:0;background:var(--bg);border:1px solid var(--line);color:var(--muted);padding:6px 12px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
   .qchip:hover{color:var(--txt)}
   .qchip.on{background:color-mix(in srgb,var(--accent) 16%,transparent);border-color:var(--accent-dim);color:var(--accent)}
@@ -106,6 +108,7 @@
   .btn.locating{opacity:.7;pointer-events:none}
   .card{display:grid;grid-template-columns:56px 1fr;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line);cursor:pointer;transition:background .12s}
   .card:hover{background:var(--surface2)}
+  .card:focus-visible{outline:2px solid var(--accent2);outline-offset:-2px}
   .card.active{background:var(--bg);border-left:3px solid var(--accent);padding-left:13px}
   .card .timecol{text-align:center}
   .card .timepill{display:block;font-size:13px;font-weight:700;color:var(--txt);line-height:1.2}
@@ -145,7 +148,6 @@
   .pop.spot-pop .pn{margin-bottom:8px}
   .pop-list{margin:0;padding:0;list-style:none;max-height:220px;overflow-y:auto}
   .pop-list li{margin:0;padding:0;border-top:1px solid #e2e8f0}
-  .pop-list li:first-child{border-top:none}
   .pop-pick{display:block;width:100%;text-align:left;padding:9px 4px;border:none;background:transparent;font:inherit;font-size:13px;color:#0f172a;cursor:pointer;line-height:1.35}
   .pop-pick:hover{background:#f1f5f9}
   .pop-pick strong{display:block;font-weight:600}
@@ -169,9 +171,25 @@
   @keyframes sp{to{transform:rotate(360deg)}}
   .crisis a{color:#fca5a5;font-size:12px;font-weight:600;text-decoration:none;border:1px solid rgba(252,165,165,.2);padding:6px 12px;border-radius:var(--radius);white-space:nowrap;transition:background .15s,border-color .15s}
   .crisis a:hover{background:rgba(252,165,165,.06);border-color:rgba(252,165,165,.35)}
+  .crisis button{color:#fca5a5;background:transparent;font-size:12px;font-weight:600;border:1px solid rgba(252,165,165,.2);padding:6px 12px;border-radius:var(--radius);white-space:nowrap;transition:background .15s,border-color .15s}
+  .crisis button:hover{background:rgba(252,165,165,.06);border-color:rgba(252,165,165,.35)}
+  .modal-scrim{position:fixed;inset:0;z-index:2000;background:rgba(5,8,12,.66);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:18px}
+  .modal-scrim[hidden]{display:none!important}
+  .modal{width:100%;max-width:520px;max-height:86vh;overflow-y:auto;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.5);padding:20px}
+  .modal h2{margin:0 0 4px;font-size:17px}
+  .modal .modal-sub{font-size:12.5px;color:var(--muted);margin:0 0 14px;line-height:1.45}
+  .modal-close{float:right;background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:4px 10px;font-size:12px;font-weight:600}
+  .modal-close:hover{color:var(--txt)}
+  .res-group{margin-bottom:14px}
+  .res-group h3{margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+  .res-item{display:block;padding:10px 12px;margin-bottom:6px;background:var(--bg);border:1px solid var(--line);border-radius:10px;text-decoration:none;color:var(--txt);transition:border-color .15s}
+  .res-item:hover{border-color:var(--accent-dim)}
+  .res-item .rn{font-size:13.5px;font-weight:600}
+  .res-item .rd{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.4}
+  .res-item .rc{font-size:12px;color:var(--accent);font-weight:600;margin-top:3px}
+  .res-item.urgent{border-color:rgba(252,165,165,.35)}
+  .res-item.urgent .rc{color:#fca5a5}
   .marker-cluster-small,.marker-cluster-medium,.marker-cluster-large{width:44px!important;height:44px!important}
-  .presetrow{display:flex;gap:6px;padding:4px 14px 8px;overflow-x:auto;scrollbar-width:none}
-  .presetrow::-webkit-scrollbar{display:none}
   .pchip{flex-shrink:0;background:transparent;border:1px dashed var(--line);color:var(--muted);padding:5px 11px;border-radius:999px;font-size:11.5px;font-weight:600}
   .pchip:hover{color:var(--txt);border-style:solid}
   .pchip.on{border-style:solid;border-color:var(--accent-dim);color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
@@ -221,7 +239,7 @@
         <button type="button" class="iconbtn" id="btnSaved" title="Show saved">Saved</button>
         <button type="button" class="iconbtn" id="btnShare" title="Copy link to this view">Share</button>
       </div>
-      <div class="crisis" title="Free, confidential, 24/7"><a href="tel:988">Crisis support: 988</a></div>
+      <div class="crisis" title="Free, confidential, 24/7"><a href="tel:988">Crisis support: 988</a> <button type="button" id="btnHelp">Get help now</button></div>
     </div>
     <div class="header-controls">
       <div class="modes">
@@ -246,8 +264,7 @@
         <button type="button" id="tipsDismiss">Got it</button>
       </div>
       <div class="daybar" id="daybar"></div>
-      <div class="presetrow" id="presetrow"></div>
-      <div class="quickrow" id="quickrow"></div>
+      <div class="chiprow"><span class="chipgroup" id="presetrow"></span><span class="chipsep"></span><span class="chipgroup" id="quickrow"></span></div>
       <div class="guide" id="guide" hidden>
         <h3>First time at a support meeting?</h3>
         <ul>
@@ -288,6 +305,85 @@
   </main>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="modal-scrim" id="helpModal" hidden role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+  <div class="modal">
+    <button type="button" class="modal-close" id="helpClose">Close ✕</button>
+    <h2 id="helpTitle">Get help now</h2>
+    <p class="modal-sub">Free, confidential resources. If someone is in immediate danger, call 911.</p>
+    <div class="res-group">
+      <h3>Right now — 24/7</h3>
+      <a class="res-item urgent" href="tel:988">
+        <div class="rn">988 Suicide &amp; Crisis Lifeline</div>
+        <div class="rd">Mental health or substance use crisis. Call or text 988, or chat at 988lifeline.org.</div>
+        <div class="rc">Call 988</div>
+      </a>
+      <a class="res-item urgent" href="tel:18006624357">
+        <div class="rn">SAMHSA National Helpline</div>
+        <div class="rd">Free treatment referral &amp; information for substance use and mental health, in English and Spanish.</div>
+        <div class="rc">1-800-662-HELP (4357)</div>
+      </a>
+      <a class="res-item" href="tel:211">
+        <div class="rn">211 — United Way</div>
+        <div class="rd">Connects you to local help: housing, food, treatment, support programs.</div>
+        <div class="rc">Call 211</div>
+      </a>
+    </div>
+    <div class="res-group" id="resTreatment">
+      <h3>Find treatment</h3>
+      <a class="res-item" href="https://fasttrackermn.org/" target="_blank" rel="noopener">
+        <div class="rn">Fast-Tracker Minnesota</div>
+        <div class="rd">Minnesota's real-time locator for substance use &amp; mental health treatment openings.</div>
+        <div class="rc">fasttrackermn.org ↗</div>
+      </a>
+      <a class="res-item" href="https://findtreatment.gov/" target="_blank" rel="noopener">
+        <div class="rn">FindTreatment.gov</div>
+        <div class="rd">Official national locator for licensed treatment — filter by payment, telehealth, and distance.</div>
+        <div class="rc">findtreatment.gov ↗</div>
+      </a>
+    </div>
+    <div class="res-group" id="resCommunity">
+      <h3>Sober community &amp; support</h3>
+      <a class="res-item" href="https://thephoenix.org/find-a-class/" target="_blank" rel="noopener">
+        <div class="rn">The Phoenix</div>
+        <div class="rd">Free sober active community — workouts, climbing, yoga &amp; socials. St Paul gym at 470 Cleveland Ave N.</div>
+        <div class="rc">thephoenix.org ↗</div>
+      </a>
+      <a class="res-item" href="https://www.minnesotarecovery.org/" target="_blank" rel="noopener">
+        <div class="rn">Minnesota Recovery Connection</div>
+        <div class="rd">Peer support, All Recovery meetings, and recovery community events across the metro.</div>
+        <div class="rc">minnesotarecovery.org ↗</div>
+      </a>
+      <a class="res-item" href="https://mnwitw.org/mnwarmline" target="_blank" rel="noopener">
+        <div class="rn">Minnesota Warmline</div>
+        <div class="rd">Peer-run support line when it's not a crisis but you need to talk to someone who gets it.</div>
+        <div class="rc">mnwitw.org/mnwarmline ↗</div>
+      </a>
+    </div>
+    <div class="res-group" id="resOnline">
+      <h3>Can't make it in person?</h3>
+      <a class="res-item" href="https://aa-intergroup.org/meetings/" target="_blank" rel="noopener">
+        <div class="rn">Online Intergroup of AA</div>
+        <div class="rd">Hundreds of online AA meetings around the clock, every day.</div>
+        <div class="rc">aa-intergroup.org ↗</div>
+      </a>
+      <a class="res-item" href="https://virtual-na.org/meetings/" target="_blank" rel="noopener">
+        <div class="rn">Virtual NA</div>
+        <div class="rd">Online and phone NA meetings worldwide, searchable by time and language.</div>
+        <div class="rc">virtual-na.org ↗</div>
+      </a>
+      <a class="res-item" href="https://www.intherooms.com/" target="_blank" rel="noopener">
+        <div class="rn">In The Rooms</div>
+        <div class="rd">Free online recovery community — live video meetings across many fellowships.</div>
+        <div class="rc">intherooms.com ↗</div>
+      </a>
+      <a class="res-item" href="https://meetings.smartrecovery.org/meetings/" target="_blank" rel="noopener">
+        <div class="rn">SMART Recovery Online</div>
+        <div class="rd">Science-based, non-12-step meetings online every day.</div>
+        <div class="rc">meetings.smartrecovery.org ↗</div>
+      </a>
+    </div>
+  </div>
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
@@ -319,24 +415,24 @@ const FELLOWSHIPS = {
 // Official meeting finders per program — powers the "verify" button.
 const FINDERS={
   AA:"https://aaminneapolis.org/meetings/",
-  NA:"https://naminnesota.org/meetings/",
-  "Al-Anon":"https://al-anon.org/al-anon-meetings/",
+  NA:"https://naminnesota.org/find-a-meeting/",
+  "Al-Anon":"https://al-anon.org/al-anon-meetings/find-an-al-anon-meeting/",
   ACA:"https://adultchildren.org/meeting-search/",
-  EA:"https://emotionsanonymous.org/find-a-meeting/",
-  CoDA:"https://coda.org/coda-meetings/",
+  EA:"https://emotionsanonymous.org/find-an-ea-meeting/",
+  CoDA:"https://coda.org/find-a-meeting/",
   OA:"https://oa.org/find-a-meeting/",
-  GA:"https://www.gamblersanonymous.org/ga/locations",
+  GA:"https://www.gamblersanonymous.org/find-a-meeting/",
   SMART:"https://meetings.smartrecovery.org/meetings/",
-  Dharma:"https://recoverydharma.org/find-a-meeting/",
-  Refuge:"https://www.refugerecovery.org/meetings",
-  LifeRing:"https://lifering.org/find-a-meeting/",
-  WFS:"https://womenforsobriety.org/find-meetings/",
-  Wellbriety:"https://wellbriety.com/",
-  CR:"https://locator.crgroups.info/",
-  SOS:"https://www.sossobriety.org/meetings/",
+  Dharma:"https://recoverydharma.org/meetings/",
+  Refuge:"https://refugerecoverymeetings.org/",
+  LifeRing:"https://lifering.org/meeting-menu/",
+  WFS:"https://meetings.womenforsobriety.org/meetings/",
+  Wellbriety:"https://whitebison.org/circle-meetings/",
+  CR:"https://crlocator.com/",
+  SOS:"https://www.sossobriety.org/on-line-groups",
   CA:"https://ca.org/meetings/",
   MA:"https://www.marijuana-anonymous.org/meetings/",
-  DDA:"https://draonline.org/",
+  DDA:"https://draonline.org/meetings/",
 };
 function finderFor(m){return (m.url)||FINDERS[m.cat]||"https://www.211.org/";}
 const SUPPORT = [
@@ -346,9 +442,9 @@ const SUPPORT = [
   {cat:"AA",name:"Sunrise Sobriety",day:3,time:"07:00",dur:60,fmt:"hybrid",loc:"Mortimer's",addr:"352 Snelling Ave S, St Paul",lat:44.9356,lng:-93.1668,types:["Open"]},
   {cat:"AA",name:"Lake Street Group",day:4,time:"12:00",dur:60,fmt:"in-person",loc:"Walker Community Church",addr:"3104 16th Ave S, Minneapolis",lat:44.9486,lng:-93.2480,types:["Open","Discussion"]},
   {cat:"AA",name:"Women's Courage",day:6,time:"10:00",dur:90,fmt:"in-person",loc:"Unity Church Unitarian",addr:"733 Portland Ave, St Paul",lat:44.9462,lng:-93.1213,types:["Closed","Women"]},
-  {cat:"AA",name:"Young People's Online",day:0,time:"20:00",dur:60,fmt:"online",loc:"Zoom",addr:"Online",lat:44.95,lng:-93.09,types:["Open","Young People"],url:"https://zoom.us"},
+  {cat:"AA",name:"Young People's Online",day:0,time:"20:00",dur:60,fmt:"online",loc:"Online Intergroup of AA",addr:"Online · aa-intergroup.org",lat:44.95,lng:-93.09,types:["Open","Young People"],url:"https://aa-intergroup.org/meetings/"},
   {cat:"NA",name:"Just For Today",day:1,time:"19:00",dur:90,fmt:"in-person",loc:"Central Presbyterian",addr:"500 Cedar St, St Paul",lat:44.9469,lng:-93.0962,types:["Open"]},
-  {cat:"NA",name:"Clean & Serene",day:4,time:"20:00",dur:60,fmt:"hybrid",loc:"Mercy Seat",addr:"2422 18th Ave S, Minneapolis",lat:44.9560,lng:-93.2466,types:["Open","Speaker"]},
+  {cat:"NA",name:"Clean & Serene",day:4,time:"20:00",dur:60,fmt:"hybrid",loc:"Mercy Seat Lutheran",addr:"1500 6th St NE, Minneapolis",lat:44.9993,lng:-93.2566,types:["Open","Speaker"]},
   {cat:"NA",name:"Midday Recovery",day:2,time:"12:00",dur:60,fmt:"in-person",loc:"First Lutheran",addr:"463 Maria Ave, St Paul",lat:44.9559,lng:-93.0710,types:["Open"]},
   {cat:"Al-Anon",name:"Hope for Today",day:3,time:"18:00",dur:60,fmt:"in-person",loc:"Gloria Dei Lutheran",addr:"700 Snelling Ave S, St Paul",lat:44.9301,lng:-93.1669,types:["Open"]},
   {cat:"Al-Anon",name:"Courage to Change",day:5,time:"12:00",dur:60,fmt:"hybrid",loc:"Edina Morningside",addr:"4201 Morningside Rd, Edina",lat:44.9180,lng:-93.3380,types:["Open"]},
@@ -363,25 +459,26 @@ const SUPPORT = [
   {cat:"GA",name:"New Beginnings GA",day:1,time:"19:30",dur:90,fmt:"in-person",loc:"Mount Olivet Lutheran",addr:"5025 Knox Ave S, Minneapolis",lat:44.8995,lng:-93.3000,types:["Closed"]},
   {cat:"GA",name:"Turnaround Thursday",day:4,time:"19:00",dur:90,fmt:"in-person",loc:"St Stephen Lutheran",addr:"8400 France Ave S, Bloomington",lat:44.8610,lng:-93.3290,types:["Closed"]},
   {cat:"SMART",name:"SMART Recovery St Paul",day:2,time:"18:00",dur:90,fmt:"hybrid",loc:"Hazelden Betty Ford",addr:"680 Stewart Ave, St Paul",lat:44.9290,lng:-93.1390,types:["Open","Secular"]},
-  {cat:"SMART",name:"SMART Online MN",day:0,time:"19:00",dur:90,fmt:"online",loc:"Zoom",addr:"Online",lat:44.95,lng:-93.09,types:["Open","Secular"],url:"https://smartrecovery.org"},
+  {cat:"SMART",name:"SMART Online MN",day:0,time:"19:00",dur:90,fmt:"online",loc:"SMART Recovery (online)",addr:"Online · meetings.smartrecovery.org",lat:44.95,lng:-93.09,types:["Open","Secular"],url:"https://meetings.smartrecovery.org/meetings/"},
   {cat:"Dharma",name:"Recovery Dharma TC",day:3,time:"18:30",dur:75,fmt:"in-person",loc:"Lake Harriet Spiritual",addr:"4401 Upton Ave S, Minneapolis",lat:44.9210,lng:-93.3170,types:["Open","Secular"]},
-  {cat:"Dharma",name:"Mindful Recovery",day:0,time:"10:00",dur:60,fmt:"hybrid",loc:"MN Zen Meditation Center",addr:"3343 E Calhoun Pkwy, Minneapolis",lat:44.9430,lng:-93.3060,types:["Open"]},
+  {cat:"Dharma",name:"Mindful Recovery",day:0,time:"10:00",dur:60,fmt:"hybrid",loc:"MN Zen Meditation Center",addr:"3343 E Bde Maka Ska Pkwy, Minneapolis",lat:44.9430,lng:-93.3060,types:["Open"]},
   {cat:"Refuge",name:"Refuge Recovery Sit",day:1,time:"18:00",dur:75,fmt:"in-person",loc:"Common Ground Meditation",addr:"2700 E 26th St, Minneapolis",lat:44.9560,lng:-93.2300,types:["Open","Secular"]},
   {cat:"DDA",name:"Dual Diagnosis Anonymous",day:4,time:"17:30",dur:60,fmt:"hybrid",loc:"Guild Recovery",addr:"130 S Wabasha St, St Paul",lat:44.9430,lng:-93.0890,types:["Open","Mental Health"]},
   // ----- Non-12-step programs: official online meetings (verify on source) -----
   {cat:"SMART",name:"SMART Recovery Daily Online",day:0,time:"19:00",dur:90,fmt:"online",loc:"SMART Recovery (online)",addr:"Online · meetings.smartrecovery.org",lat:44.95,lng:-93.09,types:["Open","Secular","Science-based"],url:"https://meetings.smartrecovery.org/meetings/"},
   {cat:"Dharma",name:"Recovery Dharma Online Sit",day:2,time:"20:00",dur:60,fmt:"online",loc:"Recovery Dharma (online)",addr:"Online · recoverydharma.online",lat:44.95,lng:-93.09,types:["Open","Buddhist","Meditation"],url:"https://recoverydharma.online/"},
-  {cat:"LifeRing",name:"LifeRing Online Meeting",day:3,time:"18:00",dur:60,fmt:"online",loc:"LifeRing Secular Recovery",addr:"Online · lifering.org",lat:44.95,lng:-93.09,types:["Open","Secular","Abstinence"],url:"https://lifering.org/find-a-meeting/"},
-  {cat:"WFS",name:"Women for Sobriety Online",day:1,time:"19:00",dur:60,fmt:"online",loc:"Women for Sobriety",addr:"Online · womenforsobriety.org",lat:44.95,lng:-93.09,types:["Closed","Women","New Life"],url:"https://womenforsobriety.org/find-meetings/"},
-  {cat:"Wellbriety",name:"Wellbriety Talking Circle",day:4,time:"18:30",dur:90,fmt:"online",loc:"White Bison Wellbriety",addr:"Online · wellbriety.com",lat:44.95,lng:-93.09,types:["Open","Native American","Medicine Wheel"],url:"https://wellbriety.com/"},
-  {cat:"SOS",name:"SOS Secular Sobriety (online)",day:6,time:"10:00",dur:60,fmt:"online",loc:"Secular Organizations for Sobriety",addr:"Online · sossobriety.org",lat:44.95,lng:-93.09,types:["Open","Secular"],url:"https://www.sossobriety.org/meetings/"},
-  {cat:"CR",name:"Celebrate Recovery — St Paul",day:5,time:"19:00",dur:120,fmt:"hybrid",loc:"Substance Church",addr:"1390 Arcade St, St Paul",lat:44.9810,lng:-93.0640,types:["Open","Christian"],url:"https://locator.crgroups.info/"},
+  {cat:"LifeRing",name:"LifeRing Online Meeting",day:3,time:"18:00",dur:60,fmt:"online",loc:"LifeRing Secular Recovery",addr:"Online · lifering.org",lat:44.95,lng:-93.09,types:["Open","Secular","Abstinence"],url:"https://lifering.org/meeting-menu/"},
+  {cat:"WFS",name:"Women for Sobriety Online",day:1,time:"19:00",dur:60,fmt:"online",loc:"Women for Sobriety",addr:"Online · womenforsobriety.org",lat:44.95,lng:-93.09,types:["Closed","Women","New Life"],url:"https://meetings.womenforsobriety.org/meetings/"},
+  {cat:"Wellbriety",name:"Wellbriety Talking Circle",day:4,time:"18:30",dur:90,fmt:"online",loc:"White Bison Wellbriety",addr:"Online · whitebison.org",lat:44.95,lng:-93.09,types:["Open","Native American","Medicine Wheel"],url:"https://whitebison.org/circle-meetings/"},
+  {cat:"SOS",name:"SOS Secular Sobriety (online)",day:6,time:"10:00",dur:60,fmt:"online",loc:"Secular Organizations for Sobriety",addr:"Online · sossobriety.org",lat:44.95,lng:-93.09,types:["Open","Secular"] ,url:"https://www.sossobriety.org/on-line-groups"},
+  {cat:"CR",name:"Celebrate Recovery — Twin Cities",day:5,time:"19:00",dur:120,fmt:"hybrid",loc:"Find a local CR group",addr:"Multiple Twin Cities churches · crlocator.com",lat:null,lng:null,types:["Open","Christian"],url:"https://crlocator.com/"},
   {cat:"CA",name:"Cocaine Anonymous MN",day:2,time:"19:30",dur:60,fmt:"hybrid",loc:"CA Minnesota",addr:"Online + Twin Cities · ca-mn.org",lat:44.95,lng:-93.09,types:["Open"],url:"https://ca.org/meetings/"},
   {cat:"MA",name:"Marijuana Anonymous Online",day:0,time:"18:00",dur:60,fmt:"online",loc:"Marijuana Anonymous",addr:"Online · marijuana-anonymous.org",lat:44.95,lng:-93.09,types:["Open"],url:"https://www.marijuana-anonymous.org/meetings/"},
 ];
 
 /* ===== ACTIVITIES & GROUPS ===== */
 const ACTIVITIES = {
+  Recovery:{name:"Sober & Recovery Community",color:"#4fd1c5"},
   Games:{name:"Board Games & Tabletop",color:"#c084fc"},
   Zen:{name:"Meditation & Zen",color:"#5eead4"},
   Outdoors:{name:"Hiking & Outdoors",color:"#84cc16"},
@@ -394,11 +491,11 @@ const ACTIVITIES = {
   Language:{name:"Language Exchange",color:"#a78bfa"},
 };
 const PLAY = [
-  {cat:"Games",name:"Twin Cities Board Game Night",day:1,time:"18:00",dur:180,fmt:"in-person",loc:"Fantasy Flight Games Center",addr:"1995 W County Rd B2, Roseville",lat:45.0119,lng:-93.1760,types:["All ages","Free"]},
+  {cat:"Games",name:"Twin Cities Board Game Night",day:1,time:"18:00",dur:180,fmt:"in-person",loc:"Gamezenter",addr:"1975 County Rd B2 W, Roseville",lat:45.0119,lng:-93.1760,types:["All ages","Free"]},
   {cat:"Games",name:"D&D Adventurers League",day:3,time:"18:30",dur:180,fmt:"in-person",loc:"The Source Comics & Games",addr:"2057 Snelling Ave N, Roseville",lat:45.0150,lng:-93.1670,types:["Beginners welcome"]},
   {cat:"Games",name:"Saturday Strategy Games",day:6,time:"13:00",dur:240,fmt:"in-person",loc:"Hennepin County Library",addr:"300 Nicollet Mall, Minneapolis",lat:44.9788,lng:-93.2700,types:["Free","Drop-in"]},
-  {cat:"Games",name:"Magic: The Gathering Commander",day:5,time:"18:00",dur:180,fmt:"in-person",loc:"Misty Mountain Games",addr:"2024 S Robert St, West St Paul",lat:44.9000,lng:-93.0790,types:["All levels"]},
-  {cat:"Zen",name:"Sunday Zazen Sitting",day:0,time:"09:00",dur:90,fmt:"in-person",loc:"MN Zen Meditation Center",addr:"3343 E Calhoun Pkwy, Minneapolis",lat:44.9430,lng:-93.3060,types:["Beginners welcome"]},
+  {cat:"Games",name:"Magic: The Gathering Commander",day:5,time:"18:00",dur:180,fmt:"in-person",loc:"The Source Comics & Games",addr:"2057 Snelling Ave N, Roseville",lat:45.0150,lng:-93.1670,types:["All levels"]},
+  {cat:"Zen",name:"Sunday Zazen Sitting",day:0,time:"09:00",dur:90,fmt:"in-person",loc:"MN Zen Meditation Center",addr:"3343 E Bde Maka Ska Pkwy, Minneapolis",lat:44.9430,lng:-93.3060,types:["Beginners welcome"]},
   {cat:"Zen",name:"Weekly Zazen & Talk",day:2,time:"19:00",dur:75,fmt:"hybrid",loc:"Clouds in Water Zen Center",addr:"445 Farrington St, St Paul",lat:44.9560,lng:-93.1090,types:["All levels"],url:"https://cloudsinwater.org"},
   {cat:"Zen",name:"Mindfulness Drop-in",day:4,time:"12:00",dur:45,fmt:"in-person",loc:"Common Ground Meditation",addr:"2700 E 26th St, Minneapolis",lat:44.9560,lng:-93.2300,types:["Free","Lunch hour"]},
   {cat:"Outdoors",name:"Saturday Morning Hike",day:6,time:"09:00",dur:120,fmt:"in-person",loc:"Como Park",addr:"1199 Midway Pkwy, St Paul",lat:44.9803,lng:-93.1466,types:["All levels","Dog friendly"]},
@@ -406,19 +503,19 @@ const PLAY = [
   {cat:"Outdoors",name:"Weeknight Bike Ride",day:3,time:"18:00",dur:90,fmt:"in-person",loc:"Lake Harriet Bandshell",addr:"4135 W Lake Harriet Pkwy, Minneapolis",lat:44.9220,lng:-93.3070,types:["Casual pace"]},
   {cat:"Books",name:"Fiction Book Club",day:3,time:"18:30",dur:90,fmt:"in-person",loc:"Next Chapter Booksellers",addr:"38 S Snelling Ave, St Paul",lat:44.9400,lng:-93.1670,types:["Monthly"]},
   {cat:"Books",name:"Sci-Fi & Fantasy Readers",day:4,time:"19:00",dur:90,fmt:"hybrid",loc:"Moon Palace Books",addr:"3032 Minnehaha Ave, Minneapolis",lat:44.9490,lng:-93.2310,types:["All welcome"]},
-  {cat:"Art",name:"Knit & Stitch Night",day:2,time:"18:00",dur:120,fmt:"in-person",loc:"The Yarnery",addr:"840 Grand Ave, St Paul",lat:44.9400,lng:-93.1370,types:["All skill levels"]},
-  {cat:"Art",name:"Open Studio Pottery",day:5,time:"18:00",dur:150,fmt:"in-person",loc:"Northern Clay Center",addr:"2424 Franklin Ave E, Minneapolis",lat:44.9627,lng:-93.2330,types:["Drop-in","Fee"]},
+  {cat:"Art",name:"Knit & Stitch Night",day:2,time:"18:00",dur:120,fmt:"in-person",loc:"The Yarnery",addr:"2040 St Clair Ave, St Paul",lat:44.9342,lng:-93.1850,types:["All skill levels"]},
+  {cat:"Art",name:"Open Studio Pottery",day:5,time:"18:00",dur:150,fmt:"in-person",loc:"Northern Clay Center",addr:"2424 E Franklin Ave, Minneapolis",lat:44.9627,lng:-93.2330,types:["Drop-in","Fee"]},
   {cat:"Music",name:"Old-Time Jam Session",day:0,time:"16:00",dur:120,fmt:"in-person",loc:"The Driftwood",addr:"4415 Nicollet Ave, Minneapolis",lat:44.9200,lng:-93.2780,types:["Acoustic","All levels"]},
   {cat:"Music",name:"Open Mic Night",day:4,time:"20:00",dur:120,fmt:"in-person",loc:"Caffetto Coffee",addr:"708 W 22nd St, Minneapolis",lat:44.9640,lng:-93.2880,types:["Sign up","Free"]},
   {cat:"Social",name:"New in Town Social",day:5,time:"19:00",dur:120,fmt:"in-person",loc:"Surly Brewing",addr:"520 Malcolm Ave SE, Minneapolis",lat:44.9700,lng:-93.2090,types:["21+","Newcomers"]},
   {cat:"Social",name:"Twin Cities 20s & 30s Meetup",day:3,time:"19:00",dur:120,fmt:"in-person",loc:"Can Can Wonderland",addr:"755 Prior Ave N, St Paul",lat:44.9650,lng:-93.1790,types:["Casual","Newcomers"]},
-  {cat:"Volunteer",name:"Community Garden Volunteers",day:6,time:"10:00",dur:120,fmt:"in-person",loc:"Frogtown Farm",addr:"940 Lafond Ave, St Paul",lat:44.9620,lng:-93.1300,types:["Family","Outdoors"]},
+  {cat:"Volunteer",name:"Community Garden Volunteers",day:6,time:"10:00",dur:120,fmt:"in-person",loc:"Frogtown Park & Farm",addr:"946 Minnehaha Ave W, St Paul",lat:44.9620,lng:-93.1300,types:["Family","Outdoors"]},
   {cat:"Volunteer",name:"Food Shelf Sorting",day:4,time:"17:00",dur:120,fmt:"in-person",loc:"Second Harvest Heartland",addr:"7101 Winnetka Ave N, Brooklyn Park",lat:45.0610,lng:-93.3760,types:["All ages 8+"]},
   {cat:"Fitness",name:"Lake Run Club",day:2,time:"18:00",dur:60,fmt:"in-person",loc:"Lake Harriet",addr:"4135 W Lake Harriet Pkwy, Minneapolis",lat:44.9220,lng:-93.3070,types:["All paces","Free"]},
   {cat:"Fitness",name:"Pickup Volleyball",day:1,time:"19:00",dur:90,fmt:"in-person",loc:"Phalen Rec Center",addr:"1000 Wheelock Pkwy E, St Paul",lat:44.9870,lng:-93.0530,types:["Drop-in","All levels"]},
   {cat:"Fitness",name:"Saturday Yoga in the Park",day:6,time:"09:30",dur:60,fmt:"in-person",loc:"Boom Island Park",addr:"724 Sibley St NE, Minneapolis",lat:44.9930,lng:-93.2680,types:["Free","All levels"]},
-  {cat:"Language",name:"Spanish Conversation Table",day:3,time:"18:30",dur:90,fmt:"hybrid",loc:"Black Dog Cafe",addr:"308 Prince St, St Paul",lat:44.9490,lng:-93.0840,types:["All levels"]},
-  {cat:"Language",name:"French Meetup",day:1,time:"18:00",dur:90,fmt:"in-person",loc:"Alliance Française",addr:"113 N 1st St, Minneapolis",lat:44.9850,lng:-93.2680,types:["Intermediate+"]},
+  {cat:"Language",name:"Spanish Conversation Table",day:3,time:"18:30",dur:90,fmt:"hybrid",loc:"Hennepin County Library — Central",addr:"300 Nicollet Mall, Minneapolis",lat:44.9788,lng:-93.2700,types:["All levels","Free"]},
+  {cat:"Language",name:"French Meetup",day:1,time:"18:00",dur:90,fmt:"in-person",loc:"Alliance Française",addr:"227 Colfax Ave N, Minneapolis",lat:44.9803,lng:-93.2968,types:["Intermediate+"]},
 ];
 
 /* ===== engine ===== */
@@ -434,6 +531,7 @@ const QUICK={
     {id:"women",label:"Women",match:m=>/women/i.test((m.types||[]).join(" "))},
   ],
   activities:[
+    {id:"sober",label:"Sober-friendly",match:m=>m.cat==="Recovery"||/sober|recovery|alcohol[- ]free/i.test(m.name+" "+(m.types||[]).join(" ")+" "+(m.source||""))},
     {id:"free",label:"Free",match:m=>(m.types||[]).some(t=>/free/i.test(t))},
     {id:"new",label:"Welcoming",match:m=>/beginner|newcomer|welcome|all levels|drop-?in/i.test(((m.types||[]).join(" "))+" "+m.name)},
     {id:"outdoor",label:"Outdoors",match:m=>m.cat==="Outdoors"||/hike|park|trail|garden/i.test(m.name+" "+m.loc)},
@@ -553,8 +651,19 @@ function pickNextUp(list){
 function timeMins(t){const [h,m]=t.split(":").map(Number);return h*60+m;}
 function nowInfo(){const d=new Date();return{day:d.getDay(),mins:d.getHours()*60+d.getMinutes()};}
 function dayOffset(meetingDay,today){return (meetingDay-today+7)%7;}
-function minutesUntil(m,n){const off=dayOffset(m.day,n.day);if(off===0)return timeMins(m.time)-n.mins;return off*1440+timeMins(m.time);}
-function isNow(m){const n=nowInfo();if(m.day!==n.day)return false;const s=timeMins(m.time);return n.mins>=s-15&&n.mins<=s+m.dur;}
+// days until the item: dated events use their real calendar date,
+// weekly meetings use the next occurrence of their weekday
+function dateOff(m,n){
+  if(m.date){
+    const p=m.date.split("-").map(Number);
+    const today=new Date();
+    const t0=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+    return Math.round((new Date(p[0],p[1]-1,p[2])-t0)/864e5);
+  }
+  return dayOffset(m.day,n.day);
+}
+function minutesUntil(m,n){const off=dateOff(m,n);if(off===0)return timeMins(m.time)-n.mins;return off*1440+timeMins(m.time);}
+function isNow(m){const n=nowInfo();if(m.day!==n.day)return false;if(m.date&&dateOff(m,n)!==0)return false;const s=timeMins(m.time);return n.mins>=s-15&&n.mins<=s+m.dur;}
 function dist(a,b,c,d){const R=3959,r=x=>x*Math.PI/180;const dLat=r(c-a),dLon=r(d-b);const x=Math.sin(dLat/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
 function relSoon(mins){
   if(mins<=0)return null;
@@ -563,7 +672,7 @@ function relSoon(mins){
   return r?`in ${h}h ${r}m`:`in ${h}h`;
 }
 function relWhen(m){
-  if(dayOffset(m.day,nowInfo().day)!==0)return null;
+  if((m._dayOff??dateOff(m,nowInfo()))!==0)return null;
   if(isNow(m))return "starting now";
   if(m._minsUntil>0&&m._minsUntil<=240)return relSoon(m._minsUntil);
   return null;
@@ -571,12 +680,13 @@ function relWhen(m){
 function sectionTitle(m){
   if(m._dayOff===0)return "Today";
   if(m._dayOff===1)return "Tomorrow";
+  if(m._dayOff>6&&m.dateLabel)return m.dateLabel;
   return DAYS[m.day];
 }
 function enrichSort(list){
   const n=nowInfo(),pin=state.day!==null&&!state.daySet,useNear=!!state.near;
   list.forEach(m=>{
-    m._dayOff=pin?0:dayOffset(m.day,n.day);
+    m._dayOff=pin?0:dateOff(m,n);
     m._minsUntil=minutesUntil(m,n);
     m._d=useNear&&m.lat!=null?dist(state.near[0],state.near[1],m.lat,m.lng):null;
   });
@@ -641,6 +751,7 @@ function buildPresets(){
   row.innerHTML="";
   const items=[
     {id:"tonight",label:"Tonight"},
+    {id:"tomorrow",label:"Tomorrow"},
     {id:"weekend",label:"This weekend"},
     {id:"saved",label:state.savedOnly?"Show all":"Saved only"},
   ];
@@ -657,6 +768,7 @@ function applyPreset(id){
   if(id==="saved"){state.savedOnly=!state.savedOnly;state.preset=state.savedOnly?"saved":"";updateSavedBtn();buildPresets();render();return;}
   state.preset=id;state.savedOnly=false;state.cat.clear();state.quick.clear();
   if(id==="tonight"){state.daySet=null;state.day=todayDay();state.tod="evening";state.nowOnly=false;}
+  else if(id==="tomorrow"){state.daySet=null;state.day=(todayDay()+1)%7;state.tod="";state.nowOnly=false;}
   else if(id==="weekend"){state.day=null;state.daySet=new Set([5,6,0]);state.tod="";}
   else if(id==="first"){state.daySet=null;state.day=todayDay();state.tod="";state.quick.add("open");document.getElementById("guide").hidden=false;}
   syncTodUI();syncDayUI();buildQuickFilters();buildPresets();updateSavedBtn();render();
@@ -712,10 +824,17 @@ function buildFilters(){
 
 function filtered(){
   const quicks=QUICK[state.mode]||[];
+  const n=nowInfo();
   let list=DATA.filter(m=>{
     if(state.cat.size&&!state.cat.has(m.cat))return false;
-    if(state.daySet&&!state.daySet.has(m.day))return false;
-    else if(state.day!==null&&m.day!==state.day)return false;
+    if(state.daySet){
+      if(!state.daySet.has(m.day))return false;
+      if(m.date&&dateOff(m,n)>6)return false; // dated events: this weekend only
+    }
+    else if(state.day!==null){
+      if(m.day!==state.day)return false;
+      if(m.date&&dateOff(m,n)>6)return false; // dated events: the upcoming one only
+    }
     if(state.savedOnly&&!SAVED.has(m._id))return false;
     if(state.fmt&&m.fmt!==state.fmt)return false;
     if(state.tod&&!inTod(m.time,state.tod))return false;
@@ -724,7 +843,7 @@ function filtered(){
       const ok=[...state.quick].some(id=>quicks.find(q=>q.id===id)?.match(m));
       if(!ok)return false;
     }
-    if(state.q){const h=(m.name+" "+m.loc+" "+m.addr+" "+(m.types||[]).join(" ")+" "+META[m.cat].name).toLowerCase();if(!h.includes(state.q.toLowerCase()))return false;}
+    if(state.q){const h=(m.name+" "+m.loc+" "+m.addr+" "+(m.types||[]).join(" ")+" "+(m.source||"")+" "+(m.region||"")+" "+META[m.cat].name).toLowerCase();if(!h.includes(state.q.toLowerCase()))return false;}
     return true;
   });
   return smartSort(list);
@@ -753,7 +872,6 @@ function updateInsight(list){
   const verified=list.filter(m=>m.verified).length;
   const openCt=state.mode==="support"?list.filter(m=>(m.types||[]).some(t=>/^open$/i.test(t))).length:0;
   const pills=[
-    `<span class="insight-pill"><strong>${list.length}</strong> on ${dayViewLabel()}</span>`,
     nowCt?`<span class="insight-pill live"><strong>${nowCt}</strong> happening now</span>`:"",
     verified?`<span class="insight-pill live"><strong>${verified}</strong> verified live</span>`:"",
     state.mode==="support"&&openCt?`<span class="insight-pill"><strong>${openCt}</strong> open meetings</span>`:"",
@@ -761,6 +879,7 @@ function updateInsight(list){
     list.some(m=>!hasMapPin(m))?`<span class="insight-pill"><strong>${list.filter(m=>!hasMapPin(m)).length}</strong> online only</span>`:"",
   ].filter(Boolean);
   el.innerHTML=pills.join("");
+  el.style.display=pills.length?"flex":"none";
 }
 function updateMapLegend(list){
   const el=document.getElementById("mapLegend");
@@ -852,6 +971,11 @@ function renderCard(el,m){
       ${(m.types||[]).slice(0,3).map(t=>`<span class="b">${t}</span>`).join("")}</div>
     <div class="linkrow">${dir}${join}${verify}
       <button type="button" class="dir" style="border:none;background:none;padding:0;cursor:pointer" data-copy="${id}">Copy info</button></div></div>`;
+  card.tabIndex=0;
+  card.setAttribute("role","button");
+  card.addEventListener("keydown",e=>{
+    if(e.key==="Enter"&&e.target===card){e.preventDefault();focusMeeting(m);}
+  });
   card.querySelector(".savebtn").onclick=e=>toggleSaved(id,e);
   card.querySelector("[data-copy]")?.addEventListener("click",e=>{
     e.stopPropagation();
@@ -1033,41 +1157,70 @@ function updateFooter(){
   }
 }
 
+// cache live feeds locally so repeat visits render instantly and a flaky
+// network still shows the last good data (refreshed in the background)
+function readCache(key,maxAgeMs){
+  try{
+    const c=JSON.parse(localStorage.getItem(key)||"null");
+    if(c&&c.ts&&Date.now()-c.ts<maxAgeMs)return c.data;
+  }catch(e){}
+  return null;
+}
+function writeCache(key,data){
+  try{localStorage.setItem(key,JSON.stringify({ts:Date.now(),data}));}catch(e){}
+}
+function applyMeetingsData(data){
+  LIVE=(data.meetings||[]).map(m=>({...m,verified:true}));
+  LIVE_CATS=new Set(LIVE.map(m=>m.cat));
+  LAST_UPDATED=data.updated||null;
+  SOURCE_INFO=data.sources||[];
+  if(state.mode==="support"){
+    // swap in live data without wiping the user's active filters
+    DATA=supportMeetings().map((m,i)=>({...m,_id:"s"+i}));
+    updateFooter();render();
+  }
+}
+function applyEventsData(data){
+  const d=new Date();
+  const todayStr=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  LIVE_EVENTS=(data.events||[]).filter(m=>!m.date||m.date>=todayStr).map(m=>({...m,verified:true}));
+  EVENTS_UPDATED=data.updated||null;
+  EVENT_SOURCES=data.sources||[];
+  if(state.mode==="activities"){
+    DATA=activityItems().map((m,i)=>({...m,_id:"p"+i}));
+    updateFooter();render();
+  }
+}
 async function loadLive(){
+  const cached=readCache("gather-cache-meetings",864e5);
+  if(cached)applyMeetingsData(cached);
   try{
     const res=await fetch("/api/meetings",{headers:{Accept:"application/json"}});
     if(!res.ok)throw 0;
     const data=await res.json();
-    LIVE=(data.meetings||[]).map(m=>({...m,verified:true}));
-    LIVE_CATS=new Set(LIVE.map(m=>m.cat));
-    LAST_UPDATED=data.updated||null;
-    SOURCE_INFO=data.sources||[];
-  }catch(e){/* backend unavailable (e.g. opened as a local file) — curated samples still show */}
-  finally{
+    if((data.meetings||[]).length)writeCache("gather-cache-meetings",data);
     LIVE_LOADING=false;
-    if(state.mode==="support"){
-      // swap in live data without wiping the user's active filters
-      DATA=supportMeetings().map((m,i)=>({...m,_id:"s"+i}));
-      updateFooter();render();
-    }
+    applyMeetingsData(data);
+  }catch(e){
+    /* backend unavailable (e.g. opened as a local file) — cache or curated samples still show */
+    LIVE_LOADING=false;
+    if(state.mode==="support"){updateFooter();render();}
   }
 }
 
 async function loadEvents(){
+  const cached=readCache("gather-cache-events",864e5);
+  if(cached)applyEventsData(cached);
   try{
     const res=await fetch("/api/events",{headers:{Accept:"application/json"}});
     if(!res.ok)throw 0;
     const data=await res.json();
-    LIVE_EVENTS=(data.events||[]).map(m=>({...m,verified:true}));
-    EVENTS_UPDATED=data.updated||null;
-    EVENT_SOURCES=data.sources||[];
-  }catch(e){/* backend unavailable — curated samples still show */}
-  finally{
+    if((data.events||[]).length)writeCache("gather-cache-events",data);
     EVENTS_LOADING=false;
-    if(state.mode==="activities"){
-      DATA=activityItems().map((m,i)=>({...m,_id:"p"+i}));
-      updateFooter();render();
-    }
+    applyEventsData(data);
+  }catch(e){
+    EVENTS_LOADING=false;
+    if(state.mode==="activities"){updateFooter();render();}
   }
 }
 
@@ -1130,7 +1283,12 @@ function init(){
     this.classList.toggle("open",!collapsed);
   };
   document.getElementById("fClear").onclick=clearFilters;
-  document.getElementById("q").addEventListener("input",e=>{state.q=e.target.value;render();});
+  let _qTimer=null;
+  document.getElementById("q").addEventListener("input",e=>{
+    state.q=e.target.value;
+    clearTimeout(_qTimer);
+    _qTimer=setTimeout(render,160);
+  });
   document.getElementById("btnSaved").onclick=()=>{state.savedOnly=!state.savedOnly;state.preset=state.savedOnly?"saved":"";updateSavedBtn();buildPresets();render();};
   document.getElementById("btnShare").onclick=()=>{
     pushUrl();
@@ -1152,11 +1310,18 @@ function init(){
       document.body.classList.add(btn.dataset.view==="map"?"mobile-view-map":"mobile-view-list");
     };
   });
+  const helpModal=document.getElementById("helpModal");
+  document.getElementById("btnHelp").onclick=()=>{helpModal.hidden=false;};
+  document.getElementById("helpClose").onclick=()=>{helpModal.hidden=true;};
+  helpModal.addEventListener("click",e=>{if(e.target===helpModal)helpModal.hidden=true;});
   document.addEventListener("keydown",e=>{
     if(e.key==="/"&&document.activeElement!==document.getElementById("q")){
       e.preventDefault();document.getElementById("q").focus();
     }
-    if(e.key==="Escape")map?.closePopup();
+    if(e.key==="Escape"){
+      if(!helpModal.hidden){helpModal.hidden=true;return;}
+      map?.closePopup();
+    }
   });
   document.getElementById("nowbtn").onclick=function(){state.nowOnly=!state.nowOnly;this.classList.toggle("on");render();};
   document.getElementById("nearme").onclick=function(){toggleMyArea(this);};
