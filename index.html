@@ -340,6 +340,26 @@
     </div>
     <div class="res-group" id="resOnline">
       <h3>Can't make it in person?</h3>
+      <a class="res-item" href="https://aa-intergroup.org/meetings/" target="_blank" rel="noopener">
+        <div class="rn">Online Intergroup of AA</div>
+        <div class="rd">Hundreds of online AA meetings around the clock, every day.</div>
+        <div class="rc">aa-intergroup.org ↗</div>
+      </a>
+      <a class="res-item" href="https://virtual-na.org/meetings/" target="_blank" rel="noopener">
+        <div class="rn">Virtual NA</div>
+        <div class="rd">Online and phone NA meetings worldwide, searchable by time and language.</div>
+        <div class="rc">virtual-na.org ↗</div>
+      </a>
+      <a class="res-item" href="https://www.intherooms.com/" target="_blank" rel="noopener">
+        <div class="rn">In The Rooms</div>
+        <div class="rd">Free online recovery community — live video meetings across many fellowships.</div>
+        <div class="rc">intherooms.com ↗</div>
+      </a>
+      <a class="res-item" href="https://meetings.smartrecovery.org/meetings/" target="_blank" rel="noopener">
+        <div class="rn">SMART Recovery Online</div>
+        <div class="rd">Science-based, non-12-step meetings online every day.</div>
+        <div class="rc">meetings.smartrecovery.org ↗</div>
+      </a>
     </div>
   </div>
 </div>
@@ -374,24 +394,24 @@ const FELLOWSHIPS = {
 // Official meeting finders per program — powers the "verify" button.
 const FINDERS={
   AA:"https://aaminneapolis.org/meetings/",
-  NA:"https://naminnesota.org/meetings/",
-  "Al-Anon":"https://al-anon.org/al-anon-meetings/",
+  NA:"https://naminnesota.org/find-a-meeting/",
+  "Al-Anon":"https://al-anon.org/al-anon-meetings/find-an-al-anon-meeting/",
   ACA:"https://adultchildren.org/meeting-search/",
-  EA:"https://emotionsanonymous.org/find-a-meeting/",
-  CoDA:"https://coda.org/coda-meetings/",
+  EA:"https://emotionsanonymous.org/find-an-ea-meeting/",
+  CoDA:"https://coda.org/find-a-meeting/",
   OA:"https://oa.org/find-a-meeting/",
-  GA:"https://www.gamblersanonymous.org/ga/locations",
+  GA:"https://www.gamblersanonymous.org/find-a-meeting/",
   SMART:"https://meetings.smartrecovery.org/meetings/",
-  Dharma:"https://recoverydharma.org/find-a-meeting/",
-  Refuge:"https://www.refugerecovery.org/meetings",
-  LifeRing:"https://lifering.org/find-a-meeting/",
-  WFS:"https://womenforsobriety.org/find-meetings/",
-  Wellbriety:"https://wellbriety.com/",
-  CR:"https://locator.crgroups.info/",
-  SOS:"https://www.sossobriety.org/meetings/",
+  Dharma:"https://recoverydharma.org/meetings/",
+  Refuge:"https://refugerecoverymeetings.org/",
+  LifeRing:"https://lifering.org/meeting-menu/",
+  WFS:"https://meetings.womenforsobriety.org/meetings/",
+  Wellbriety:"https://whitebison.org/circle-meetings/",
+  CR:"https://crlocator.com/",
+  SOS:"https://www.sossobriety.org/on-line-groups",
   CA:"https://ca.org/meetings/",
   MA:"https://www.marijuana-anonymous.org/meetings/",
-  DDA:"https://draonline.org/",
+  DDA:"https://draonline.org/meetings/",
 };
 function finderFor(m){return (m.url)||FINDERS[m.cat]||"https://www.211.org/";}
 const SUPPORT = [
@@ -401,7 +421,7 @@ const SUPPORT = [
   {cat:"AA",name:"Sunrise Sobriety",day:3,time:"07:00",dur:60,fmt:"hybrid",loc:"Mortimer's",addr:"352 Snelling Ave S, St Paul",lat:44.9356,lng:-93.1668,types:["Open"]},
   {cat:"AA",name:"Lake Street Group",day:4,time:"12:00",dur:60,fmt:"in-person",loc:"Walker Community Church",addr:"3104 16th Ave S, Minneapolis",lat:44.9486,lng:-93.2480,types:["Open","Discussion"]},
   {cat:"AA",name:"Women's Courage",day:6,time:"10:00",dur:90,fmt:"in-person",loc:"Unity Church Unitarian",addr:"733 Portland Ave, St Paul",lat:44.9462,lng:-93.1213,types:["Closed","Women"]},
-  {cat:"AA",name:"Young People's Online",day:0,time:"20:00",dur:60,fmt:"online",loc:"Zoom",addr:"Online",lat:44.95,lng:-93.09,types:["Open","Young People"],url:"https://zoom.us"},
+  {cat:"AA",name:"Young People's Online",day:0,time:"20:00",dur:60,fmt:"online",loc:"Online Intergroup of AA",addr:"Online · aa-intergroup.org",lat:44.95,lng:-93.09,types:["Open","Young People"],url:"https://aa-intergroup.org/meetings/"},
   {cat:"NA",name:"Just For Today",day:1,time:"19:00",dur:90,fmt:"in-person",loc:"Central Presbyterian",addr:"500 Cedar St, St Paul",lat:44.9469,lng:-93.0962,types:["Open"]},
   {cat:"NA",name:"Clean & Serene",day:4,time:"20:00",dur:60,fmt:"hybrid",loc:"Mercy Seat",addr:"2422 18th Ave S, Minneapolis",lat:44.9560,lng:-93.2466,types:["Open","Speaker"]},
   {cat:"NA",name:"Midday Recovery",day:2,time:"12:00",dur:60,fmt:"in-person",loc:"First Lutheran",addr:"463 Maria Ave, St Paul",lat:44.9559,lng:-93.0710,types:["Open"]},
@@ -418,7 +438,7 @@ const SUPPORT = [
   {cat:"GA",name:"New Beginnings GA",day:1,time:"19:30",dur:90,fmt:"in-person",loc:"Mount Olivet Lutheran",addr:"5025 Knox Ave S, Minneapolis",lat:44.8995,lng:-93.3000,types:["Closed"]},
   {cat:"GA",name:"Turnaround Thursday",day:4,time:"19:00",dur:90,fmt:"in-person",loc:"St Stephen Lutheran",addr:"8400 France Ave S, Bloomington",lat:44.8610,lng:-93.3290,types:["Closed"]},
   {cat:"SMART",name:"SMART Recovery St Paul",day:2,time:"18:00",dur:90,fmt:"hybrid",loc:"Hazelden Betty Ford",addr:"680 Stewart Ave, St Paul",lat:44.9290,lng:-93.1390,types:["Open","Secular"]},
-  {cat:"SMART",name:"SMART Online MN",day:0,time:"19:00",dur:90,fmt:"online",loc:"Zoom",addr:"Online",lat:44.95,lng:-93.09,types:["Open","Secular"],url:"https://smartrecovery.org"},
+  {cat:"SMART",name:"SMART Online MN",day:0,time:"19:00",dur:90,fmt:"online",loc:"SMART Recovery (online)",addr:"Online · meetings.smartrecovery.org",lat:44.95,lng:-93.09,types:["Open","Secular"],url:"https://meetings.smartrecovery.org/meetings/"},
   {cat:"Dharma",name:"Recovery Dharma TC",day:3,time:"18:30",dur:75,fmt:"in-person",loc:"Lake Harriet Spiritual",addr:"4401 Upton Ave S, Minneapolis",lat:44.9210,lng:-93.3170,types:["Open","Secular"]},
   {cat:"Dharma",name:"Mindful Recovery",day:0,time:"10:00",dur:60,fmt:"hybrid",loc:"MN Zen Meditation Center",addr:"3343 E Calhoun Pkwy, Minneapolis",lat:44.9430,lng:-93.3060,types:["Open"]},
   {cat:"Refuge",name:"Refuge Recovery Sit",day:1,time:"18:00",dur:75,fmt:"in-person",loc:"Common Ground Meditation",addr:"2700 E 26th St, Minneapolis",lat:44.9560,lng:-93.2300,types:["Open","Secular"]},
@@ -426,11 +446,11 @@ const SUPPORT = [
   // ----- Non-12-step programs: official online meetings (verify on source) -----
   {cat:"SMART",name:"SMART Recovery Daily Online",day:0,time:"19:00",dur:90,fmt:"online",loc:"SMART Recovery (online)",addr:"Online · meetings.smartrecovery.org",lat:44.95,lng:-93.09,types:["Open","Secular","Science-based"],url:"https://meetings.smartrecovery.org/meetings/"},
   {cat:"Dharma",name:"Recovery Dharma Online Sit",day:2,time:"20:00",dur:60,fmt:"online",loc:"Recovery Dharma (online)",addr:"Online · recoverydharma.online",lat:44.95,lng:-93.09,types:["Open","Buddhist","Meditation"],url:"https://recoverydharma.online/"},
-  {cat:"LifeRing",name:"LifeRing Online Meeting",day:3,time:"18:00",dur:60,fmt:"online",loc:"LifeRing Secular Recovery",addr:"Online · lifering.org",lat:44.95,lng:-93.09,types:["Open","Secular","Abstinence"],url:"https://lifering.org/find-a-meeting/"},
-  {cat:"WFS",name:"Women for Sobriety Online",day:1,time:"19:00",dur:60,fmt:"online",loc:"Women for Sobriety",addr:"Online · womenforsobriety.org",lat:44.95,lng:-93.09,types:["Closed","Women","New Life"],url:"https://womenforsobriety.org/find-meetings/"},
-  {cat:"Wellbriety",name:"Wellbriety Talking Circle",day:4,time:"18:30",dur:90,fmt:"online",loc:"White Bison Wellbriety",addr:"Online · wellbriety.com",lat:44.95,lng:-93.09,types:["Open","Native American","Medicine Wheel"],url:"https://wellbriety.com/"},
-  {cat:"SOS",name:"SOS Secular Sobriety (online)",day:6,time:"10:00",dur:60,fmt:"online",loc:"Secular Organizations for Sobriety",addr:"Online · sossobriety.org",lat:44.95,lng:-93.09,types:["Open","Secular"],url:"https://www.sossobriety.org/meetings/"},
-  {cat:"CR",name:"Celebrate Recovery — St Paul",day:5,time:"19:00",dur:120,fmt:"hybrid",loc:"Substance Church",addr:"1390 Arcade St, St Paul",lat:44.9810,lng:-93.0640,types:["Open","Christian"],url:"https://locator.crgroups.info/"},
+  {cat:"LifeRing",name:"LifeRing Online Meeting",day:3,time:"18:00",dur:60,fmt:"online",loc:"LifeRing Secular Recovery",addr:"Online · lifering.org",lat:44.95,lng:-93.09,types:["Open","Secular","Abstinence"],url:"https://lifering.org/meeting-menu/"},
+  {cat:"WFS",name:"Women for Sobriety Online",day:1,time:"19:00",dur:60,fmt:"online",loc:"Women for Sobriety",addr:"Online · womenforsobriety.org",lat:44.95,lng:-93.09,types:["Closed","Women","New Life"],url:"https://meetings.womenforsobriety.org/meetings/"},
+  {cat:"Wellbriety",name:"Wellbriety Talking Circle",day:4,time:"18:30",dur:90,fmt:"online",loc:"White Bison Wellbriety",addr:"Online · whitebison.org",lat:44.95,lng:-93.09,types:["Open","Native American","Medicine Wheel"],url:"https://whitebison.org/circle-meetings/"},
+  {cat:"SOS",name:"SOS Secular Sobriety (online)",day:6,time:"10:00",dur:60,fmt:"online",loc:"Secular Organizations for Sobriety",addr:"Online · sossobriety.org",lat:44.95,lng:-93.09,types:["Open","Secular"],url:"https://www.sossobriety.org/on-line-groups"},
+  {cat:"CR",name:"Celebrate Recovery — St Paul",day:5,time:"19:00",dur:120,fmt:"hybrid",loc:"Substance Church",addr:"1390 Arcade St, St Paul",lat:44.9810,lng:-93.0640,types:["Open","Christian"],url:"https://crlocator.com/"},
   {cat:"CA",name:"Cocaine Anonymous MN",day:2,time:"19:30",dur:60,fmt:"hybrid",loc:"CA Minnesota",addr:"Online + Twin Cities · ca-mn.org",lat:44.95,lng:-93.09,types:["Open"],url:"https://ca.org/meetings/"},
   {cat:"MA",name:"Marijuana Anonymous Online",day:0,time:"18:00",dur:60,fmt:"online",loc:"Marijuana Anonymous",addr:"Online · marijuana-anonymous.org",lat:44.95,lng:-93.09,types:["Open"],url:"https://www.marijuana-anonymous.org/meetings/"},
 ];
