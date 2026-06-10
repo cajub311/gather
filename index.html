@@ -106,6 +106,7 @@
   .btn.locating{opacity:.7;pointer-events:none}
   .card{display:grid;grid-template-columns:56px 1fr;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line);cursor:pointer;transition:background .12s}
   .card:hover{background:var(--surface2)}
+  .card:focus-visible{outline:2px solid var(--accent2);outline-offset:-2px}
   .card.active{background:var(--bg);border-left:3px solid var(--accent);padding-left:13px}
   .card .timecol{text-align:center}
   .card .timepill{display:block;font-size:13px;font-weight:700;color:var(--txt);line-height:1.2}
@@ -169,6 +170,24 @@
   @keyframes sp{to{transform:rotate(360deg)}}
   .crisis a{color:#fca5a5;font-size:12px;font-weight:600;text-decoration:none;border:1px solid rgba(252,165,165,.2);padding:6px 12px;border-radius:var(--radius);white-space:nowrap;transition:background .15s,border-color .15s}
   .crisis a:hover{background:rgba(252,165,165,.06);border-color:rgba(252,165,165,.35)}
+  .crisis button{color:#fca5a5;background:transparent;font-size:12px;font-weight:600;border:1px solid rgba(252,165,165,.2);padding:6px 12px;border-radius:var(--radius);white-space:nowrap;transition:background .15s,border-color .15s}
+  .crisis button:hover{background:rgba(252,165,165,.06);border-color:rgba(252,165,165,.35)}
+  .modal-scrim{position:fixed;inset:0;z-index:2000;background:rgba(5,8,12,.66);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:18px}
+  .modal-scrim[hidden]{display:none!important}
+  .modal{width:100%;max-width:520px;max-height:86vh;overflow-y:auto;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.5);padding:20px}
+  .modal h2{margin:0 0 4px;font-size:17px}
+  .modal .modal-sub{font-size:12.5px;color:var(--muted);margin:0 0 14px;line-height:1.45}
+  .modal-close{float:right;background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:4px 10px;font-size:12px;font-weight:600}
+  .modal-close:hover{color:var(--txt)}
+  .res-group{margin-bottom:14px}
+  .res-group h3{margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+  .res-item{display:block;padding:10px 12px;margin-bottom:6px;background:var(--bg);border:1px solid var(--line);border-radius:10px;text-decoration:none;color:var(--txt);transition:border-color .15s}
+  .res-item:hover{border-color:var(--accent-dim)}
+  .res-item .rn{font-size:13.5px;font-weight:600}
+  .res-item .rd{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.4}
+  .res-item .rc{font-size:12px;color:var(--accent);font-weight:600;margin-top:3px}
+  .res-item.urgent{border-color:rgba(252,165,165,.35)}
+  .res-item.urgent .rc{color:#fca5a5}
   .marker-cluster-small,.marker-cluster-medium,.marker-cluster-large{width:44px!important;height:44px!important}
   .presetrow{display:flex;gap:6px;padding:4px 14px 8px;overflow-x:auto;scrollbar-width:none}
   .presetrow::-webkit-scrollbar{display:none}
@@ -221,7 +240,7 @@
         <button type="button" class="iconbtn" id="btnSaved" title="Show saved">Saved</button>
         <button type="button" class="iconbtn" id="btnShare" title="Copy link to this view">Share</button>
       </div>
-      <div class="crisis" title="Free, confidential, 24/7"><a href="tel:988">Crisis support: 988</a></div>
+      <div class="crisis" title="Free, confidential, 24/7"><a href="tel:988">Crisis support: 988</a> <button type="button" id="btnHelp">Get help now</button></div>
     </div>
     <div class="header-controls">
       <div class="modes">
@@ -288,6 +307,42 @@
   </main>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="modal-scrim" id="helpModal" hidden role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+  <div class="modal">
+    <button type="button" class="modal-close" id="helpClose">Close ✕</button>
+    <h2 id="helpTitle">Get help now</h2>
+    <p class="modal-sub">Free, confidential resources. If someone is in immediate danger, call 911.</p>
+    <div class="res-group">
+      <h3>Right now — 24/7</h3>
+      <a class="res-item urgent" href="tel:988">
+        <div class="rn">988 Suicide &amp; Crisis Lifeline</div>
+        <div class="rd">Mental health or substance use crisis. Call or text 988, or chat at 988lifeline.org.</div>
+        <div class="rc">Call 988</div>
+      </a>
+      <a class="res-item urgent" href="tel:18006624357">
+        <div class="rn">SAMHSA National Helpline</div>
+        <div class="rd">Free treatment referral &amp; information for substance use and mental health, in English and Spanish.</div>
+        <div class="rc">1-800-662-HELP (4357)</div>
+      </a>
+      <a class="res-item" href="tel:211">
+        <div class="rn">211 — United Way</div>
+        <div class="rd">Connects you to local help: housing, food, treatment, support programs.</div>
+        <div class="rc">Call 211</div>
+      </a>
+    </div>
+    <div class="res-group" id="resTreatment">
+      <h3>Find treatment</h3>
+      <a class="res-item" href="https://findtreatment.gov/" target="_blank" rel="noopener">
+        <div class="rn">FindTreatment.gov</div>
+        <div class="rd">Official national locator for licensed treatment — filter by payment, telehealth, and distance.</div>
+        <div class="rc">findtreatment.gov ↗</div>
+      </a>
+    </div>
+    <div class="res-group" id="resOnline">
+      <h3>Can't make it in person?</h3>
+    </div>
+  </div>
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
@@ -724,7 +779,7 @@ function filtered(){
       const ok=[...state.quick].some(id=>quicks.find(q=>q.id===id)?.match(m));
       if(!ok)return false;
     }
-    if(state.q){const h=(m.name+" "+m.loc+" "+m.addr+" "+(m.types||[]).join(" ")+" "+META[m.cat].name).toLowerCase();if(!h.includes(state.q.toLowerCase()))return false;}
+    if(state.q){const h=(m.name+" "+m.loc+" "+m.addr+" "+(m.types||[]).join(" ")+" "+(m.source||"")+" "+(m.region||"")+" "+META[m.cat].name).toLowerCase();if(!h.includes(state.q.toLowerCase()))return false;}
     return true;
   });
   return smartSort(list);
@@ -852,6 +907,11 @@ function renderCard(el,m){
       ${(m.types||[]).slice(0,3).map(t=>`<span class="b">${t}</span>`).join("")}</div>
     <div class="linkrow">${dir}${join}${verify}
       <button type="button" class="dir" style="border:none;background:none;padding:0;cursor:pointer" data-copy="${id}">Copy info</button></div></div>`;
+  card.tabIndex=0;
+  card.setAttribute("role","button");
+  card.addEventListener("keydown",e=>{
+    if(e.key==="Enter"&&e.target===card){e.preventDefault();focusMeeting(m);}
+  });
   card.querySelector(".savebtn").onclick=e=>toggleSaved(id,e);
   card.querySelector("[data-copy]")?.addEventListener("click",e=>{
     e.stopPropagation();
@@ -1152,11 +1212,18 @@ function init(){
       document.body.classList.add(btn.dataset.view==="map"?"mobile-view-map":"mobile-view-list");
     };
   });
+  const helpModal=document.getElementById("helpModal");
+  document.getElementById("btnHelp").onclick=()=>{helpModal.hidden=false;};
+  document.getElementById("helpClose").onclick=()=>{helpModal.hidden=true;};
+  helpModal.addEventListener("click",e=>{if(e.target===helpModal)helpModal.hidden=true;});
   document.addEventListener("keydown",e=>{
     if(e.key==="/"&&document.activeElement!==document.getElementById("q")){
       e.preventDefault();document.getElementById("q").focus();
     }
-    if(e.key==="Escape")map?.closePopup();
+    if(e.key==="Escape"){
+      if(!helpModal.hidden){helpModal.hidden=true;return;}
+      map?.closePopup();
+    }
   });
   document.getElementById("nowbtn").onclick=function(){state.nowOnly=!state.nowOnly;this.classList.toggle("on");render();};
   document.getElementById("nearme").onclick=function(){toggleMyArea(this);};
