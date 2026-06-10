@@ -2,14 +2,26 @@
 // Fetches real, public feeds server-side (no browser CORS) and normalizes
 // them into the shape the front-end already uses.
 //
-//   AA  -> aaminneapolis.org  (12-step-meeting-list / TSML JSON)
-//   NA  -> bmlt.naminnesota.org (BMLT JSON)
+//   AA      -> aaminneapolis.org + aaminnesota.org (12-step-meeting-list / TSML JSON)
+//   NA      -> bmlt.naminnesota.org (BMLT JSON)
+//   Al-Anon -> mnsa-afg.org (MN South Area, TSML JSON)
 //
 // Output: { updated, sources, meetings: [ {cat,name,day,time,dur,fmt,loc,addr,lat,lng,types,url,live,verified} ] }
 
 const AA_URL = "https://aaminneapolis.org/wp-admin/admin-ajax.php?action=meetings";
+const AA_MN_URL = "https://aaminnesota.org/wp-admin/admin-ajax.php?action=meetings";
+const ALANON_URL = "https://mnsa-afg.org/wp-admin/admin-ajax.php?action=meetings";
 const NA_URL =
   "https://bmlt.naminnesota.org/main_server/client_interface/json/?switcher=GetSearchResults";
+
+// Statewide feeds include greater Minnesota; keep the metro area only.
+const METRO = { latMin: 44.6, latMax: 45.4, lngMin: -93.8, lngMax: -92.6 };
+function inMetro(m) {
+  return (
+    m.lat >= METRO.latMin && m.lat <= METRO.latMax &&
+    m.lng >= METRO.lngMin && m.lng <= METRO.lngMax
+  );
+}
 
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Gather/1.0";
@@ -50,7 +62,7 @@ function durMins(start, end) {
   }
 }
 
-function normalizeAA(rows) {
+function normalizeTSML(rows, cat) {
   const out = [];
   for (const m of rows) {
     const lat = parseFloat(m.latitude), lng = parseFloat(m.longitude);
@@ -65,14 +77,14 @@ function normalizeAA(rows) {
       .filter(Boolean)
       .slice(0, 3);
     out.push({
-      cat: "AA",
-      name: m.name || "AA Meeting",
+      cat,
+      name: m.name || `${cat} Meeting`,
       day: typeof m.day === "number" ? m.day : Number(m.day) || 0,
       time: hhmm(m.time),
       dur: m.end_time ? durMins(hhmm(m.time), hhmm(m.end_time)) : 60,
       fmt,
-      loc: m.location || m.region || "AA Group",
-      addr: m.formatted_address || m.region || "Minneapolis area",
+      loc: m.location || m.region || `${cat} Group`,
+      addr: m.formatted_address || m.region || "Twin Cities area",
       lat: isFinite(lat) ? lat : null,
       lng: isFinite(lng) ? lng : null,
       types: labels,
@@ -122,23 +134,59 @@ function normalizeNA(rows) {
 module.exports = async (req, res) => {
   const sources = [];
   let meetings = [];
+  // the same meeting can appear in two intergroup feeds — keep the first copy
+  const seen = new Set();
+  const addUnique = (list) => {
+    for (const m of list) {
+      const k = [m.cat, m.name, m.day, m.time, m.addr].join("|").toLowerCase();
+      if (seen.has(k)) continue;
+      seen.add(k);
+      meetings.push(m);
+    }
+  };
 
-  const [aa, na] = await Promise.allSettled([getJSON(AA_URL), getJSON(NA_URL)]);
+  const [aa, aaMn, na, alanon] = await Promise.allSettled([
+    getJSON(AA_URL),
+    getJSON(AA_MN_URL),
+    getJSON(NA_URL),
+    getJSON(ALANON_URL),
+  ]);
 
   if (aa.status === "fulfilled" && Array.isArray(aa.value)) {
-    const m = normalizeAA(aa.value).filter((x) => x.lat && x.lng);
-    meetings = meetings.concat(m);
+    const m = normalizeTSML(aa.value, "AA").filter((x) => x.lat && x.lng);
+    addUnique(m);
     sources.push({ name: "AA Minneapolis Intergroup", count: m.length, ok: true });
   } else {
     sources.push({ name: "AA Minneapolis Intergroup", count: 0, ok: false });
   }
 
+  if (aaMn.status === "fulfilled" && Array.isArray(aaMn.value)) {
+    const m = normalizeTSML(aaMn.value, "AA").filter(
+      (x) => x.lat && x.lng && inMetro(x)
+    );
+    const before = meetings.length;
+    addUnique(m);
+    sources.push({ name: "AA Minnesota (Area 35/36)", count: meetings.length - before, ok: true });
+  } else {
+    sources.push({ name: "AA Minnesota (Area 35/36)", count: 0, ok: false });
+  }
+
   if (na.status === "fulfilled" && Array.isArray(na.value)) {
     const m = normalizeNA(na.value).filter((x) => x.lat && x.lng);
-    meetings = meetings.concat(m);
+    addUnique(m);
     sources.push({ name: "NA Minnesota (BMLT)", count: m.length, ok: true });
   } else {
     sources.push({ name: "NA Minnesota (BMLT)", count: 0, ok: false });
+  }
+
+  if (alanon.status === "fulfilled" && Array.isArray(alanon.value)) {
+    const m = normalizeTSML(alanon.value, "Al-Anon").filter(
+      (x) => x.lat && x.lng && inMetro(x)
+    );
+    addUnique(m);
+    sources.push({ name: "Al-Anon MN South Area", count: m.length, ok: true });
+  } else {
+    sources.push({ name: "Al-Anon MN South Area", count: 0, ok: false });
   }
 
   // cache at the edge: fresh 1h, serve-stale up to 24h while revalidating
