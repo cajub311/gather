@@ -13,6 +13,10 @@ const UA =
 
 const SOURCES = [
   // --- The Events Calendar (Tribe) REST — confirmed live ---
+  // Recovery-community events: All Recovery meetings, sober socials, trainings
+  { type: "tribe", name: "Minnesota Recovery Connection", cat: "Recovery", base: "https://www.minnesotarecovery.org", lat: 44.9637, lng: -93.1768, addr: "800 Transfer Rd, St Paul" },
+  // Free/low-cost park programming across Minneapolis
+  { type: "tribe", name: "Minneapolis Parks & Rec", base: "https://www.minneapolisparks.org", lat: 44.9778, lng: -93.2650, addr: "Minneapolis parks" },
   { type: "tribe", name: "Surly Brewing Co.", base: "https://surlybrewing.com", lat: 44.9696, lng: -93.2089, addr: "520 Malcolm Ave SE, Minneapolis" },
   { type: "tribe", name: "Modist Brewing", base: "https://modistbrewing.com", lat: 44.9852, lng: -93.2772, addr: "505 N 3rd St, Minneapolis" },
   { type: "tribe", name: "Indeed Brewing", base: "https://indeedbrewing.com", lat: 44.9996, lng: -93.2476, addr: "711 NE 15th Ave, Minneapolis" },

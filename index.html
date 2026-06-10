@@ -332,10 +332,33 @@
     </div>
     <div class="res-group" id="resTreatment">
       <h3>Find treatment</h3>
+      <a class="res-item" href="https://fasttrackermn.org/" target="_blank" rel="noopener">
+        <div class="rn">Fast-Tracker Minnesota</div>
+        <div class="rd">Minnesota's real-time locator for substance use &amp; mental health treatment openings.</div>
+        <div class="rc">fasttrackermn.org ↗</div>
+      </a>
       <a class="res-item" href="https://findtreatment.gov/" target="_blank" rel="noopener">
         <div class="rn">FindTreatment.gov</div>
         <div class="rd">Official national locator for licensed treatment — filter by payment, telehealth, and distance.</div>
         <div class="rc">findtreatment.gov ↗</div>
+      </a>
+    </div>
+    <div class="res-group" id="resCommunity">
+      <h3>Sober community &amp; support</h3>
+      <a class="res-item" href="https://thephoenix.org/find-a-class/" target="_blank" rel="noopener">
+        <div class="rn">The Phoenix</div>
+        <div class="rd">Free sober active community — workouts, climbing, yoga &amp; socials. St Paul gym at 470 Cleveland Ave N.</div>
+        <div class="rc">thephoenix.org ↗</div>
+      </a>
+      <a class="res-item" href="https://www.minnesotarecovery.org/" target="_blank" rel="noopener">
+        <div class="rn">Minnesota Recovery Connection</div>
+        <div class="rd">Peer support, All Recovery meetings, and recovery community events across the metro.</div>
+        <div class="rc">minnesotarecovery.org ↗</div>
+      </a>
+      <a class="res-item" href="https://mnwitw.org/mnwarmline" target="_blank" rel="noopener">
+        <div class="rn">Minnesota Warmline</div>
+        <div class="rd">Peer-run support line when it's not a crisis but you need to talk to someone who gets it.</div>
+        <div class="rc">mnwitw.org/mnwarmline ↗</div>
       </a>
     </div>
     <div class="res-group" id="resOnline">
@@ -457,6 +480,7 @@ const SUPPORT = [
 
 /* ===== ACTIVITIES & GROUPS ===== */
 const ACTIVITIES = {
+  Recovery:{name:"Sober & Recovery Community",color:"#4fd1c5"},
   Games:{name:"Board Games & Tabletop",color:"#c084fc"},
   Zen:{name:"Meditation & Zen",color:"#5eead4"},
   Outdoors:{name:"Hiking & Outdoors",color:"#84cc16"},
@@ -509,6 +533,7 @@ const QUICK={
     {id:"women",label:"Women",match:m=>/women/i.test((m.types||[]).join(" "))},
   ],
   activities:[
+    {id:"sober",label:"Sober-friendly",match:m=>m.cat==="Recovery"||/sober|recovery|alcohol[- ]free/i.test(m.name+" "+(m.types||[]).join(" ")+" "+(m.source||""))},
     {id:"free",label:"Free",match:m=>(m.types||[]).some(t=>/free/i.test(t))},
     {id:"new",label:"Welcoming",match:m=>/beginner|newcomer|welcome|all levels|drop-?in/i.test(((m.types||[]).join(" "))+" "+m.name)},
     {id:"outdoor",label:"Outdoors",match:m=>m.cat==="Outdoors"||/hike|park|trail|garden/i.test(m.name+" "+m.loc)},
