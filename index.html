@@ -6,6 +6,7 @@
 <title>Gather — Twin Cities meetings &amp; things to do</title>
 <meta name="description" content="Find support meetings and local activities across Minneapolis–St. Paul on one map. Filter by day, time, and distance." />
 <meta name="theme-color" content="#131a24" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23131a24'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%234fd1c5'/%3E%3C/svg%3E" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
@@ -228,6 +229,15 @@
 </style>
 </head>
 <body>
+<noscript>
+  <div style="max-width:640px;margin:48px auto;padding:24px;font-family:system-ui,sans-serif;color:#eef2f6;background:#131a24;border:1px solid #263041;border-radius:12px;line-height:1.6">
+    <h1 style="margin:0 0 8px;font-size:20px">Gather</h1>
+    <p style="color:#8b9cb3;margin:0 0 16px">Gather needs JavaScript to show the interactive map and meeting list. Please enable it, or use these resources right now:</p>
+    <p style="margin:0 0 6px"><strong>988</strong> — Suicide &amp; Crisis Lifeline (call or text, 24/7)</p>
+    <p style="margin:0 0 6px"><strong>1-800-662-4357</strong> — SAMHSA National Helpline (treatment referral)</p>
+    <p style="margin:0"><strong>211</strong> — United Way (local help: housing, food, treatment)</p>
+  </div>
+</noscript>
 <div id="app">
   <header>
     <div class="header-top">
@@ -520,6 +530,9 @@ const PLAY = [
 
 /* ===== engine ===== */
 let DATA=[], META=FELLOWSHIPS;
+// Safe category lookup: live feeds are external, so a category we don't know
+// about must never crash the render — fall back to a neutral label + color.
+function metaOf(cat){return META[cat]||{name:cat||"Other",color:"#8b9cb3"};}
 let LIVE=[], LIVE_CATS=new Set(), LAST_UPDATED=null, SOURCE_INFO=[], LIVE_LOADING=true;
 let LIVE_EVENTS=[], EVENTS_UPDATED=null, EVENT_SOURCES=[], EVENTS_LOADING=true;
 const RENDER_STEP=150;
@@ -843,7 +856,7 @@ function filtered(){
       const ok=[...state.quick].some(id=>quicks.find(q=>q.id===id)?.match(m));
       if(!ok)return false;
     }
-    if(state.q){const h=(m.name+" "+m.loc+" "+m.addr+" "+(m.types||[]).join(" ")+" "+(m.source||"")+" "+(m.region||"")+" "+META[m.cat].name).toLowerCase();if(!h.includes(state.q.toLowerCase()))return false;}
+    if(state.q){const h=(m.name+" "+m.loc+" "+m.addr+" "+(m.types||[]).join(" ")+" "+(m.source||"")+" "+(m.region||"")+" "+metaOf(m.cat).name).toLowerCase();if(!h.includes(state.q.toLowerCase()))return false;}
     return true;
   });
   return smartSort(list);
@@ -889,13 +902,13 @@ function updateMapLegend(list){
   const top=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,7);
   if(!top.length){el.innerHTML="";return;}
   el.innerHTML=`<div class="lg-title">On the map</div>${top.map(([k,n])=>
-    `<div class="lg-row"><span class="lg-dot" style="background:${META[k].color}"></span>${k} <span style="opacity:.7">(${n})</span></div>`
+    `<div class="lg-row"><span class="lg-dot" style="background:${metaOf(k).color}"></span>${k} <span style="opacity:.7">(${n})</span></div>`
   ).join("")}`;
 }
 function renderFeatured(el,list){
   const next=pickNextUp(list);
   if(!next)return;
-  const fc=META[next.cat].color;
+  const fc=metaOf(next.cat).color;
   const tp=fmtParts(next.time);
   const whenLbl=next.dateLabel?next.dateLabel:(next.day===todayDay()?"Today":DAYS[next.day]);
   const rel=relWhen(next);
@@ -947,7 +960,7 @@ function renderOnlineSection(el,items){
   items.forEach(m=>renderCard(el,m));
 }
 function renderCard(el,m){
-  const id=m._id,fc=META[m.cat].color,now=isNow(m);
+  const id=m._id,fc=metaOf(m.cat).color,now=isNow(m);
   const card=document.createElement("div");
   card.className="card"+(activeId===id?" active":"")+(SAVED.has(id)?" saved":"");card.dataset.id=id;
   const trust=m.verified?'<span class="b ok">Live</span>':'<span class="b warn">Sample</span>';
@@ -986,16 +999,24 @@ function renderCard(el,m){
 }
 let _lastSig="";
 function render(){
-  const sig=[state.mode,[...state.cat].sort().join(","),[...state.quick].sort().join(","),state.day,state.fmt,state.tod,state.nowOnly,state.q,state.near].join("|");
+  try{renderInner();}
+  catch(err){
+    console.error("Gather: render failed",err);
+    const el=document.getElementById("list");
+    if(el)el.innerHTML='<div class="empty"><div class="empty-title">Something went wrong</div>We hit a snag showing these listings.<div class="empty-actions"><button type="button" class="btn" onclick="location.reload()">Reload</button></div></div>';
+  }
+}
+function renderInner(){
+  const sig=[state.mode,[...state.cat].sort().join(","),[...state.quick].sort().join(","),state.day,state.daySet?[...state.daySet].sort().join(","):"",state.fmt,state.tod,state.nowOnly,state.savedOnly,state.q,state.near].join("|");
   if(sig!==_lastSig){state.limit=RENDER_STEP;_lastSig=sig;}
   const list=filtered();
   lastFilteredList=list;
   const el=document.getElementById("list");el.innerHTML="";
-  const word=state.mode==="support"?"fellowships":"activity types";
   const loadingNow=state.mode==="support"?LIVE_LOADING:EVENTS_LOADING;
   const loading=loadingNow?'<span class="loading"><span class="spin"></span>loading live…</span> ':"";
   const sortNote=sortHint();
-  document.getElementById("count").innerHTML=loading+`<b>${list.length}</b> ${state.mode==="support"?"meeting":"activity"}${list.length!==1?"s":""} · ${sortNote}`;
+  const noun=state.mode==="support"?(list.length===1?"meeting":"meetings"):(list.length===1?"activity":"activities");
+  document.getElementById("count").innerHTML=loading+`<b>${list.length}</b> ${noun} · ${sortNote}`;
   updateInsight(list);
   updateMapLegend(list);
   updateFilterUI();
@@ -1035,18 +1056,18 @@ function render(){
 
 function popupHtml(m){
   const whenLbl=m.dateLabel?m.dateLabel:(m.day===todayDay()?"Today":DAYS[m.day]);
-  return `<div class="pop"><div class="pn">${m.name}</div><div class="pf">${META[m.cat].name}</div>
+  return `<div class="pop"><div class="pn">${m.name}</div><div class="pf">${metaOf(m.cat).name}</div>
     <div class="pw">${whenLbl} · ${fmtTime(m.time)} · ${fmtLabel(m.fmt)}</div><div class="pw">${m.loc}<br>${m.addr}</div>
     ${m.fmt!=="online"?`<a href="${mapsDir(m)}" target="_blank" rel="noopener">Directions ↗</a><br>`:""}
     ${m.url?`<a href="${m.url}" target="_blank" rel="noopener">More info ↗</a>`:""}
-    <div class="pw" style="margin-top:6px"><button type="button" class="pop-pick" data-id="${m._id}" style="padding:6px 0;color:#0d9488;font-weight:600">Show in list ↓</button></div></div>`;
+    <div class="pw" style="margin-top:6px"><button type="button" class="pop-pick pop-tolist" data-id="${m._id}" style="padding:6px 0;color:#0d9488;font-weight:600">Show in list ↓</button></div></div>`;
 }
 function spotPopupHtml(meetings){
   const sorted=[...meetings].sort((a,b)=>(a._minsUntil??0)-(b._minsUntil??0));
   return `<div class="pop spot-pop"><div class="pn">${sorted.length} ${state.mode==="support"?"meetings":"events"} here</div>
     <ul class="pop-list">${sorted.map(m=>{
       const whenLbl=m.dateLabel?m.dateLabel:(m.day===todayDay()?"Today":DAYS[m.day]);
-      return `<li><button type="button" class="pop-pick" data-id="${m._id}"><strong>${m.name}</strong><span>${whenLbl} · ${fmtTime(m.time)} · ${META[m.cat].name}</span></button></li>`;
+      return `<li><button type="button" class="pop-pick" data-id="${m._id}"><strong>${m.name}</strong><span>${whenLbl} · ${fmtTime(m.time)} · ${metaOf(m.cat).name}</span></button></li>`;
     }).join("")}</ul></div>`;
 }
 function scrollCardIntoView(id){
@@ -1059,12 +1080,29 @@ function openMapPopup(m){
   if(!mk)return;
   mk.bindPopup(popupHtml(m),{maxWidth:300,minWidth:200,className:"gather-popup"}).openPopup();
 }
-function focusMeeting(m){
+function isMobile(){return window.matchMedia("(max-width:760px)").matches;}
+function setMobileView(view){
+  document.querySelectorAll("#viewtabs button").forEach(b=>{
+    const on=b.dataset.view===view;
+    b.classList.toggle("on",on);
+    b.setAttribute("aria-selected",on?"true":"false");
+  });
+  document.body.classList.remove("mobile-view-map","mobile-view-list");
+  document.body.classList.add(view==="map"?"mobile-view-map":"mobile-view-list");
+  // Leaflet needs a size recalc after the map container is shown again
+  if(view==="map"&&map)requestAnimationFrame(()=>map.invalidateSize());
+}
+function focusMeeting(m,opts={}){
   if(!m)return;
   activeId=m._id;
   render();
   scrollCardIntoView(m._id);
+  // "Show in list" from a map popup: jump to the list tab on phones.
+  if(opts.toList&&isMobile()){setMobileView("list");map.closePopup();return;}
   if(!hasMapPin(m)){map.closePopup();return;}
+  // On phones the map is hidden behind the list tab — surface it so the
+  // popup the user just triggered is actually visible.
+  if(isMobile())setMobileView("map");
   const z=Math.max(map.getZoom(),15);
   map.setView([m.lat,m.lng],z,{animate:true});
   requestAnimationFrame(()=>openMapPopup(m));
@@ -1094,7 +1132,7 @@ function drawMarkers(list){
   markerById.clear();
   list.forEach(m=>{
     if(!m.lat)return;
-    const fc=META[m.cat].color,on=activeId===m._id;
+    const fc=metaOf(m.cat).color,on=activeId===m._id;
     const mk=L.circleMarker([m.lat,m.lng],{
       radius:on?12:10,
       fillColor:fc,
@@ -1258,7 +1296,7 @@ function init(){
       btn.onclick=ev=>{
         ev.stopPropagation();
         const m=lastFilteredList.find(x=>x._id===btn.dataset.id);
-        if(m)focusMeeting(m);
+        if(m)focusMeeting(m,{toList:btn.classList.contains("pop-tolist")});
       };
     });
   });
@@ -1303,12 +1341,7 @@ function init(){
     state.quick.add("open");buildQuickFilters();render();
   };
   document.querySelectorAll("#viewtabs button").forEach(btn=>{
-    btn.onclick=()=>{
-      document.querySelectorAll("#viewtabs button").forEach(b=>{b.classList.remove("on");b.setAttribute("aria-selected","false");});
-      btn.classList.add("on");btn.setAttribute("aria-selected","true");
-      document.body.classList.remove("mobile-view-map","mobile-view-list");
-      document.body.classList.add(btn.dataset.view==="map"?"mobile-view-map":"mobile-view-list");
-    };
+    btn.onclick=()=>setMobileView(btn.dataset.view);
   });
   const helpModal=document.getElementById("helpModal");
   document.getElementById("btnHelp").onclick=()=>{helpModal.hidden=false;};
