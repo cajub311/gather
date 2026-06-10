@@ -652,8 +652,19 @@ function pickNextUp(list){
 function timeMins(t){const [h,m]=t.split(":").map(Number);return h*60+m;}
 function nowInfo(){const d=new Date();return{day:d.getDay(),mins:d.getHours()*60+d.getMinutes()};}
 function dayOffset(meetingDay,today){return (meetingDay-today+7)%7;}
-function minutesUntil(m,n){const off=dayOffset(m.day,n.day);if(off===0)return timeMins(m.time)-n.mins;return off*1440+timeMins(m.time);}
-function isNow(m){const n=nowInfo();if(m.day!==n.day)return false;const s=timeMins(m.time);return n.mins>=s-15&&n.mins<=s+m.dur;}
+// days until the item: dated events use their real calendar date,
+// weekly meetings use the next occurrence of their weekday
+function dateOff(m,n){
+  if(m.date){
+    const p=m.date.split("-").map(Number);
+    const today=new Date();
+    const t0=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+    return Math.round((new Date(p[0],p[1]-1,p[2])-t0)/864e5);
+  }
+  return dayOffset(m.day,n.day);
+}
+function minutesUntil(m,n){const off=dateOff(m,n);if(off===0)return timeMins(m.time)-n.mins;return off*1440+timeMins(m.time);}
+function isNow(m){const n=nowInfo();if(m.day!==n.day)return false;if(m.date&&dateOff(m,n)!==0)return false;const s=timeMins(m.time);return n.mins>=s-15&&n.mins<=s+m.dur;}
 function dist(a,b,c,d){const R=3959,r=x=>x*Math.PI/180;const dLat=r(c-a),dLon=r(d-b);const x=Math.sin(dLat/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
 function relSoon(mins){
   if(mins<=0)return null;
@@ -662,7 +673,7 @@ function relSoon(mins){
   return r?`in ${h}h ${r}m`:`in ${h}h`;
 }
 function relWhen(m){
-  if(dayOffset(m.day,nowInfo().day)!==0)return null;
+  if((m._dayOff??dateOff(m,nowInfo()))!==0)return null;
   if(isNow(m))return "starting now";
   if(m._minsUntil>0&&m._minsUntil<=240)return relSoon(m._minsUntil);
   return null;
@@ -670,12 +681,13 @@ function relWhen(m){
 function sectionTitle(m){
   if(m._dayOff===0)return "Today";
   if(m._dayOff===1)return "Tomorrow";
+  if(m._dayOff>6&&m.dateLabel)return m.dateLabel;
   return DAYS[m.day];
 }
 function enrichSort(list){
   const n=nowInfo(),pin=state.day!==null&&!state.daySet,useNear=!!state.near;
   list.forEach(m=>{
-    m._dayOff=pin?0:dayOffset(m.day,n.day);
+    m._dayOff=pin?0:dateOff(m,n);
     m._minsUntil=minutesUntil(m,n);
     m._d=useNear&&m.lat!=null?dist(state.near[0],state.near[1],m.lat,m.lng):null;
   });
@@ -813,10 +825,17 @@ function buildFilters(){
 
 function filtered(){
   const quicks=QUICK[state.mode]||[];
+  const n=nowInfo();
   let list=DATA.filter(m=>{
     if(state.cat.size&&!state.cat.has(m.cat))return false;
-    if(state.daySet&&!state.daySet.has(m.day))return false;
-    else if(state.day!==null&&m.day!==state.day)return false;
+    if(state.daySet){
+      if(!state.daySet.has(m.day))return false;
+      if(m.date&&dateOff(m,n)>6)return false; // dated events: this weekend only
+    }
+    else if(state.day!==null){
+      if(m.day!==state.day)return false;
+      if(m.date&&dateOff(m,n)>6)return false; // dated events: the upcoming one only
+    }
     if(state.savedOnly&&!SAVED.has(m._id))return false;
     if(state.fmt&&m.fmt!==state.fmt)return false;
     if(state.tod&&!inTod(m.time,state.tod))return false;
