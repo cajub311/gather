@@ -23,7 +23,7 @@
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;font-family:"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--txt);-webkit-font-smoothing:antialiased}
   #app{display:flex;flex-direction:column;height:100vh}
-  header{border-bottom:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow)}
+  header{border-bottom:1px solid var(--line);background:linear-gradient(180deg,#17212e,var(--surface));box-shadow:var(--shadow)}
   .header-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px 10px;flex-wrap:wrap}
   .brand{display:flex;flex-direction:column;gap:2px}
   .logo{font-weight:700;font-size:20px;letter-spacing:-.3px;display:flex;align-items:center;gap:9px}
@@ -54,8 +54,10 @@
   .tips p{margin:0;flex:1}
   .tips button{flex-shrink:0;background:transparent;border:1px solid var(--line);color:var(--muted);padding:4px 10px;border-radius:8px;font-size:11px;font-weight:600}
   .tips button:hover{color:var(--txt)}
-  .quickrow{display:flex;gap:6px;padding:8px 14px 4px;overflow-x:auto;scrollbar-width:none}
-  .quickrow::-webkit-scrollbar{display:none}
+  .chiprow{display:flex;align-items:center;gap:6px;padding:8px 14px 6px;overflow-x:auto;scrollbar-width:none}
+  .chiprow::-webkit-scrollbar{display:none}
+  .chipgroup{display:flex;gap:6px;flex-shrink:0}
+  .chipsep{width:1px;height:18px;background:var(--line);flex-shrink:0;margin:0 2px}
   .qchip{flex-shrink:0;background:var(--bg);border:1px solid var(--line);color:var(--muted);padding:6px 12px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
   .qchip:hover{color:var(--txt)}
   .qchip.on{background:color-mix(in srgb,var(--accent) 16%,transparent);border-color:var(--accent-dim);color:var(--accent)}
@@ -189,8 +191,6 @@
   .res-item.urgent{border-color:rgba(252,165,165,.35)}
   .res-item.urgent .rc{color:#fca5a5}
   .marker-cluster-small,.marker-cluster-medium,.marker-cluster-large{width:44px!important;height:44px!important}
-  .presetrow{display:flex;gap:6px;padding:4px 14px 8px;overflow-x:auto;scrollbar-width:none}
-  .presetrow::-webkit-scrollbar{display:none}
   .pchip{flex-shrink:0;background:transparent;border:1px dashed var(--line);color:var(--muted);padding:5px 11px;border-radius:999px;font-size:11.5px;font-weight:600}
   .pchip:hover{color:var(--txt);border-style:solid}
   .pchip.on{border-style:solid;border-color:var(--accent-dim);color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
@@ -265,8 +265,7 @@
         <button type="button" id="tipsDismiss">Got it</button>
       </div>
       <div class="daybar" id="daybar"></div>
-      <div class="presetrow" id="presetrow"></div>
-      <div class="quickrow" id="quickrow"></div>
+      <div class="chiprow"><span class="chipgroup" id="presetrow"></span><span class="chipsep"></span><span class="chipgroup" id="quickrow"></span></div>
       <div class="guide" id="guide" hidden>
         <h3>First time at a support meeting?</h3>
         <ul>
@@ -741,6 +740,7 @@ function buildPresets(){
   row.innerHTML="";
   const items=[
     {id:"tonight",label:"Tonight"},
+    {id:"tomorrow",label:"Tomorrow"},
     {id:"weekend",label:"This weekend"},
     {id:"saved",label:state.savedOnly?"Show all":"Saved only"},
   ];
@@ -757,6 +757,7 @@ function applyPreset(id){
   if(id==="saved"){state.savedOnly=!state.savedOnly;state.preset=state.savedOnly?"saved":"";updateSavedBtn();buildPresets();render();return;}
   state.preset=id;state.savedOnly=false;state.cat.clear();state.quick.clear();
   if(id==="tonight"){state.daySet=null;state.day=todayDay();state.tod="evening";state.nowOnly=false;}
+  else if(id==="tomorrow"){state.daySet=null;state.day=(todayDay()+1)%7;state.tod="";state.nowOnly=false;}
   else if(id==="weekend"){state.day=null;state.daySet=new Set([5,6,0]);state.tod="";}
   else if(id==="first"){state.daySet=null;state.day=todayDay();state.tod="";state.quick.add("open");document.getElementById("guide").hidden=false;}
   syncTodUI();syncDayUI();buildQuickFilters();buildPresets();updateSavedBtn();render();
@@ -853,7 +854,6 @@ function updateInsight(list){
   const verified=list.filter(m=>m.verified).length;
   const openCt=state.mode==="support"?list.filter(m=>(m.types||[]).some(t=>/^open$/i.test(t))).length:0;
   const pills=[
-    `<span class="insight-pill"><strong>${list.length}</strong> on ${dayViewLabel()}</span>`,
     nowCt?`<span class="insight-pill live"><strong>${nowCt}</strong> happening now</span>`:"",
     verified?`<span class="insight-pill live"><strong>${verified}</strong> verified live</span>`:"",
     state.mode==="support"&&openCt?`<span class="insight-pill"><strong>${openCt}</strong> open meetings</span>`:"",
@@ -861,6 +861,7 @@ function updateInsight(list){
     list.some(m=>!hasMapPin(m))?`<span class="insight-pill"><strong>${list.filter(m=>!hasMapPin(m)).length}</strong> online only</span>`:"",
   ].filter(Boolean);
   el.innerHTML=pills.join("");
+  el.style.display=pills.length?"flex":"none";
 }
 function updateMapLegend(list){
   const el=document.getElementById("mapLegend");
@@ -1138,41 +1139,70 @@ function updateFooter(){
   }
 }
 
+// cache live feeds locally so repeat visits render instantly and a flaky
+// network still shows the last good data (refreshed in the background)
+function readCache(key,maxAgeMs){
+  try{
+    const c=JSON.parse(localStorage.getItem(key)||"null");
+    if(c&&c.ts&&Date.now()-c.ts<maxAgeMs)return c.data;
+  }catch(e){}
+  return null;
+}
+function writeCache(key,data){
+  try{localStorage.setItem(key,JSON.stringify({ts:Date.now(),data}));}catch(e){}
+}
+function applyMeetingsData(data){
+  LIVE=(data.meetings||[]).map(m=>({...m,verified:true}));
+  LIVE_CATS=new Set(LIVE.map(m=>m.cat));
+  LAST_UPDATED=data.updated||null;
+  SOURCE_INFO=data.sources||[];
+  if(state.mode==="support"){
+    // swap in live data without wiping the user's active filters
+    DATA=supportMeetings().map((m,i)=>({...m,_id:"s"+i}));
+    updateFooter();render();
+  }
+}
+function applyEventsData(data){
+  const d=new Date();
+  const todayStr=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  LIVE_EVENTS=(data.events||[]).filter(m=>!m.date||m.date>=todayStr).map(m=>({...m,verified:true}));
+  EVENTS_UPDATED=data.updated||null;
+  EVENT_SOURCES=data.sources||[];
+  if(state.mode==="activities"){
+    DATA=activityItems().map((m,i)=>({...m,_id:"p"+i}));
+    updateFooter();render();
+  }
+}
 async function loadLive(){
+  const cached=readCache("gather-cache-meetings",864e5);
+  if(cached)applyMeetingsData(cached);
   try{
     const res=await fetch("/api/meetings",{headers:{Accept:"application/json"}});
     if(!res.ok)throw 0;
     const data=await res.json();
-    LIVE=(data.meetings||[]).map(m=>({...m,verified:true}));
-    LIVE_CATS=new Set(LIVE.map(m=>m.cat));
-    LAST_UPDATED=data.updated||null;
-    SOURCE_INFO=data.sources||[];
-  }catch(e){/* backend unavailable (e.g. opened as a local file) — curated samples still show */}
-  finally{
+    if((data.meetings||[]).length)writeCache("gather-cache-meetings",data);
     LIVE_LOADING=false;
-    if(state.mode==="support"){
-      // swap in live data without wiping the user's active filters
-      DATA=supportMeetings().map((m,i)=>({...m,_id:"s"+i}));
-      updateFooter();render();
-    }
+    applyMeetingsData(data);
+  }catch(e){
+    /* backend unavailable (e.g. opened as a local file) — cache or curated samples still show */
+    LIVE_LOADING=false;
+    if(state.mode==="support"){updateFooter();render();}
   }
 }
 
 async function loadEvents(){
+  const cached=readCache("gather-cache-events",864e5);
+  if(cached)applyEventsData(cached);
   try{
     const res=await fetch("/api/events",{headers:{Accept:"application/json"}});
     if(!res.ok)throw 0;
     const data=await res.json();
-    LIVE_EVENTS=(data.events||[]).map(m=>({...m,verified:true}));
-    EVENTS_UPDATED=data.updated||null;
-    EVENT_SOURCES=data.sources||[];
-  }catch(e){/* backend unavailable — curated samples still show */}
-  finally{
+    if((data.events||[]).length)writeCache("gather-cache-events",data);
     EVENTS_LOADING=false;
-    if(state.mode==="activities"){
-      DATA=activityItems().map((m,i)=>({...m,_id:"p"+i}));
-      updateFooter();render();
-    }
+    applyEventsData(data);
+  }catch(e){
+    EVENTS_LOADING=false;
+    if(state.mode==="activities"){updateFooter();render();}
   }
 }
 
@@ -1235,7 +1265,12 @@ function init(){
     this.classList.toggle("open",!collapsed);
   };
   document.getElementById("fClear").onclick=clearFilters;
-  document.getElementById("q").addEventListener("input",e=>{state.q=e.target.value;render();});
+  let _qTimer=null;
+  document.getElementById("q").addEventListener("input",e=>{
+    state.q=e.target.value;
+    clearTimeout(_qTimer);
+    _qTimer=setTimeout(render,160);
+  });
   document.getElementById("btnSaved").onclick=()=>{state.savedOnly=!state.savedOnly;state.preset=state.savedOnly?"saved":"";updateSavedBtn();buildPresets();render();};
   document.getElementById("btnShare").onclick=()=>{
     pushUrl();
