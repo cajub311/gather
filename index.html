@@ -502,7 +502,7 @@
         <button id="mSupport" data-mode="support">Support meetings</button>
       </div>
       <div class="searchbar">
-        <input id="q" type="search" placeholder="Try music, games, art, yoga…" autocomplete="off" />
+        <input id="q" type="search" placeholder="Try music, games, art, yoga…" autocomplete="off" aria-label="Search events and meetings" />
         <button class="btn" id="nearme" type="button" title="Use your location to sort by distance">Near me</button>
         <button class="btn" id="nowbtn" type="button">Right now</button>
       </div>
@@ -550,7 +550,7 @@
         <div class="frow" id="fmtFilters"><span class="flabel">Format</span></div>
       </div>
       <div class="insight" id="insight"></div>
-      <div class="count" id="count"></div>
+      <div class="count" id="count" aria-live="polite"></div>
       <div id="list"></div>
       <details class="source-scout" id="programScout">
         <summary>Other programs — official meeting finders</summary>
@@ -1102,7 +1102,7 @@ function filtered(){
       const ok=[...state.quick].some(id=>quicks.find(q=>q.id===id)?.match(m));
       if(!ok)return false;
     }
-    if(state.q){const h=(m.name+" "+m.loc+" "+m.addr+" "+(m.types||[]).join(" ")+" "+META[m.cat].name).toLowerCase();if(!h.includes(state.q.toLowerCase()))return false;}
+    if(state.q){const h=(m.name+" "+m.loc+" "+m.addr+" "+(m.desc||"")+" "+(m.source||"")+" "+(m.types||[]).join(" ")+" "+META[m.cat].name).toLowerCase();if(!h.includes(state.q.toLowerCase()))return false;}
     return true;
   });
   return smartSort(list);
@@ -1137,6 +1137,7 @@ function buildQuickFilters(){
   (QUICK[state.mode]||[]).forEach(q=>{
     const b=document.createElement("button");
     b.type="button";b.className="qchip"+(state.quick.has(q.id)?" on":"");
+    b.setAttribute("aria-pressed",state.quick.has(q.id)?"true":"false");
     b.textContent=q.label;
     b.onclick=()=>{state.quick.has(q.id)?state.quick.delete(q.id):state.quick.add(q.id);buildQuickFilters();render();};
     row.appendChild(b);
@@ -1261,6 +1262,8 @@ function renderCard(el,m){
   const id=m._id,fc=META[m.cat].color,now=isNow(m);
   const card=document.createElement("div");
   card.className="card"+(activeId===id?" active":"")+(SAVED.has(id)?" saved":"");card.dataset.id=id;
+  card.tabIndex=0;card.setAttribute("role","button");
+  card.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();card.click();}};
   const whenLbl=m.dateLabel?m.dateLabel:(m.day===todayDay()?"Today":DAYS[m.day]);
   const rel=relWhen(m);
   const tp=fmtParts(m.time);
@@ -1617,7 +1620,11 @@ function init(){
     this.classList.toggle("open",!collapsed);
   };
   document.getElementById("fClear").onclick=clearFilters;
-  document.getElementById("q").addEventListener("input",e=>{state.q=e.target.value;render();});
+  let _qT=null;
+  document.getElementById("q").addEventListener("input",e=>{
+    clearTimeout(_qT);
+    _qT=setTimeout(()=>{state.q=e.target.value;render();},150);
+  });
   document.getElementById("btnSaved").onclick=()=>{state.savedOnly=!state.savedOnly;state.preset=state.savedOnly?"saved":"";updateSavedBtn();buildPresets();render();};
   document.getElementById("btnShare").onclick=()=>{
     pushUrl();

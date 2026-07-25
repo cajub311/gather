@@ -25,6 +25,10 @@ const SOURCES = [
   { type: "tribe", name: "Summit Brewing", base: "https://www.summitbrewing.com", lat: 44.9160, lng: -93.1360, addr: "910 Montreal Cir, St Paul" },
   { type: "tribe", name: "Utepils Brewing", base: "https://www.utepilsbrewing.com", lat: 44.9790, lng: -93.3080, addr: "225 Thomas Ave N, Minneapolis" },
   { type: "tribe", name: "White Squirrel Bar", base: "https://whitesquirrelbar.com", lat: 44.9270, lng: -93.1250, addr: "974 W 7th St, St Paul" },
+  { type: "tribe", name: "Science Museum of MN", base: "https://www.smm.org", lat: 44.9425, lng: -93.0990, addr: "120 W Kellogg Blvd, St Paul" },
+
+  // --- UMN public calendar (LiveWhale JSON) — lectures, arboretum, concerts ---
+  { type: "livewhale", name: "UMN Events", url: "https://events.tc.umn.edu/live/json/events/max/300", lat: 44.9740, lng: -93.2277, addr: "Minneapolis" },
 
   // --- Squarespace event collections (?format=json) — confirmed live ---
   { type: "squarespace", name: "Bad Weather Brewing", base: "https://www.badweatherbrewery.com/events", lat: 44.9276, lng: -93.1310, addr: "1505 7th St W, St Paul" },
@@ -313,6 +317,42 @@ async function fromBiblio(src) {
   return out;
 }
 
+// LiveWhale (UMN). Keeps only timed, in-person, located, non-canceled events —
+// the raw feed is mostly all-day deadlines and webinars. No coordinates in the
+// feed, so events are approx (list-only, no map pin) with the address shown.
+async function fromLiveWhale(src) {
+  const rows = await getJSON(src.url);
+  const out = [];
+  for (const e of (Array.isArray(rows) ? rows : [])) {
+    if (e.is_all_day || e.is_canceled || e.is_online || !e.location) continue;
+    const m = String(e.date_iso || "").match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    if (!m) continue;
+    const p = { y: +m[1], mo: +m[2], d: +m[3], h: +m[4], mi: +m[5] };
+    const title = decode(e.title);
+    if (!title || isNoise(title)) continue;
+    out.push({
+      cat: classify(title + " " + decode(e.description || "").slice(0, 120)),
+      name: title,
+      day: dayKey(p),
+      time: `${String(p.h).padStart(2, "0")}:${String(p.mi).padStart(2, "0")}`,
+      dur: duration(e.date_iso, e.date2_iso),
+      fmt: "in-person",
+      loc: decode(e.group_title || src.name),
+      addr: decode(e.location),
+      lat: src.lat, lng: src.lng, approx: true,
+      types: e.cost ? [decode(e.cost).slice(0, 18)] : [],
+      desc: short(e.description || "") || undefined,
+      url: e.url,
+      date: `${p.y}-${String(p.mo).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`,
+      dateLabel: `${DOW[dayKey(p)]}, ${MON[p.mo - 1]} ${p.d}`,
+      source: src.name,
+      live: true,
+      verified: true,
+    });
+  }
+  return out;
+}
+
 function cityPoint(city) {
   const c = String(city || "").toLowerCase();
   if (c.includes("st. paul") || c.includes("saint paul")) return { lat: 44.9537, lng: -93.0900 };
@@ -430,6 +470,7 @@ module.exports = async (req, res) => {
       let list;
       if (src.type === "ics") list = parseICS(await getText(src.url), src);
       else if (src.type === "biblio") list = await fromBiblio(src);
+      else if (src.type === "livewhale") list = await fromLiveWhale(src);
       else if (src.type === "squarespace") list = await fromSquarespace(src);
       else if (src.type === "meetup") list = await fromMeetup(src);
       else if (src.type === "eventbrite") list = await fromEventbrite(src);
