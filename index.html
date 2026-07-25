@@ -752,6 +752,7 @@ function dayViewLabel(){
 function isWeekendView(){return !!state.daySet;}
 function isAllWeek(){return state.day===null&&!state.daySet;}
 function hasMapPin(m){
+  if(m.approx)return false; // city-center geocode = a pin at a place the meeting isn't
   if(m.fmt==="online"&&/online|zoom/i.test((m.addr||"").toLowerCase()))return false;
   if(!m.lat||!m.lng)return false;
   if(Math.abs(m.lat-44.95)<0.015&&Math.abs(m.lng+93.09)<0.015&&(m.fmt==="online"||/online/i.test(m.loc||"")))return false;
@@ -1127,7 +1128,7 @@ function updateInsight(list){
     verified?`<span class="insight-pill live"><strong>${verified}</strong> live listings</span>`:"",
     state.mode==="support"&&openCt?`<span class="insight-pill"><strong>${openCt}</strong> open meetings</span>`:"",
     state.near?`<span class="insight-pill">sorted near you</span>`:"",
-    list.some(m=>!hasMapPin(m))?`<span class="insight-pill"><strong>${list.filter(m=>!hasMapPin(m)).length}</strong> online only</span>`:"",
+    list.some(m=>!hasMapPin(m))?`<span class="insight-pill"><strong>${list.filter(m=>!hasMapPin(m)).length}</strong> not on map</span>`:"",
   ].filter(Boolean);
   el.innerHTML=pills.join("");
 }
@@ -1183,7 +1184,12 @@ function renderFeatured(el,list){
       <div class="fcta">${hasMapPin(next)?"View on map":"View details"} →</div></div>
       ${image?`<img class="feature-art" src="${image}" alt="" loading="lazy">`:""}`;
   }
-  box.onclick=()=>focusMeeting(next);
+  // in activities mode the map is hidden, so "See event" must actually open it
+  const fhref=safeHref(next.url);
+  box.onclick=()=>{
+    if(state.mode==="activities"&&fhref)window.open(fhref,"_blank","noopener");
+    else focusMeeting(next);
+  };
   el.appendChild(box);
   return next._id;
 }
@@ -1221,7 +1227,7 @@ function focusFromId(id){
 function renderOnlineSection(el,items){
   const h=document.createElement("div");
   h.className="list-section";
-  h.textContent=`Online (${items.length}) — not on map`;
+  h.textContent=`Not on the map (${items.length}) — online, or address not public`;
   el.appendChild(h);
   items.forEach(m=>renderCard(el,m));
 }
@@ -1255,7 +1261,7 @@ function renderCard(el,m){
       </div>
       <button type="button" class="savebtn${SAVED.has(id)?" on":""}" title="Save event" aria-label="Save event">${SAVED.has(id)?"★":"☆"}</button>`;
     card.querySelector(".savebtn").onclick=e=>toggleSaved(id,e);
-    card.onclick=()=>focusMeeting(m);
+    card.onclick=()=>{if(href)window.open(href,"_blank","noopener");else focusMeeting(m);};
     el.appendChild(card);
     return;
   }
@@ -1266,7 +1272,7 @@ function renderCard(el,m){
   const dir=hasMapPin(m)?`<a class="dir" href="${mapsDir(m)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Directions ↗</a>`:"";
   const saved=SAVED.has(id)?"★":"☆";
   const source=state.mode==="activities"&&m.source?`<span class="b source">${esc(m.source)}</span>`:"";
-  const approx=m.approx?'<span class="b">Approx. map pin</span>':"";
+  const approx=m.approx?'<span class="b">Location approximate</span>':"";
   card.innerHTML=`<div class="timecol"><span class="timepill">${tp.hr}</span><span class="timeap">${tp.ap}</span></div>
     <div class="body"><div class="top"><div class="name">${esc(m.name)}</div>
       <button type="button" class="savebtn${SAVED.has(id)?" on":""}" title="Save" aria-label="Save">${saved}</button>

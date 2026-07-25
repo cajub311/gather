@@ -63,8 +63,8 @@ function classify(text) {
   if (has(/meditat|mindful|sound bath|breathwork|yin yoga|restorative/)) return "Zen";
   if (has(/hike|trail|nature walk|birding|kayak|paddle|garden|cleanup|park\b/)) return "Outdoors";
   if (has(/book|author|reading|poetry|\blit\b|storytime|writers/)) return "Books";
-  if (has(/art|craft|paint|pottery|knit|maker|draw|ceramic|print|gallery|exhibit/)) return "Art";
-  if (has(/run|\b5k\b|fitness|workout|yoga|pilates|volleyball|pickleball|climb|cycling|bike ride|sport/)) return "Fitness";
+  if (has(/\barts?\b|craft|paint|pottery|knit|maker|\bdraw|ceramic|\bprint|gallery|exhibit/)) return "Art";
+  if (has(/\brun(?:ning|s)?\b|\b5k\b|fitness|workout|yoga|pilates|volleyball|pickleball|climb|cycling|bike ride|\bsports?\b/)) return "Fitness";
   if (has(/volunteer|serve|donate|food shelf|fundrais|charity/)) return "Volunteer";
   if (has(/language|spanish|french|german|conversation table|esl/)) return "Language";
   return "Social";

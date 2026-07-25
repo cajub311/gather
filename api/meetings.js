@@ -83,6 +83,12 @@ function normalizeAA(rows, cat = "AA") {
       .map((t) => TSML_TYPES[t])
       .filter(Boolean)
       .slice(0, 3);
+    // TSML marks unlisted addresses "approximate" — those geocode to the city
+    // center, which would put a false pin on the map and fake distances.
+    const addr = m.formatted_address || m.region || "Minneapolis area";
+    const approx = String(m.approximate).toLowerCase() === "yes" || /^[A-Za-z .'-]+, MN(?:, USA)?$/.test(addr);
+    let loc = m.location || m.region || cat + " Group";
+    if (/no meeting place/i.test(loc)) loc = m.region || "Address not public";
     out.push({
       cat,
       name: m.name || cat + " Meeting",
@@ -90,8 +96,9 @@ function normalizeAA(rows, cat = "AA") {
       time: hhmm(m.time),
       dur: m.end_time ? durMins(hhmm(m.time), hhmm(m.end_time)) : 60,
       fmt,
-      loc: m.location || m.region || cat + " Group",
-      addr: m.formatted_address || m.region || "Minneapolis area",
+      approx: approx || undefined,
+      loc,
+      addr,
       lat: isFinite(lat) ? lat : null,
       lng: isFinite(lng) ? lng : null,
       types: labels,
