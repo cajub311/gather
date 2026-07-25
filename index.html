@@ -5,13 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Gather — Twin Cities meetings &amp; things to do</title>
 <meta name="description" content="Find support meetings and local activities across Minneapolis–St. Paul on one map. Filter by day, time, and distance." />
-<meta name="theme-color" content="#131a24" />
+<meta name="theme-color" content="#102a31" />
+<link rel="manifest" href="/manifest.json" />
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Gather" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23102a31'/%3E%3Ccircle cx='18' cy='18' r='6' fill='%23d75130'/%3E%3Cpath d='M45 22c-4-4-16-5-21 2-6 8-1 20 10 20 5 0 9-2 12-5V31H34v6h5v1c-5 2-11 0-12-6-1-7 7-11 13-6z' fill='%23f8fbf8'/%3E%3C/svg%3E" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,500..800&amp;family=IBM+Plex+Mono:wght@500;600&amp;family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&amp;display=swap" rel="stylesheet" />
 <style>
   :root{
     --bg:#0c1017; --surface:#131a24; --surface2:#1a2330; --line:#263041;
@@ -23,7 +29,7 @@
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;font-family:"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--txt);-webkit-font-smoothing:antialiased}
   #app{display:flex;flex-direction:column;height:100vh}
-  header{border-bottom:1px solid var(--line);background:linear-gradient(180deg,#17212e,var(--surface));box-shadow:var(--shadow)}
+  header{border-bottom:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow)}
   .header-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px 10px;flex-wrap:wrap}
   .brand{display:flex;flex-direction:column;gap:2px}
   .logo{font-weight:700;font-size:20px;letter-spacing:-.3px;display:flex;align-items:center;gap:9px}
@@ -54,10 +60,8 @@
   .tips p{margin:0;flex:1}
   .tips button{flex-shrink:0;background:transparent;border:1px solid var(--line);color:var(--muted);padding:4px 10px;border-radius:8px;font-size:11px;font-weight:600}
   .tips button:hover{color:var(--txt)}
-  .chiprow{display:flex;align-items:center;gap:6px;padding:8px 14px 6px;overflow-x:auto;scrollbar-width:none}
-  .chiprow::-webkit-scrollbar{display:none}
-  .chipgroup{display:flex;gap:6px;flex-shrink:0}
-  .chipsep{width:1px;height:18px;background:var(--line);flex-shrink:0;margin:0 2px}
+  .quickrow{display:flex;gap:6px;padding:8px 14px 4px;overflow-x:auto;scrollbar-width:none}
+  .quickrow::-webkit-scrollbar{display:none}
   .qchip{flex-shrink:0;background:var(--bg);border:1px solid var(--line);color:var(--muted);padding:6px 12px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
   .qchip:hover{color:var(--txt)}
   .qchip.on{background:color-mix(in srgb,var(--accent) 16%,transparent);border-color:var(--accent-dim);color:var(--accent)}
@@ -108,7 +112,6 @@
   .btn.locating{opacity:.7;pointer-events:none}
   .card{display:grid;grid-template-columns:56px 1fr;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line);cursor:pointer;transition:background .12s}
   .card:hover{background:var(--surface2)}
-  .card:focus-visible{outline:2px solid var(--accent2);outline-offset:-2px}
   .card.active{background:var(--bg);border-left:3px solid var(--accent);padding-left:13px}
   .card .timecol{text-align:center}
   .card .timepill{display:block;font-size:13px;font-weight:700;color:var(--txt);line-height:1.2}
@@ -148,6 +151,7 @@
   .pop.spot-pop .pn{margin-bottom:8px}
   .pop-list{margin:0;padding:0;list-style:none;max-height:220px;overflow-y:auto}
   .pop-list li{margin:0;padding:0;border-top:1px solid #e2e8f0}
+  .pop-list li:first-child{border-top:none}
   .pop-pick{display:block;width:100%;text-align:left;padding:9px 4px;border:none;background:transparent;font:inherit;font-size:13px;color:#0f172a;cursor:pointer;line-height:1.35}
   .pop-pick:hover{background:#f1f5f9}
   .pop-pick strong{display:block;font-weight:600}
@@ -171,25 +175,9 @@
   @keyframes sp{to{transform:rotate(360deg)}}
   .crisis a{color:#fca5a5;font-size:12px;font-weight:600;text-decoration:none;border:1px solid rgba(252,165,165,.2);padding:6px 12px;border-radius:var(--radius);white-space:nowrap;transition:background .15s,border-color .15s}
   .crisis a:hover{background:rgba(252,165,165,.06);border-color:rgba(252,165,165,.35)}
-  .crisis button{color:#fca5a5;background:transparent;font-size:12px;font-weight:600;border:1px solid rgba(252,165,165,.2);padding:6px 12px;border-radius:var(--radius);white-space:nowrap;transition:background .15s,border-color .15s}
-  .crisis button:hover{background:rgba(252,165,165,.06);border-color:rgba(252,165,165,.35)}
-  .modal-scrim{position:fixed;inset:0;z-index:2000;background:rgba(5,8,12,.66);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:18px}
-  .modal-scrim[hidden]{display:none!important}
-  .modal{width:100%;max-width:520px;max-height:86vh;overflow-y:auto;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.5);padding:20px}
-  .modal h2{margin:0 0 4px;font-size:17px}
-  .modal .modal-sub{font-size:12.5px;color:var(--muted);margin:0 0 14px;line-height:1.45}
-  .modal-close{float:right;background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:4px 10px;font-size:12px;font-weight:600}
-  .modal-close:hover{color:var(--txt)}
-  .res-group{margin-bottom:14px}
-  .res-group h3{margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
-  .res-item{display:block;padding:10px 12px;margin-bottom:6px;background:var(--bg);border:1px solid var(--line);border-radius:10px;text-decoration:none;color:var(--txt);transition:border-color .15s}
-  .res-item:hover{border-color:var(--accent-dim)}
-  .res-item .rn{font-size:13.5px;font-weight:600}
-  .res-item .rd{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.4}
-  .res-item .rc{font-size:12px;color:var(--accent);font-weight:600;margin-top:3px}
-  .res-item.urgent{border-color:rgba(252,165,165,.35)}
-  .res-item.urgent .rc{color:#fca5a5}
   .marker-cluster-small,.marker-cluster-medium,.marker-cluster-large{width:44px!important;height:44px!important}
+  .presetrow{display:flex;gap:6px;padding:4px 14px 8px;overflow-x:auto;scrollbar-width:none}
+  .presetrow::-webkit-scrollbar{display:none}
   .pchip{flex-shrink:0;background:transparent;border:1px dashed var(--line);color:var(--muted);padding:5px 11px;border-radius:999px;font-size:11.5px;font-weight:600}
   .pchip:hover{color:var(--txt);border-style:solid}
   .pchip.on{border-style:solid;border-color:var(--accent-dim);color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
@@ -225,46 +213,311 @@
     body.mobile-view-map #map{display:block;flex:1}
     .daypick.all-week{margin-left:0}
   }
+
+  /* 2026 redesign — Twin Cities day board */
+  :root{
+    --bg:#f3f6fa;--surface:#ffffff;--surface2:#e9eef5;--line:#d7dfe9;
+    --txt:#172b4d;--muted:#60708a;--accent:#157b73;--accent-dim:#83b9b2;
+    --accent2:#176f88;--chip:#edf1f6;--live:#167a52;--now:#c64e35;
+    --radius:14px;--shadow:0 10px 30px rgba(23,43,77,.10);
+  }
+  body.mode-activities{
+    --accent:#e04f39;--accent-dim:#efad9f;--accent2:#2767c7;
+  }
+  html,body{
+    font-family:"Public Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    background:var(--bg);color:var(--txt);
+  }
+  #app{height:100dvh;background:var(--bg)}
+  header{
+    position:relative;z-index:5;background:#fff;
+    border-bottom:1px solid var(--line);box-shadow:0 4px 18px rgba(23,43,77,.06);
+  }
+  header::after{display:none}
+  .header-top{align-items:flex-start;padding:16px 24px 10px;gap:16px}
+  .brand{gap:0;max-width:690px}
+  .logo{
+    font-family:"Bricolage Grotesque",sans-serif;font-size:18px;font-weight:750;
+    letter-spacing:-.02em;line-height:1;color:var(--txt);
+  }
+  .logo .dot{width:9px;height:9px;background:#157b73;box-shadow:0 0 0 4px rgba(21,123,115,.13)}
+  .city-tag{
+    font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.08em;
+    color:#456564;border:1px solid #9eb8b4;border-radius:4px;padding:2px 4px;margin-left:3px;
+  }
+  .day-kicker{
+    margin-top:10px;font-family:"IBM Plex Mono",monospace;font-size:10px;
+    font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);
+  }
+  .brand h1{
+    margin:3px 0 3px;font-family:"Bricolage Grotesque",sans-serif;
+    font-size:clamp(25px,3vw,34px);line-height:1.04;letter-spacing:-.04em;
+    font-weight:750;color:var(--txt);
+  }
+  .tagline{max-width:620px;font-size:13px;color:var(--muted)}
+  .hero-live{
+    display:flex;align-items:center;gap:7px;margin-top:9px;font-family:"IBM Plex Mono",monospace;
+    font-size:10px;font-weight:600;color:#4e6968;
+  }
+  .hero-live span{width:7px;height:7px;border-radius:50%;background:var(--live);box-shadow:0 0 0 4px rgba(33,122,80,.12)}
+  .hdr-actions{margin-left:auto}
+  .iconbtn,.btn{
+    background:rgba(248,251,248,.75);border-color:#adc3c0;color:#3e5b5b;
+    box-shadow:0 1px 0 rgba(255,255,255,.6) inset;
+  }
+  .iconbtn:hover,.btn:hover{background:#fff;color:var(--txt);border-color:#8ba9a5}
+  .crisis a{color:#a33a35;border-color:rgba(163,58,53,.28);background:rgba(255,255,255,.48)}
+  .header-controls{padding:0 24px 16px;gap:10px}
+  .modes{background:#edf1f6;border-color:var(--line);padding:3px}
+  .modes button{font-size:13px;color:var(--muted);padding:9px 17px}
+  .modes button.on{background:var(--txt);color:#fff;box-shadow:none}
+  .modes button.on.support,.modes button.on.play{color:#fff}
+  .searchbar input{
+    background:#f7f9fc;border-color:var(--line);color:var(--txt);
+    border-radius:10px;padding:11px 14px;
+  }
+  .searchbar input::placeholder{color:#78908e}
+  .searchbar input:focus{background:#fff;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 15%,transparent)}
+  main{background:var(--surface);min-height:0}
+  #sidebar{width:600px;max-width:58vw;background:var(--surface);border-right-color:var(--line)}
+  #map{background:#d9e4e2}
+  .mode-activities main{display:block;overflow:auto;background:var(--bg)}
+  .mode-activities #sidebar{
+    width:min(760px,100%);max-width:none;min-height:100%;margin:0 auto;border-left:1px solid var(--line);
+    border-right:1px solid var(--line);box-shadow:0 10px 34px rgba(23,43,77,.06);
+  }
+  .mode-activities #list{overflow:visible}
+  .mode-activities #map{display:none;height:calc(100dvh - 220px);min-height:520px}
+  .mode-activities .viewtabs{
+    display:flex;gap:6px;width:min(760px,100%);margin:0 auto;padding:10px 14px 8px;
+    background:#fff;border-left:1px solid var(--line);border-right:1px solid var(--line);
+  }
+  .mode-activities .viewtabs button{
+    flex:1;padding:9px;border-radius:9px;border:1px solid var(--line);background:#f5f7fa;
+    color:var(--muted);font-weight:700;font-size:13px;
+  }
+  .mode-activities .viewtabs button.on{background:var(--txt);color:#fff;border-color:var(--txt)}
+  .mode-activities.mobile-view-map #sidebar{display:none}
+  .mode-activities.mobile-view-map #map{display:block}
+  .source-scout{display:none;padding:11px 15px;background:#f7f9fc;border-top:1px solid var(--line)}
+  .mode-activities .source-scout{display:block}
+  .source-scout summary{cursor:pointer;color:var(--muted);font-size:12px;font-weight:650}
+  .mode-activities .tips,
+  .mode-activities .daybar,
+  .mode-activities .todbar,
+  .mode-activities .filterbar,
+  .mode-activities .filters,
+  .mode-activities .insight{display:none!important}
+  .mode-activities #nowbtn{display:none}
+  .scout-links{display:flex;gap:6px;margin-top:8px;overflow-x:auto;scrollbar-width:none}
+  .scout-links::-webkit-scrollbar{display:none}
+  .scout-links a{
+    flex-shrink:0;text-decoration:none;font-family:"IBM Plex Mono",monospace;font-size:9.5px;
+    font-weight:600;color:#355b91;background:#fff;border:1px solid var(--line);border-radius:7px;padding:6px 9px;
+  }
+  .scout-links a:hover{border-color:var(--accent);color:var(--accent)}
+  .tips{background:#edf5f6;color:var(--muted);border-color:var(--line)}
+  .daybar,.todbar{background:var(--surface)}
+  .daybar{padding:11px 14px 8px}
+  .daybar-label,.flabel,.list-section,.map-legend .lg-title{
+    font-family:"IBM Plex Mono",monospace;letter-spacing:.09em;
+  }
+  .daypick,.todbar .tod{background:#edf3f1;border-color:#c8d7d4;color:#56706f}
+  .daypick.on{
+    background:var(--txt);border-color:var(--txt);color:#fff;
+  }
+  .todbar .tod.on{background:#dceae7;color:var(--txt);border-color:#99bab4}
+  .quickrow,.presetrow{padding-left:18px;padding-right:18px}
+  .mode-activities .presetrow{padding-top:14px;padding-bottom:7px}
+  .mode-activities .quickrow{padding-top:4px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+  .qchip,.pchip,.chip{border-radius:7px}
+  .qchip{background:#f3f6fa;border-color:var(--line);font-size:13px;padding:8px 12px;border-radius:999px}
+  .mode-activities .pchip{border-style:solid;background:#fff;border-color:var(--line);font-size:13px;padding:8px 13px;border-radius:999px}
+  .mode-activities .pchip.on{background:var(--txt);border-color:var(--txt);color:#fff}
+  .qchip.on,.pchip.on,.chip.on{
+    background:color-mix(in srgb,var(--accent) 12%,#fff);color:var(--accent);border-color:var(--accent-dim);
+  }
+  .filterbar{border-color:var(--line)}
+  .fbtn{background:#edf3f1;border-color:#c8d7d4}
+  .filters{background:#f1f6f4;border-color:var(--line)}
+  .insight{background:#edf4f2;border-color:var(--line);padding:9px 14px}
+  .insight-pill{background:#fff;border-color:#cad9d6;color:#5b7372;border-radius:6px}
+  .count{font-family:"Public Sans",sans-serif;background:#fff;border-color:var(--line);font-size:13px;padding:11px 18px}
+  .mode-activities .count b{font-size:16px}
+  #list{padding:0 0 10px;background:var(--surface);scroll-behavior:smooth}
+  .featured{
+    display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:13px;margin:14px 18px;
+    padding:16px;background:#fff;border:1px solid color-mix(in srgb,var(--accent) 38%,var(--line));
+    box-shadow:0 8px 24px rgba(23,43,77,.08);
+  }
+  .mode-activities .featured{grid-template-columns:auto minmax(0,1fr) auto}
+  .featured:hover{transform:translateY(-1px);border-color:var(--accent)}
+  .featured .eyebrow{font-family:"IBM Plex Mono",monospace;color:var(--accent)}
+  .featured .fname{font-family:"Bricolage Grotesque",sans-serif;font-size:18px;color:var(--txt)}
+  .featured .fmeta{color:var(--muted)}
+  .feature-stamp{display:grid;place-items:center;width:58px;height:58px;border-radius:16px;background:#f3f6fa;font-size:29px}
+  .feature-art{width:84px;height:84px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+  .list-section{top:0;background:rgba(248,251,248,.96);backdrop-filter:blur(8px);color:#587170;border-color:var(--line)}
+  .card{
+    position:relative;grid-template-columns:60px 1fr;gap:13px;margin:0 12px;padding:15px 7px 15px 5px;
+    border-bottom:1px solid #d6e1de;background:transparent;
+  }
+  .activity-card{
+    display:grid;grid-template-columns:62px minmax(0,1fr);gap:14px;margin:0;padding:18px;
+    border-bottom:1px solid var(--line);background:#fff;
+  }
+  .activity-card::before,.activity-card::after{display:none}
+  .activity-card:hover{background:#f8faff}
+  .activity-card.active{padding:18px;background:#f0f5ff;border-left:4px solid var(--accent)}
+  .activity-stamp{
+    display:grid;place-items:center;width:58px;height:58px;border-radius:17px;
+    background:#f1f4f8;font-size:29px;border:1px solid #e2e7ee;
+  }
+  .event-topline{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+  .event-format{
+    display:inline-flex;align-items:center;gap:4px;border-radius:6px;padding:4px 7px;
+    background:#e5f4ec;color:#116b45;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;
+  }
+  .event-format.online{background:#e7effc;color:#2f5f9d}
+  .event-category{font-size:11px;font-weight:650;color:var(--muted)}
+  .event-title{font-family:"Bricolage Grotesque",sans-serif;font-size:18px;font-weight:750;line-height:1.2;color:var(--txt)}
+  .event-time{margin-top:7px;color:var(--accent);font-size:13px;font-weight:750}
+  .event-place{margin-top:5px;color:#4e607b;font-size:13px;line-height:1.35}
+  .event-place span{display:block;color:#78869b;font-size:11.5px;margin-top:2px}
+  .event-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+  .event-tags .b{font-size:10.5px;border-radius:6px}
+  .event-actions{display:flex;align-items:center;gap:14px;margin-top:11px}
+  .event-details{font-size:12px;font-weight:750;color:var(--accent2);text-decoration:none}
+  .event-details:hover{text-decoration:underline}
+  .activity-card .savebtn{position:absolute;right:16px;top:16px;font-size:20px}
+  .activity-card{position:relative;padding-right:48px}
+  .card::before{
+    content:"";position:absolute;left:35px;top:0;bottom:0;width:1px;background:#c7d7d3;
+  }
+  .card::after{
+    content:"";position:absolute;left:31px;top:21px;width:7px;height:7px;border-radius:50%;
+    background:var(--surface);border:2px solid var(--accent);
+  }
+  .card:hover{background:#f0f6f4}
+  .card.active{background:#e8f1ef;border-left:0;padding-left:5px}
+  .card.active::after{background:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 15%,transparent)}
+  .card.activity-card:hover{background:#f8faff}
+  .card.activity-card.active{padding:18px 48px 18px 14px;background:#f0f5ff;border-left:4px solid var(--accent)}
+  .card .timecol{position:relative;z-index:1;background:var(--surface);padding:0 4px 4px 0;text-align:left}
+  .card .timepill{font-family:"Bricolage Grotesque",sans-serif;font-size:14px;color:var(--txt)}
+  .card .timeap{font-family:"IBM Plex Mono",monospace;font-size:8px}
+  .card .name{font-family:"Bricolage Grotesque",sans-serif;font-size:15px;font-weight:700}
+  .card .fell{border-radius:5px;color:#102128}
+  .card .when{color:var(--accent);font-size:11.5px}
+  .card .where{color:#587170}
+  .b{border-radius:4px;background:#e8efed;color:#587170}
+  .b.ok{background:#dcefe4;color:#176b43}
+  .b.warn{background:#f8e9ce;color:#9a5b13}
+  .b.now{background:#fbdcc9;color:#b3400f;font-weight:700}
+  .activity-stamp,.feature-stamp{overflow:hidden}
+  .stamp-img{width:100%;height:100%;object-fit:cover;border-radius:inherit}
+  .b.source{background:#dfecef;color:#315f69}
+  .linkrow{gap:12px}
+  .verify,.dir{color:var(--accent2)}
+  .map-hint,.map-legend{
+    background:rgba(248,251,248,.92);border-color:#b8cbc7;color:#506c6b;box-shadow:var(--shadow);
+  }
+  .map-legend .lg-title{color:var(--txt)}
+  .footer{background:#edf4f2;border-color:var(--line);color:#607876}
+  .mode-activities .footer{display:none}
+  .footer code{background:#fff;border-color:var(--line)}
+  .toast{background:var(--txt);color:#fff;border-color:var(--txt)}
+
+  @media(max-width:760px){
+    #app{height:100dvh}
+    header{flex-shrink:0}
+    .header-top{padding:13px 14px 8px}
+    .brand{width:100%;padding-right:80px}
+    .brand h1{font-size:27px;margin-top:2px}
+    .day-kicker{margin-top:9px}
+    .tagline{display:none}
+    .hero-live{margin-top:6px}
+    .hdr-actions{position:absolute;right:14px;top:12px}
+    #btnShare{display:none}
+    .crisis{display:none}
+    .header-controls{padding:0 14px 10px;align-items:stretch}
+    .modes{width:100%}
+    .modes button{flex:1}
+    .searchbar{min-width:100%;gap:6px}
+    .searchbar input{min-width:0}
+    .searchbar .btn{padding:9px 10px}
+    .viewtabs{
+      padding:7px 14px;background:#edf4f2;position:relative;z-index:4;
+    }
+    .viewtabs button{background:#f8fbf8;border-color:#bdd0cc}
+    .viewtabs button.on{background:var(--txt);color:#fff;border-color:var(--txt)}
+    main{min-height:0}
+    #sidebar{width:100%;max-width:100%;height:100%;min-height:0}
+    body.mobile-view-list #app{height:auto;min-height:100dvh}
+    body.mobile-view-list main{display:block}
+    body.mobile-view-list #sidebar{height:auto;overflow:visible}
+    body.mobile-view-list #list{overflow:visible}
+    .source-scout{padding:12px 15px}
+    .daybar{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+    .daybar::-webkit-scrollbar{display:none}
+    .daybar-label{display:none}
+    .daypick{flex-shrink:0}
+    .card{margin:0 8px}
+    .activity-card{margin:0;padding:17px 46px 17px 14px;grid-template-columns:54px minmax(0,1fr);gap:12px}
+    .card.activity-card.active{padding:17px 46px 17px 10px}
+    .activity-stamp{width:52px;height:52px;font-size:25px;border-radius:15px}
+    .event-title{font-size:17px}
+    .featured{margin:12px 14px}
+    .mode-activities .featured{grid-template-columns:auto minmax(0,1fr)}
+    .featured .feature-art{display:none}
+    .feature-stamp{width:50px;height:50px;font-size:25px}
+    .feature-art{width:68px;height:68px}
+    .map-legend{max-height:135px;overflow:hidden}
+  }
 </style>
 </head>
-<body>
+<body class="mode-activities">
 <div id="app">
   <header>
     <div class="header-top">
       <div class="brand">
-        <div class="logo"><span class="dot"></span>Gather</div>
-        <div class="tagline">Support groups &amp; things to do — Minneapolis, St. Paul &amp; suburbs</div>
+        <div class="logo"><span class="dot"></span>Gather <span class="city-tag">MSP</span></div>
+        <div class="day-kicker" id="dayKicker">Twin Cities · Today</div>
+        <h1 id="heroTitle">Find something to do.</h1>
+        <div class="tagline">In-person events around Minneapolis and St. Paul, starting soon.</div>
+        <div class="hero-live" id="heroLive"><span></span>Checking live sources…</div>
       </div>
       <div class="hdr-actions">
         <button type="button" class="iconbtn" id="btnSaved" title="Show saved">Saved</button>
         <button type="button" class="iconbtn" id="btnShare" title="Copy link to this view">Share</button>
       </div>
-      <div class="crisis" title="Free, confidential, 24/7"><a href="tel:988">Crisis support: 988</a> <button type="button" id="btnHelp">Get help now</button></div>
+      <div class="crisis" title="Free, confidential, 24/7"><a href="tel:988">Crisis support: 988</a></div>
     </div>
     <div class="header-controls">
       <div class="modes">
-        <button id="mSupport" class="on support" data-mode="support">Support</button>
-        <button id="mPlay" data-mode="activities">Activities</button>
+        <button id="mPlay" class="on play" data-mode="activities">Things to do</button>
+        <button id="mSupport" data-mode="support">Support meetings</button>
       </div>
       <div class="searchbar">
-        <input id="q" type="search" placeholder="Search name, place, or topic…" autocomplete="off" />
-        <button class="btn" id="nearme" type="button" title="Use your location to sort by distance">My area</button>
-        <button class="btn" id="nowbtn" type="button">Happening now</button>
+        <input id="q" type="search" placeholder="Try music, games, art, yoga…" autocomplete="off" />
+        <button class="btn" id="nearme" type="button" title="Use your location to sort by distance">Near me</button>
+        <button class="btn" id="nowbtn" type="button">Right now</button>
       </div>
     </div>
   </header>
   <main>
     <div class="viewtabs" id="viewtabs" role="tablist" aria-label="Map or list">
-      <button type="button" role="tab" class="on" data-view="map" aria-selected="true">Map</button>
-      <button type="button" role="tab" data-view="list">List</button>
+      <button type="button" role="tab" data-view="map" aria-selected="false">Map</button>
+      <button type="button" role="tab" class="on" data-view="list" aria-selected="true">List</button>
     </div>
     <div id="sidebar">
       <div class="tips" id="tips" hidden>
-        <p><strong style="color:var(--txt)">How Gather works:</strong> Pick a day, tap a map dot, or use quick filters. Verified listings come from official feeds — always confirm before you go.</p>
+        <p><strong style="color:var(--txt)">How Gather works:</strong> Pick a day, open a listing, or use quick filters. Live listings come from public event pages and official feeds — confirm before you go.</p>
         <button type="button" id="tipsDismiss">Got it</button>
       </div>
       <div class="daybar" id="daybar"></div>
-      <div class="chiprow"><span class="chipgroup" id="presetrow"></span><span class="chipsep"></span><span class="chipgroup" id="quickrow"></span></div>
+      <div class="presetrow" id="presetrow"></div>
+      <div class="quickrow" id="quickrow"></div>
       <div class="guide" id="guide" hidden>
         <h3>First time at a support meeting?</h3>
         <ul>
@@ -296,6 +549,16 @@
       <div class="insight" id="insight"></div>
       <div class="count" id="count"></div>
       <div id="list"></div>
+      <details class="source-scout">
+        <summary>Still looking? Check social posts and flyers</summary>
+        <div class="scout-links">
+          <a href="https://www.facebook.com/events/explore/minneapolis-minnesota/" target="_blank" rel="noopener">Facebook</a>
+          <a href="https://www.instagram.com/explore/tags/mplsevents/" target="_blank" rel="noopener">Instagram</a>
+          <a href="https://www.tiktok.com/search?q=minneapolis%20events%20today" target="_blank" rel="noopener">TikTok</a>
+          <a href="https://www.reddit.com/r/Minneapolis/search/?q=weekend%20roundup&amp;sort=new" target="_blank" rel="noopener">Reddit</a>
+          <a href="https://www.google.com/search?tbm=isch&amp;q=Minneapolis+events+today+flyer" target="_blank" rel="noopener">Flyers</a>
+        </div>
+      </details>
       <div class="footer" id="src"></div>
     </div>
     <div id="map">
@@ -305,85 +568,6 @@
   </main>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
-<div class="modal-scrim" id="helpModal" hidden role="dialog" aria-modal="true" aria-labelledby="helpTitle">
-  <div class="modal">
-    <button type="button" class="modal-close" id="helpClose">Close ✕</button>
-    <h2 id="helpTitle">Get help now</h2>
-    <p class="modal-sub">Free, confidential resources. If someone is in immediate danger, call 911.</p>
-    <div class="res-group">
-      <h3>Right now — 24/7</h3>
-      <a class="res-item urgent" href="tel:988">
-        <div class="rn">988 Suicide &amp; Crisis Lifeline</div>
-        <div class="rd">Mental health or substance use crisis. Call or text 988, or chat at 988lifeline.org.</div>
-        <div class="rc">Call 988</div>
-      </a>
-      <a class="res-item urgent" href="tel:18006624357">
-        <div class="rn">SAMHSA National Helpline</div>
-        <div class="rd">Free treatment referral &amp; information for substance use and mental health, in English and Spanish.</div>
-        <div class="rc">1-800-662-HELP (4357)</div>
-      </a>
-      <a class="res-item" href="tel:211">
-        <div class="rn">211 — United Way</div>
-        <div class="rd">Connects you to local help: housing, food, treatment, support programs.</div>
-        <div class="rc">Call 211</div>
-      </a>
-    </div>
-    <div class="res-group" id="resTreatment">
-      <h3>Find treatment</h3>
-      <a class="res-item" href="https://fasttrackermn.org/" target="_blank" rel="noopener">
-        <div class="rn">Fast-Tracker Minnesota</div>
-        <div class="rd">Minnesota's real-time locator for substance use &amp; mental health treatment openings.</div>
-        <div class="rc">fasttrackermn.org ↗</div>
-      </a>
-      <a class="res-item" href="https://findtreatment.gov/" target="_blank" rel="noopener">
-        <div class="rn">FindTreatment.gov</div>
-        <div class="rd">Official national locator for licensed treatment — filter by payment, telehealth, and distance.</div>
-        <div class="rc">findtreatment.gov ↗</div>
-      </a>
-    </div>
-    <div class="res-group" id="resCommunity">
-      <h3>Sober community &amp; support</h3>
-      <a class="res-item" href="https://thephoenix.org/find-a-class/" target="_blank" rel="noopener">
-        <div class="rn">The Phoenix</div>
-        <div class="rd">Free sober active community — workouts, climbing, yoga &amp; socials. St Paul gym at 470 Cleveland Ave N.</div>
-        <div class="rc">thephoenix.org ↗</div>
-      </a>
-      <a class="res-item" href="https://www.minnesotarecovery.org/" target="_blank" rel="noopener">
-        <div class="rn">Minnesota Recovery Connection</div>
-        <div class="rd">Peer support, All Recovery meetings, and recovery community events across the metro.</div>
-        <div class="rc">minnesotarecovery.org ↗</div>
-      </a>
-      <a class="res-item" href="https://mnwitw.org/mnwarmline" target="_blank" rel="noopener">
-        <div class="rn">Minnesota Warmline</div>
-        <div class="rd">Peer-run support line when it's not a crisis but you need to talk to someone who gets it.</div>
-        <div class="rc">mnwitw.org/mnwarmline ↗</div>
-      </a>
-    </div>
-    <div class="res-group" id="resOnline">
-      <h3>Can't make it in person?</h3>
-      <a class="res-item" href="https://aa-intergroup.org/meetings/" target="_blank" rel="noopener">
-        <div class="rn">Online Intergroup of AA</div>
-        <div class="rd">Hundreds of online AA meetings around the clock, every day.</div>
-        <div class="rc">aa-intergroup.org ↗</div>
-      </a>
-      <a class="res-item" href="https://virtual-na.org/meetings/" target="_blank" rel="noopener">
-        <div class="rn">Virtual NA</div>
-        <div class="rd">Online and phone NA meetings worldwide, searchable by time and language.</div>
-        <div class="rc">virtual-na.org ↗</div>
-      </a>
-      <a class="res-item" href="https://www.intherooms.com/" target="_blank" rel="noopener">
-        <div class="rn">In The Rooms</div>
-        <div class="rd">Free online recovery community — live video meetings across many fellowships.</div>
-        <div class="rc">intherooms.com ↗</div>
-      </a>
-      <a class="res-item" href="https://meetings.smartrecovery.org/meetings/" target="_blank" rel="noopener">
-        <div class="rn">SMART Recovery Online</div>
-        <div class="rd">Science-based, non-12-step meetings online every day.</div>
-        <div class="rc">meetings.smartrecovery.org ↗</div>
-      </a>
-    </div>
-  </div>
-</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
@@ -415,24 +599,24 @@ const FELLOWSHIPS = {
 // Official meeting finders per program — powers the "verify" button.
 const FINDERS={
   AA:"https://aaminneapolis.org/meetings/",
-  NA:"https://naminnesota.org/find-a-meeting/",
-  "Al-Anon":"https://al-anon.org/al-anon-meetings/find-an-al-anon-meeting/",
+  NA:"https://naminnesota.org/meetings/",
+  "Al-Anon":"https://al-anon.org/al-anon-meetings/",
   ACA:"https://adultchildren.org/meeting-search/",
-  EA:"https://emotionsanonymous.org/find-an-ea-meeting/",
-  CoDA:"https://coda.org/find-a-meeting/",
+  EA:"https://emotionsanonymous.org/find-a-meeting/",
+  CoDA:"https://coda.org/coda-meetings/",
   OA:"https://oa.org/find-a-meeting/",
-  GA:"https://www.gamblersanonymous.org/find-a-meeting/",
+  GA:"https://www.gamblersanonymous.org/ga/locations",
   SMART:"https://meetings.smartrecovery.org/meetings/",
-  Dharma:"https://recoverydharma.org/meetings/",
-  Refuge:"https://refugerecoverymeetings.org/",
-  LifeRing:"https://lifering.org/meeting-menu/",
-  WFS:"https://meetings.womenforsobriety.org/meetings/",
-  Wellbriety:"https://whitebison.org/circle-meetings/",
-  CR:"https://crlocator.com/",
-  SOS:"https://www.sossobriety.org/on-line-groups",
+  Dharma:"https://recoverydharma.org/find-a-meeting/",
+  Refuge:"https://www.refugerecovery.org/meetings",
+  LifeRing:"https://lifering.org/find-a-meeting/",
+  WFS:"https://womenforsobriety.org/find-meetings/",
+  Wellbriety:"https://wellbriety.com/",
+  CR:"https://locator.crgroups.info/",
+  SOS:"https://www.sossobriety.org/meetings/",
   CA:"https://ca.org/meetings/",
   MA:"https://www.marijuana-anonymous.org/meetings/",
-  DDA:"https://draonline.org/meetings/",
+  DDA:"https://draonline.org/",
 };
 function finderFor(m){return (m.url)||FINDERS[m.cat]||"https://www.211.org/";}
 const SUPPORT = [
@@ -442,9 +626,9 @@ const SUPPORT = [
   {cat:"AA",name:"Sunrise Sobriety",day:3,time:"07:00",dur:60,fmt:"hybrid",loc:"Mortimer's",addr:"352 Snelling Ave S, St Paul",lat:44.9356,lng:-93.1668,types:["Open"]},
   {cat:"AA",name:"Lake Street Group",day:4,time:"12:00",dur:60,fmt:"in-person",loc:"Walker Community Church",addr:"3104 16th Ave S, Minneapolis",lat:44.9486,lng:-93.2480,types:["Open","Discussion"]},
   {cat:"AA",name:"Women's Courage",day:6,time:"10:00",dur:90,fmt:"in-person",loc:"Unity Church Unitarian",addr:"733 Portland Ave, St Paul",lat:44.9462,lng:-93.1213,types:["Closed","Women"]},
-  {cat:"AA",name:"Young People's Online",day:0,time:"20:00",dur:60,fmt:"online",loc:"Online Intergroup of AA",addr:"Online · aa-intergroup.org",lat:44.95,lng:-93.09,types:["Open","Young People"],url:"https://aa-intergroup.org/meetings/"},
+  {cat:"AA",name:"Young People's Online",day:0,time:"20:00",dur:60,fmt:"online",loc:"Zoom",addr:"Online",lat:44.95,lng:-93.09,types:["Open","Young People"],url:"https://zoom.us"},
   {cat:"NA",name:"Just For Today",day:1,time:"19:00",dur:90,fmt:"in-person",loc:"Central Presbyterian",addr:"500 Cedar St, St Paul",lat:44.9469,lng:-93.0962,types:["Open"]},
-  {cat:"NA",name:"Clean & Serene",day:4,time:"20:00",dur:60,fmt:"hybrid",loc:"Mercy Seat Lutheran",addr:"1500 6th St NE, Minneapolis",lat:44.9993,lng:-93.2566,types:["Open","Speaker"]},
+  {cat:"NA",name:"Clean & Serene",day:4,time:"20:00",dur:60,fmt:"hybrid",loc:"Mercy Seat",addr:"2422 18th Ave S, Minneapolis",lat:44.9560,lng:-93.2466,types:["Open","Speaker"]},
   {cat:"NA",name:"Midday Recovery",day:2,time:"12:00",dur:60,fmt:"in-person",loc:"First Lutheran",addr:"463 Maria Ave, St Paul",lat:44.9559,lng:-93.0710,types:["Open"]},
   {cat:"Al-Anon",name:"Hope for Today",day:3,time:"18:00",dur:60,fmt:"in-person",loc:"Gloria Dei Lutheran",addr:"700 Snelling Ave S, St Paul",lat:44.9301,lng:-93.1669,types:["Open"]},
   {cat:"Al-Anon",name:"Courage to Change",day:5,time:"12:00",dur:60,fmt:"hybrid",loc:"Edina Morningside",addr:"4201 Morningside Rd, Edina",lat:44.9180,lng:-93.3380,types:["Open"]},
@@ -459,26 +643,25 @@ const SUPPORT = [
   {cat:"GA",name:"New Beginnings GA",day:1,time:"19:30",dur:90,fmt:"in-person",loc:"Mount Olivet Lutheran",addr:"5025 Knox Ave S, Minneapolis",lat:44.8995,lng:-93.3000,types:["Closed"]},
   {cat:"GA",name:"Turnaround Thursday",day:4,time:"19:00",dur:90,fmt:"in-person",loc:"St Stephen Lutheran",addr:"8400 France Ave S, Bloomington",lat:44.8610,lng:-93.3290,types:["Closed"]},
   {cat:"SMART",name:"SMART Recovery St Paul",day:2,time:"18:00",dur:90,fmt:"hybrid",loc:"Hazelden Betty Ford",addr:"680 Stewart Ave, St Paul",lat:44.9290,lng:-93.1390,types:["Open","Secular"]},
-  {cat:"SMART",name:"SMART Online MN",day:0,time:"19:00",dur:90,fmt:"online",loc:"SMART Recovery (online)",addr:"Online · meetings.smartrecovery.org",lat:44.95,lng:-93.09,types:["Open","Secular"],url:"https://meetings.smartrecovery.org/meetings/"},
+  {cat:"SMART",name:"SMART Online MN",day:0,time:"19:00",dur:90,fmt:"online",loc:"Zoom",addr:"Online",lat:44.95,lng:-93.09,types:["Open","Secular"],url:"https://smartrecovery.org"},
   {cat:"Dharma",name:"Recovery Dharma TC",day:3,time:"18:30",dur:75,fmt:"in-person",loc:"Lake Harriet Spiritual",addr:"4401 Upton Ave S, Minneapolis",lat:44.9210,lng:-93.3170,types:["Open","Secular"]},
-  {cat:"Dharma",name:"Mindful Recovery",day:0,time:"10:00",dur:60,fmt:"hybrid",loc:"MN Zen Meditation Center",addr:"3343 E Bde Maka Ska Pkwy, Minneapolis",lat:44.9430,lng:-93.3060,types:["Open"]},
+  {cat:"Dharma",name:"Mindful Recovery",day:0,time:"10:00",dur:60,fmt:"hybrid",loc:"MN Zen Meditation Center",addr:"3343 E Calhoun Pkwy, Minneapolis",lat:44.9430,lng:-93.3060,types:["Open"]},
   {cat:"Refuge",name:"Refuge Recovery Sit",day:1,time:"18:00",dur:75,fmt:"in-person",loc:"Common Ground Meditation",addr:"2700 E 26th St, Minneapolis",lat:44.9560,lng:-93.2300,types:["Open","Secular"]},
   {cat:"DDA",name:"Dual Diagnosis Anonymous",day:4,time:"17:30",dur:60,fmt:"hybrid",loc:"Guild Recovery",addr:"130 S Wabasha St, St Paul",lat:44.9430,lng:-93.0890,types:["Open","Mental Health"]},
   // ----- Non-12-step programs: official online meetings (verify on source) -----
   {cat:"SMART",name:"SMART Recovery Daily Online",day:0,time:"19:00",dur:90,fmt:"online",loc:"SMART Recovery (online)",addr:"Online · meetings.smartrecovery.org",lat:44.95,lng:-93.09,types:["Open","Secular","Science-based"],url:"https://meetings.smartrecovery.org/meetings/"},
   {cat:"Dharma",name:"Recovery Dharma Online Sit",day:2,time:"20:00",dur:60,fmt:"online",loc:"Recovery Dharma (online)",addr:"Online · recoverydharma.online",lat:44.95,lng:-93.09,types:["Open","Buddhist","Meditation"],url:"https://recoverydharma.online/"},
-  {cat:"LifeRing",name:"LifeRing Online Meeting",day:3,time:"18:00",dur:60,fmt:"online",loc:"LifeRing Secular Recovery",addr:"Online · lifering.org",lat:44.95,lng:-93.09,types:["Open","Secular","Abstinence"],url:"https://lifering.org/meeting-menu/"},
-  {cat:"WFS",name:"Women for Sobriety Online",day:1,time:"19:00",dur:60,fmt:"online",loc:"Women for Sobriety",addr:"Online · womenforsobriety.org",lat:44.95,lng:-93.09,types:["Closed","Women","New Life"],url:"https://meetings.womenforsobriety.org/meetings/"},
-  {cat:"Wellbriety",name:"Wellbriety Talking Circle",day:4,time:"18:30",dur:90,fmt:"online",loc:"White Bison Wellbriety",addr:"Online · whitebison.org",lat:44.95,lng:-93.09,types:["Open","Native American","Medicine Wheel"],url:"https://whitebison.org/circle-meetings/"},
-  {cat:"SOS",name:"SOS Secular Sobriety (online)",day:6,time:"10:00",dur:60,fmt:"online",loc:"Secular Organizations for Sobriety",addr:"Online · sossobriety.org",lat:44.95,lng:-93.09,types:["Open","Secular"] ,url:"https://www.sossobriety.org/on-line-groups"},
-  {cat:"CR",name:"Celebrate Recovery — Twin Cities",day:5,time:"19:00",dur:120,fmt:"hybrid",loc:"Find a local CR group",addr:"Multiple Twin Cities churches · crlocator.com",lat:null,lng:null,types:["Open","Christian"],url:"https://crlocator.com/"},
+  {cat:"LifeRing",name:"LifeRing Online Meeting",day:3,time:"18:00",dur:60,fmt:"online",loc:"LifeRing Secular Recovery",addr:"Online · lifering.org",lat:44.95,lng:-93.09,types:["Open","Secular","Abstinence"],url:"https://lifering.org/find-a-meeting/"},
+  {cat:"WFS",name:"Women for Sobriety Online",day:1,time:"19:00",dur:60,fmt:"online",loc:"Women for Sobriety",addr:"Online · womenforsobriety.org",lat:44.95,lng:-93.09,types:["Closed","Women","New Life"],url:"https://womenforsobriety.org/find-meetings/"},
+  {cat:"Wellbriety",name:"Wellbriety Talking Circle",day:4,time:"18:30",dur:90,fmt:"online",loc:"White Bison Wellbriety",addr:"Online · wellbriety.com",lat:44.95,lng:-93.09,types:["Open","Native American","Medicine Wheel"],url:"https://wellbriety.com/"},
+  {cat:"SOS",name:"SOS Secular Sobriety (online)",day:6,time:"10:00",dur:60,fmt:"online",loc:"Secular Organizations for Sobriety",addr:"Online · sossobriety.org",lat:44.95,lng:-93.09,types:["Open","Secular"],url:"https://www.sossobriety.org/meetings/"},
+  {cat:"CR",name:"Celebrate Recovery — St Paul",day:5,time:"19:00",dur:120,fmt:"hybrid",loc:"Substance Church",addr:"1390 Arcade St, St Paul",lat:44.9810,lng:-93.0640,types:["Open","Christian"],url:"https://locator.crgroups.info/"},
   {cat:"CA",name:"Cocaine Anonymous MN",day:2,time:"19:30",dur:60,fmt:"hybrid",loc:"CA Minnesota",addr:"Online + Twin Cities · ca-mn.org",lat:44.95,lng:-93.09,types:["Open"],url:"https://ca.org/meetings/"},
   {cat:"MA",name:"Marijuana Anonymous Online",day:0,time:"18:00",dur:60,fmt:"online",loc:"Marijuana Anonymous",addr:"Online · marijuana-anonymous.org",lat:44.95,lng:-93.09,types:["Open"],url:"https://www.marijuana-anonymous.org/meetings/"},
 ];
 
 /* ===== ACTIVITIES & GROUPS ===== */
 const ACTIVITIES = {
-  Recovery:{name:"Sober & Recovery Community",color:"#4fd1c5"},
   Games:{name:"Board Games & Tabletop",color:"#c084fc"},
   Zen:{name:"Meditation & Zen",color:"#5eead4"},
   Outdoors:{name:"Hiking & Outdoors",color:"#84cc16"},
@@ -491,11 +674,11 @@ const ACTIVITIES = {
   Language:{name:"Language Exchange",color:"#a78bfa"},
 };
 const PLAY = [
-  {cat:"Games",name:"Twin Cities Board Game Night",day:1,time:"18:00",dur:180,fmt:"in-person",loc:"Gamezenter",addr:"1975 County Rd B2 W, Roseville",lat:45.0119,lng:-93.1760,types:["All ages","Free"]},
+  {cat:"Games",name:"Twin Cities Board Game Night",day:1,time:"18:00",dur:180,fmt:"in-person",loc:"Fantasy Flight Games Center",addr:"1995 W County Rd B2, Roseville",lat:45.0119,lng:-93.1760,types:["All ages","Free"]},
   {cat:"Games",name:"D&D Adventurers League",day:3,time:"18:30",dur:180,fmt:"in-person",loc:"The Source Comics & Games",addr:"2057 Snelling Ave N, Roseville",lat:45.0150,lng:-93.1670,types:["Beginners welcome"]},
   {cat:"Games",name:"Saturday Strategy Games",day:6,time:"13:00",dur:240,fmt:"in-person",loc:"Hennepin County Library",addr:"300 Nicollet Mall, Minneapolis",lat:44.9788,lng:-93.2700,types:["Free","Drop-in"]},
-  {cat:"Games",name:"Magic: The Gathering Commander",day:5,time:"18:00",dur:180,fmt:"in-person",loc:"The Source Comics & Games",addr:"2057 Snelling Ave N, Roseville",lat:45.0150,lng:-93.1670,types:["All levels"]},
-  {cat:"Zen",name:"Sunday Zazen Sitting",day:0,time:"09:00",dur:90,fmt:"in-person",loc:"MN Zen Meditation Center",addr:"3343 E Bde Maka Ska Pkwy, Minneapolis",lat:44.9430,lng:-93.3060,types:["Beginners welcome"]},
+  {cat:"Games",name:"Magic: The Gathering Commander",day:5,time:"18:00",dur:180,fmt:"in-person",loc:"Misty Mountain Games",addr:"2024 S Robert St, West St Paul",lat:44.9000,lng:-93.0790,types:["All levels"]},
+  {cat:"Zen",name:"Sunday Zazen Sitting",day:0,time:"09:00",dur:90,fmt:"in-person",loc:"MN Zen Meditation Center",addr:"3343 E Calhoun Pkwy, Minneapolis",lat:44.9430,lng:-93.3060,types:["Beginners welcome"]},
   {cat:"Zen",name:"Weekly Zazen & Talk",day:2,time:"19:00",dur:75,fmt:"hybrid",loc:"Clouds in Water Zen Center",addr:"445 Farrington St, St Paul",lat:44.9560,lng:-93.1090,types:["All levels"],url:"https://cloudsinwater.org"},
   {cat:"Zen",name:"Mindfulness Drop-in",day:4,time:"12:00",dur:45,fmt:"in-person",loc:"Common Ground Meditation",addr:"2700 E 26th St, Minneapolis",lat:44.9560,lng:-93.2300,types:["Free","Lunch hour"]},
   {cat:"Outdoors",name:"Saturday Morning Hike",day:6,time:"09:00",dur:120,fmt:"in-person",loc:"Como Park",addr:"1199 Midway Pkwy, St Paul",lat:44.9803,lng:-93.1466,types:["All levels","Dog friendly"]},
@@ -503,19 +686,19 @@ const PLAY = [
   {cat:"Outdoors",name:"Weeknight Bike Ride",day:3,time:"18:00",dur:90,fmt:"in-person",loc:"Lake Harriet Bandshell",addr:"4135 W Lake Harriet Pkwy, Minneapolis",lat:44.9220,lng:-93.3070,types:["Casual pace"]},
   {cat:"Books",name:"Fiction Book Club",day:3,time:"18:30",dur:90,fmt:"in-person",loc:"Next Chapter Booksellers",addr:"38 S Snelling Ave, St Paul",lat:44.9400,lng:-93.1670,types:["Monthly"]},
   {cat:"Books",name:"Sci-Fi & Fantasy Readers",day:4,time:"19:00",dur:90,fmt:"hybrid",loc:"Moon Palace Books",addr:"3032 Minnehaha Ave, Minneapolis",lat:44.9490,lng:-93.2310,types:["All welcome"]},
-  {cat:"Art",name:"Knit & Stitch Night",day:2,time:"18:00",dur:120,fmt:"in-person",loc:"The Yarnery",addr:"2040 St Clair Ave, St Paul",lat:44.9342,lng:-93.1850,types:["All skill levels"]},
-  {cat:"Art",name:"Open Studio Pottery",day:5,time:"18:00",dur:150,fmt:"in-person",loc:"Northern Clay Center",addr:"2424 E Franklin Ave, Minneapolis",lat:44.9627,lng:-93.2330,types:["Drop-in","Fee"]},
+  {cat:"Art",name:"Knit & Stitch Night",day:2,time:"18:00",dur:120,fmt:"in-person",loc:"The Yarnery",addr:"840 Grand Ave, St Paul",lat:44.9400,lng:-93.1370,types:["All skill levels"]},
+  {cat:"Art",name:"Open Studio Pottery",day:5,time:"18:00",dur:150,fmt:"in-person",loc:"Northern Clay Center",addr:"2424 Franklin Ave E, Minneapolis",lat:44.9627,lng:-93.2330,types:["Drop-in","Fee"]},
   {cat:"Music",name:"Old-Time Jam Session",day:0,time:"16:00",dur:120,fmt:"in-person",loc:"The Driftwood",addr:"4415 Nicollet Ave, Minneapolis",lat:44.9200,lng:-93.2780,types:["Acoustic","All levels"]},
   {cat:"Music",name:"Open Mic Night",day:4,time:"20:00",dur:120,fmt:"in-person",loc:"Caffetto Coffee",addr:"708 W 22nd St, Minneapolis",lat:44.9640,lng:-93.2880,types:["Sign up","Free"]},
   {cat:"Social",name:"New in Town Social",day:5,time:"19:00",dur:120,fmt:"in-person",loc:"Surly Brewing",addr:"520 Malcolm Ave SE, Minneapolis",lat:44.9700,lng:-93.2090,types:["21+","Newcomers"]},
   {cat:"Social",name:"Twin Cities 20s & 30s Meetup",day:3,time:"19:00",dur:120,fmt:"in-person",loc:"Can Can Wonderland",addr:"755 Prior Ave N, St Paul",lat:44.9650,lng:-93.1790,types:["Casual","Newcomers"]},
-  {cat:"Volunteer",name:"Community Garden Volunteers",day:6,time:"10:00",dur:120,fmt:"in-person",loc:"Frogtown Park & Farm",addr:"946 Minnehaha Ave W, St Paul",lat:44.9620,lng:-93.1300,types:["Family","Outdoors"]},
+  {cat:"Volunteer",name:"Community Garden Volunteers",day:6,time:"10:00",dur:120,fmt:"in-person",loc:"Frogtown Farm",addr:"940 Lafond Ave, St Paul",lat:44.9620,lng:-93.1300,types:["Family","Outdoors"]},
   {cat:"Volunteer",name:"Food Shelf Sorting",day:4,time:"17:00",dur:120,fmt:"in-person",loc:"Second Harvest Heartland",addr:"7101 Winnetka Ave N, Brooklyn Park",lat:45.0610,lng:-93.3760,types:["All ages 8+"]},
   {cat:"Fitness",name:"Lake Run Club",day:2,time:"18:00",dur:60,fmt:"in-person",loc:"Lake Harriet",addr:"4135 W Lake Harriet Pkwy, Minneapolis",lat:44.9220,lng:-93.3070,types:["All paces","Free"]},
   {cat:"Fitness",name:"Pickup Volleyball",day:1,time:"19:00",dur:90,fmt:"in-person",loc:"Phalen Rec Center",addr:"1000 Wheelock Pkwy E, St Paul",lat:44.9870,lng:-93.0530,types:["Drop-in","All levels"]},
   {cat:"Fitness",name:"Saturday Yoga in the Park",day:6,time:"09:30",dur:60,fmt:"in-person",loc:"Boom Island Park",addr:"724 Sibley St NE, Minneapolis",lat:44.9930,lng:-93.2680,types:["Free","All levels"]},
-  {cat:"Language",name:"Spanish Conversation Table",day:3,time:"18:30",dur:90,fmt:"hybrid",loc:"Hennepin County Library — Central",addr:"300 Nicollet Mall, Minneapolis",lat:44.9788,lng:-93.2700,types:["All levels","Free"]},
-  {cat:"Language",name:"French Meetup",day:1,time:"18:00",dur:90,fmt:"in-person",loc:"Alliance Française",addr:"227 Colfax Ave N, Minneapolis",lat:44.9803,lng:-93.2968,types:["Intermediate+"]},
+  {cat:"Language",name:"Spanish Conversation Table",day:3,time:"18:30",dur:90,fmt:"hybrid",loc:"Black Dog Cafe",addr:"308 Prince St, St Paul",lat:44.9490,lng:-93.0840,types:["All levels"]},
+  {cat:"Language",name:"French Meetup",day:1,time:"18:00",dur:90,fmt:"in-person",loc:"Alliance Française",addr:"113 N 1st St, Minneapolis",lat:44.9850,lng:-93.2680,types:["Intermediate+"]},
 ];
 
 /* ===== engine ===== */
@@ -531,19 +714,24 @@ const QUICK={
     {id:"women",label:"Women",match:m=>/women/i.test((m.types||[]).join(" "))},
   ],
   activities:[
-    {id:"sober",label:"Sober-friendly",match:m=>m.cat==="Recovery"||/sober|recovery|alcohol[- ]free/i.test(m.name+" "+(m.types||[]).join(" ")+" "+(m.source||""))},
-    {id:"free",label:"Free",match:m=>(m.types||[]).some(t=>/free/i.test(t))},
-    {id:"new",label:"Welcoming",match:m=>/beginner|newcomer|welcome|all levels|drop-?in/i.test(((m.types||[]).join(" "))+" "+m.name)},
-    {id:"outdoor",label:"Outdoors",match:m=>m.cat==="Outdoors"||/hike|park|trail|garden/i.test(m.name+" "+m.loc)},
-    {id:"social",label:"Social",match:m=>m.cat==="Social"},
+    {id:"music",label:"🎵 Music",match:m=>m.cat==="Music"},
+    {id:"art",label:"🎨 Art",match:m=>m.cat==="Art"},
+    {id:"outdoor",label:"🌿 Outdoors",match:m=>m.cat==="Outdoors"},
+    {id:"games",label:"🎲 Games",match:m=>m.cat==="Games"},
+    {id:"social",label:"🤝 Social",match:m=>m.cat==="Social"||m.cat==="Language"},
+    {id:"wellness",label:"🧘 Wellness",match:m=>m.cat==="Zen"||m.cat==="Fitness"},
+    {id:"books",label:"📚 Books",match:m=>m.cat==="Books"},
+    {id:"volunteer",label:"🤲 Volunteer",match:m=>m.cat==="Volunteer"},
+    {id:"free",label:"🆓 Free",match:m=>(m.types||[]).some(t=>/free/i.test(t))},
   ],
 };
 let SAVED=new Set();
 try{SAVED=new Set(JSON.parse(localStorage.getItem("gather-saved")||"[]"));}catch(e){}
-const state={mode:"support",cat:new Set(),day:null,daySet:null,fmt:null,tod:"",nowOnly:false,q:"",near:null,nearGps:false,quick:new Set(),savedOnly:false,preset:"",limit:RENDER_STEP};
+const state={mode:"activities",cat:new Set(),day:null,daySet:null,fmt:null,tod:"",nowOnly:false,q:"",near:null,nearGps:false,quick:new Set(),savedOnly:false,preset:"",limit:RENDER_STEP};
 let _urlTimer=null;
 function todayDay(){return nowInfo().day;}
 function dayViewLabel(){
+  if(state.savedOnly)return "saved";
   if(state.daySet)return "Fri–Sun";
   if(isAllWeek())return "all week";
   const t=todayDay();
@@ -606,7 +794,7 @@ function pushUrl(){
 }
 function readUrl(){
   const p=new URLSearchParams(location.search);
-  if(p.get("mode")==="activities")state.mode="activities";
+  if(p.get("mode")==="activities"||p.get("mode")==="support")state.mode=p.get("mode");
   if(p.get("weekend")==="1")state.daySet=new Set([5,6,0]);
   else if(p.get("week")==="1"){state.day=null;state.daySet=null;}
   else if(p.has("day")){state.day=+p.get("day");state.daySet=null;}
@@ -633,37 +821,45 @@ function supportMeetings(){
 // Activities = live venue/calendar events (verified) + curated sample groups (unverified)
 function activityItems(){
   const curated=PLAY.map(m=>({...m,verified:false}));
-  return [...LIVE_EVENTS,...curated];
+  return LIVE_EVENTS.length?LIVE_EVENTS:curated;
 }
 let map,markers,userMarker,activeId=null,markerById=new Map(),lastFilteredList=[];
 
-const TC_CENTER=[44.9537,-93.0900];
+// Stable per-event id (name+date+time) so saved stars and shared links
+// survive reloads — live feeds re-order every fetch, so index ids break.
+function stableId(m,p){return p+(m.name+"|"+(m.date||m.day)+"|"+m.time).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"").slice(0,80);}
+function isOver(m){return m._minsUntil<-(m.dur||120);}
+
+const TC_CENTER=[44.9650,-93.1800];
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function safeHref(u){if(!u||typeof u!=="string")return "";try{const x=new URL(u,location.href);return /^https?:$/.test(x.protocol)?x.href:"";}catch(e){return "";}}
 function fmtTime(t){let[h,m]=t.split(":").map(Number);const ap=h<12?"AM":"PM";h=h%12||12;return `${h}:${String(m).padStart(2,"0")} ${ap}`;}
 function fmtParts(t){const [h,m]=t.split(":").map(Number);const ap=h<12?"AM":"PM";const hr=h%12||12;return{hr:`${hr}:${String(m).padStart(2,"0")}`,ap};}
 function fmtLabel(f){return f==="online"?"Online":f==="hybrid"?"Hybrid":"In person";}
+function activityEmoji(cat){
+  return {Music:"🎵",Art:"🎨",Outdoors:"🌿",Games:"🎲",Social:"🤝",Zen:"🧘",Fitness:"🏃",Books:"📚",Volunteer:"🤲",Language:"💬"}[cat]||"✨";
+}
+function activityLabel(cat){
+  return {Music:"Music",Art:"Art & crafts",Outdoors:"Outdoors",Games:"Games",Social:"Social",Zen:"Wellness",Fitness:"Fitness",Books:"Books",Volunteer:"Volunteer",Language:"Languages"}[cat]||cat;
+}
 function mapsDir(m){return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((m.loc?m.loc+" ":"")+m.addr)}`;}
 function pickNextUp(list){
   enrichSort(list);
   for(const m of list){if(isNow(m))return m;}
   for(const m of list){if(m._minsUntil>=0&&m._minsUntil<=360)return m;}
-  return list[0]||null;
+  // never feature something that already ended (late-night "Try this first" bug)
+  return list.find(m=>!isOver(m))||null;
 }
 function timeMins(t){const [h,m]=t.split(":").map(Number);return h*60+m;}
 function nowInfo(){const d=new Date();return{day:d.getDay(),mins:d.getHours()*60+d.getMinutes()};}
-function dayOffset(meetingDay,today){return (meetingDay-today+7)%7;}
-// days until the item: dated events use their real calendar date,
-// weekly meetings use the next occurrence of their weekday
-function dateOff(m,n){
-  if(m.date){
-    const p=m.date.split("-").map(Number);
-    const today=new Date();
-    const t0=new Date(today.getFullYear(),today.getMonth(),today.getDate());
-    return Math.round((new Date(p[0],p[1]-1,p[2])-t0)/864e5);
-  }
-  return dayOffset(m.day,n.day);
+function todayDateKey(){return new Intl.DateTimeFormat("en-CA",{timeZone:"America/Chicago"}).format(new Date());}
+function dateOffset(date){
+  if(!date)return null;
+  return Math.round((Date.parse(date+"T12:00:00Z")-Date.parse(todayDateKey()+"T12:00:00Z"))/864e5);
 }
-function minutesUntil(m,n){const off=dateOff(m,n);if(off===0)return timeMins(m.time)-n.mins;return off*1440+timeMins(m.time);}
-function isNow(m){const n=nowInfo();if(m.day!==n.day)return false;if(m.date&&dateOff(m,n)!==0)return false;const s=timeMins(m.time);return n.mins>=s-15&&n.mins<=s+m.dur;}
+function dayOffset(meetingDay,today){return (meetingDay-today+7)%7;}
+function minutesUntil(m,n){const off=m.date?dateOffset(m.date):dayOffset(m.day,n.day);if(off===0)return timeMins(m.time)-n.mins;return off*1440+timeMins(m.time)-n.mins;}
+function isNow(m){const n=nowInfo();if(m.date?dateOffset(m.date)!==0:m.day!==n.day)return false;const s=timeMins(m.time);return n.mins>=s-15&&n.mins<=s+m.dur;}
 function dist(a,b,c,d){const R=3959,r=x=>x*Math.PI/180;const dLat=r(c-a),dLon=r(d-b);const x=Math.sin(dLat/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
 function relSoon(mins){
   if(mins<=0)return null;
@@ -672,7 +868,7 @@ function relSoon(mins){
   return r?`in ${h}h ${r}m`:`in ${h}h`;
 }
 function relWhen(m){
-  if((m._dayOff??dateOff(m,nowInfo()))!==0)return null;
+  if((m.date?dateOffset(m.date):dayOffset(m.day,nowInfo().day))!==0)return null;
   if(isNow(m))return "starting now";
   if(m._minsUntil>0&&m._minsUntil<=240)return relSoon(m._minsUntil);
   return null;
@@ -680,15 +876,15 @@ function relWhen(m){
 function sectionTitle(m){
   if(m._dayOff===0)return "Today";
   if(m._dayOff===1)return "Tomorrow";
-  if(m._dayOff>6&&m.dateLabel)return m.dateLabel;
   return DAYS[m.day];
 }
 function enrichSort(list){
   const n=nowInfo(),pin=state.day!==null&&!state.daySet,useNear=!!state.near;
   list.forEach(m=>{
-    m._dayOff=pin?0:dateOff(m,n);
+    m._dayOff=m.date?dateOffset(m.date):(pin?0:dayOffset(m.day,n.day));
     m._minsUntil=minutesUntil(m,n);
-    m._d=useNear&&m.lat!=null?dist(state.near[0],state.near[1],m.lat,m.lng):null;
+    // approx pins (Meetup city-centroid) get no distance — it would be a lie
+    m._d=useNear&&m.lat!=null&&!m.approx?dist(state.near[0],state.near[1],m.lat,m.lng):null;
   });
   return list;
 }
@@ -697,6 +893,9 @@ function smartSort(list){
   const pin=state.day!==null&&!state.daySet,useNear=!!state.near;
   list.sort((a,b)=>{
     if(!pin&&!state.daySet&&a._dayOff!==b._dayOff)return a._dayOff-b._dayOff;
+    // events that already ended today sink below everything still coming up
+    const aOver=isOver(a),bOver=isOver(b);
+    if(a._dayOff===b._dayOff&&aOver!==bOver)return aOver?1:-1;
     if(!pin&&a._dayOff===0&&b._dayOff===0){
       const aNow=isNow(a),bNow=isNow(b);
       if(aNow!==bNow)return aNow?-1:1;
@@ -749,13 +948,18 @@ function buildPresets(){
   const row=document.getElementById("presetrow");
   if(!row)return;
   row.innerHTML="";
-  const items=[
+  const items=state.mode==="activities"?[
+    {id:"today",label:"Today"},
+    {id:"now",label:"Right now"},
     {id:"tonight",label:"Tonight"},
-    {id:"tomorrow",label:"Tomorrow"},
+    {id:"weekend",label:"This weekend"},
+    {id:"week",label:"Next 7 days"},
+  ]:[
+    {id:"tonight",label:"Tonight"},
     {id:"weekend",label:"This weekend"},
     {id:"saved",label:state.savedOnly?"Show all":"Saved only"},
+    {id:"first",label:"First visit"},
   ];
-  if(state.mode==="support")items.push({id:"first",label:"First visit"});
   items.forEach(pr=>{
     const b=document.createElement("button");
     b.type="button";b.className="pchip"+(state.preset===pr.id?" on":"");
@@ -766,10 +970,12 @@ function buildPresets(){
 }
 function applyPreset(id){
   if(id==="saved"){state.savedOnly=!state.savedOnly;state.preset=state.savedOnly?"saved":"";updateSavedBtn();buildPresets();render();return;}
-  state.preset=id;state.savedOnly=false;state.cat.clear();state.quick.clear();
-  if(id==="tonight"){state.daySet=null;state.day=todayDay();state.tod="evening";state.nowOnly=false;}
-  else if(id==="tomorrow"){state.daySet=null;state.day=(todayDay()+1)%7;state.tod="";state.nowOnly=false;}
+  state.preset=id;state.savedOnly=false;state.cat.clear();state.quick.clear();state.tod="";state.nowOnly=false;
+  if(id==="today"){state.daySet=null;state.day=todayDay();state.tod="";state.nowOnly=false;}
+  else if(id==="now"){state.daySet=null;state.day=todayDay();state.tod="";state.nowOnly=true;}
+  else if(id==="tonight"){state.daySet=null;state.day=todayDay();state.tod="evening";state.nowOnly=false;}
   else if(id==="weekend"){state.day=null;state.daySet=new Set([5,6,0]);state.tod="";}
+  else if(id==="week"){state.day=null;state.daySet=null;state.tod="";state.nowOnly=false;}
   else if(id==="first"){state.daySet=null;state.day=todayDay();state.tod="";state.quick.add("open");document.getElementById("guide").hidden=false;}
   syncTodUI();syncDayUI();buildQuickFilters();buildPresets();updateSavedBtn();render();
 }
@@ -779,7 +985,8 @@ function buildDayBar(){
   bar.dataset.built="1";
   const today=todayDay();
   bar.innerHTML='<span class="daybar-label">Map &amp; list</span>';
-  DAYS.forEach((d,i)=>{
+  for(let offset=0;offset<7;offset++){
+    const i=(today+offset)%7,d=DAYS[i];
     const b=document.createElement("button");
     b.type="button";
     b.className="daypick"+(i===today?" today-hint":"");
@@ -787,7 +994,7 @@ function buildDayBar(){
     b.textContent=i===today?`Today · ${d}`:d;
     b.onclick=()=>setViewDay(i);
     bar.appendChild(b);
-  });
+  }
   const all=document.createElement("button");
   all.type="button";
   all.className="daypick all-week";
@@ -822,20 +1029,24 @@ function buildFilters(){
   }
 }
 
+function matchesDayView(m){
+  if(!m.date){
+    if(state.daySet)return state.daySet.has(m.day);
+    return state.day===null||m.day===state.day;
+  }
+  const off=dateOffset(m.date);
+  if(off<0)return false;
+  if(state.daySet)return off<=7&&state.daySet.has(m.day);
+  if(state.day!==null)return off===dayOffset(state.day,todayDay());
+  return off<=6;
+}
 function filtered(){
   const quicks=QUICK[state.mode]||[];
-  const n=nowInfo();
   let list=DATA.filter(m=>{
+    // Saved view shows everything you starred (any day/format), minus past dates
+    if(state.savedOnly)return SAVED.has(m._id)&&!(m.date&&dateOffset(m.date)<0);
     if(state.cat.size&&!state.cat.has(m.cat))return false;
-    if(state.daySet){
-      if(!state.daySet.has(m.day))return false;
-      if(m.date&&dateOff(m,n)>6)return false; // dated events: this weekend only
-    }
-    else if(state.day!==null){
-      if(m.day!==state.day)return false;
-      if(m.date&&dateOff(m,n)>6)return false; // dated events: the upcoming one only
-    }
-    if(state.savedOnly&&!SAVED.has(m._id))return false;
+    if(!matchesDayView(m))return false;
     if(state.fmt&&m.fmt!==state.fmt)return false;
     if(state.tod&&!inTod(m.time,state.tod))return false;
     if(state.nowOnly&&!isNow(m))return false;
@@ -843,7 +1054,7 @@ function filtered(){
       const ok=[...state.quick].some(id=>quicks.find(q=>q.id===id)?.match(m));
       if(!ok)return false;
     }
-    if(state.q){const h=(m.name+" "+m.loc+" "+m.addr+" "+(m.types||[]).join(" ")+" "+(m.source||"")+" "+(m.region||"")+" "+META[m.cat].name).toLowerCase();if(!h.includes(state.q.toLowerCase()))return false;}
+    if(state.q){const h=(m.name+" "+m.loc+" "+m.addr+" "+(m.types||[]).join(" ")+" "+META[m.cat].name).toLowerCase();if(!h.includes(state.q.toLowerCase()))return false;}
     return true;
   });
   return smartSort(list);
@@ -851,7 +1062,8 @@ function filtered(){
 
 function activeFilterCount(){
   const dayExtra=state.daySet?1:(isAllWeek()?1:(state.day!==todayDay()?1:0));
-  return state.cat.size+dayExtra+state.quick.size+(state.fmt?1:0)+(state.tod?1:0)+(state.nowOnly?1:0)+(state.savedOnly?1:0);
+  const formatExtra=state.fmt&&!(state.mode==="activities"&&state.fmt==="in-person")?1:0;
+  return state.cat.size+dayExtra+state.quick.size+formatExtra+(state.tod?1:0)+(state.nowOnly?1:0)+(state.savedOnly?1:0);
 }
 function buildQuickFilters(){
   const row=document.getElementById("quickrow");
@@ -872,14 +1084,32 @@ function updateInsight(list){
   const verified=list.filter(m=>m.verified).length;
   const openCt=state.mode==="support"?list.filter(m=>(m.types||[]).some(t=>/^open$/i.test(t))).length:0;
   const pills=[
+    `<span class="insight-pill"><strong>${list.length}</strong> on ${dayViewLabel()}</span>`,
     nowCt?`<span class="insight-pill live"><strong>${nowCt}</strong> happening now</span>`:"",
-    verified?`<span class="insight-pill live"><strong>${verified}</strong> verified live</span>`:"",
+    verified?`<span class="insight-pill live"><strong>${verified}</strong> live listings</span>`:"",
     state.mode==="support"&&openCt?`<span class="insight-pill"><strong>${openCt}</strong> open meetings</span>`:"",
     state.near?`<span class="insight-pill">sorted near you</span>`:"",
     list.some(m=>!hasMapPin(m))?`<span class="insight-pill"><strong>${list.filter(m=>!hasMapPin(m)).length}</strong> online only</span>`:"",
   ].filter(Boolean);
   el.innerHTML=pills.join("");
-  el.style.display=pills.length?"flex":"none";
+}
+function updateHero(list){
+  const title=document.getElementById("heroTitle");
+  const live=document.getElementById("heroLive");
+  const kicker=document.getElementById("dayKicker");
+  if(kicker)kicker.textContent=new Intl.DateTimeFormat("en-US",{
+    timeZone:"America/Chicago",weekday:"long",month:"long",day:"numeric"
+  }).format(new Date())+" · Twin Cities";
+  if(title)title.textContent=state.mode==="support"?"Find a meeting that fits.":"Find something to do.";
+  const tag=document.querySelector(".tagline");
+  if(tag)tag.textContent=state.mode==="support"
+    ?"Recovery and support meetings across the Twin Cities, from official sources."
+    :"In-person events around Minneapolis and St. Paul, starting soon.";
+  if(live){
+    const noun=state.mode==="support"?"meeting":"event";
+    const format=state.mode==="activities"&&state.fmt==="in-person"&&!state.savedOnly?" in-person":"";
+    live.innerHTML=`<span></span>${list.length}${format} ${noun}${list.length===1?"":"s"} ${dayViewLabel()}`;
+  }
 }
 function updateMapLegend(list){
   const el=document.getElementById("mapLegend");
@@ -901,12 +1131,23 @@ function renderFeatured(el,list){
   const rel=relWhen(next);
   const box=document.createElement("div");
   box.className="featured";
-  box.innerHTML=`<div class="eyebrow">${isNow(next)?"Happening now":"Up next"}</div>
-    <div class="fname">${next.name}</div>
-    <div class="fmeta">${whenLbl} · ${fmtTime(next.time)}${rel?` · ${rel}`:""} · ${next.loc}</div>
-    <div class="fcta">View on map →</div>`;
+  const image=safeHref(next.image);
+  if(state.mode==="activities"){
+    box.innerHTML=`<div class="feature-stamp" aria-hidden="true">${image?`<img class="stamp-img" src="${image}" alt="" loading="lazy" onerror="this.replaceWith('${activityEmoji(next.cat)}')">`:activityEmoji(next.cat)}</div>
+      <div><div class="eyebrow">${isNow(next)?"Happening now":"Try this first"}</div>
+      <div class="fname">${esc(next.name)}</div>
+      <div class="fmeta">${esc(whenLbl)} · ${fmtTime(next.time)}${rel?` · ${esc(rel)}`:""} · 📍 ${esc(next.loc)}</div>
+      <div class="fcta">See event →</div></div>`;
+  }else{
+    box.innerHTML=`<div><div class="eyebrow">${isNow(next)?"Happening now":"Up next"}</div>
+      <div class="fname">${esc(next.name)}</div>
+      <div class="fmeta">${esc(whenLbl)} · ${fmtTime(next.time)}${rel?` · ${esc(rel)}`:""} · ${esc(next.loc)}</div>
+      <div class="fcta">${hasMapPin(next)?"View on map":"View details"} →</div></div>
+      ${image?`<img class="feature-art" src="${image}" alt="" loading="lazy">`:""}`;
+  }
   box.onclick=()=>focusMeeting(next);
   el.appendChild(box);
+  return next._id;
 }
 function renderEmpty(el){
   el.innerHTML=`<div class="empty">
@@ -928,7 +1169,7 @@ function updateFilterUI(){
   document.getElementById("fClear").classList.toggle("show",n>0);
 }
 function clearFilters(){
-  state.cat.clear();state.quick.clear();state.daySet=null;state.day=todayDay();state.fmt=null;state.tod="";state.nowOnly=false;state.savedOnly=false;state.preset="";state.q="";
+  state.cat.clear();state.quick.clear();state.daySet=null;state.day=todayDay();state.fmt=state.mode==="activities"?"in-person":null;state.tod="";state.nowOnly=false;state.savedOnly=false;state.preset=state.mode==="activities"?"today":"";state.q="";
   document.getElementById("q").value="";
   document.querySelectorAll("#fmtFilters .chip").forEach(x=>x.classList.remove("on"));
   syncTodUI();
@@ -950,32 +1191,56 @@ function renderCard(el,m){
   const id=m._id,fc=META[m.cat].color,now=isNow(m);
   const card=document.createElement("div");
   card.className="card"+(activeId===id?" active":"")+(SAVED.has(id)?" saved":"");card.dataset.id=id;
-  const trust=m.verified?'<span class="b ok">Live</span>':'<span class="b warn">Sample</span>';
   const whenLbl=m.dateLabel?m.dateLabel:(m.day===todayDay()?"Today":DAYS[m.day]);
   const rel=relWhen(m);
   const tp=fmtParts(m.time);
-  const join=m.url?`<a class="verify" href="${m.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${m.fmt==="online"?"Join link":"Details"} ↗</a>`:"";
+  const href=safeHref(m.url);
+  if(state.mode==="activities"){
+    card.classList.add("activity-card");
+    const formatClass=m.fmt==="online"?" online":"";
+    const placeAddress=m.addr&&m.addr!==m.loc?`<span>${esc(m.addr)}</span>`:"";
+    const details=href?`<a class="event-details" href="${href}" target="_blank" rel="noopener" onclick="event.stopPropagation()">See event details →</a>`:"";
+    const directions=hasMapPin(m)?`<a class="event-details" href="${mapsDir(m)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Directions</a>`:"";
+    const usefulTypes=(m.types||[]).filter(Boolean).slice(0,2);
+    const thumb=safeHref(m.image);
+    card.innerHTML=`<div class="activity-stamp" aria-hidden="true">${thumb?`<img class="stamp-img" src="${thumb}" alt="" loading="lazy" onerror="this.replaceWith('${activityEmoji(m.cat)}')">`:activityEmoji(m.cat)}</div>
+      <div class="event-main">
+        <div class="event-topline">
+          <span class="event-format${formatClass}">${m.fmt==="online"?"💻 Online":m.fmt==="hybrid"?"📍 In person + online":"📍 In person"}</span>
+          <span class="event-category">${activityEmoji(m.cat)} ${esc(activityLabel(m.cat))}</span>
+        </div>
+        <div class="event-title">${esc(m.name)}</div>
+        <div class="event-time">${esc(whenLbl)} · ${fmtTime(m.time)}${rel?` · ${esc(rel)}`:""}${m._d!=null?` · ${m._d.toFixed(1)} mi away`:""}</div>
+        <div class="event-place">📍 ${esc(m.loc)}${placeAddress}</div>
+        ${now||usefulTypes.length?`<div class="event-tags">${now?'<span class="b now">Happening now</span>':""}${usefulTypes.map(t=>`<span class="b">${esc(t)}</span>`).join("")}</div>`:""}
+        <div class="event-actions">${details}${directions}</div>
+      </div>
+      <button type="button" class="savebtn${SAVED.has(id)?" on":""}" title="Save event" aria-label="Save event">${SAVED.has(id)?"★":"☆"}</button>`;
+    card.querySelector(".savebtn").onclick=e=>toggleSaved(id,e);
+    card.onclick=()=>focusMeeting(m);
+    el.appendChild(card);
+    return;
+  }
+  const trust=m.verified?'<span class="b ok">Live</span>':'<span class="b warn">Sample</span>';
+  const join=href?`<a class="verify" href="${href}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${m.fmt==="online"?"Join link":"Details"} ↗</a>`:"";
   const official=state.mode==="support"?FINDERS[m.cat]:null;
   const verify=(official&&official!==m.url)?`<a class="verify vbtn" href="${official}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Official list ↗</a>`:"";
   const dir=hasMapPin(m)?`<a class="dir" href="${mapsDir(m)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Directions ↗</a>`:"";
   const saved=SAVED.has(id)?"★":"☆";
+  const source=state.mode==="activities"&&m.source?`<span class="b source">${esc(m.source)}</span>`:"";
+  const approx=m.approx?'<span class="b">Approx. map pin</span>':"";
   card.innerHTML=`<div class="timecol"><span class="timepill">${tp.hr}</span><span class="timeap">${tp.ap}</span></div>
-    <div class="body"><div class="top"><div class="name">${m.name}</div>
+    <div class="body"><div class="top"><div class="name">${esc(m.name)}</div>
       <button type="button" class="savebtn${SAVED.has(id)?" on":""}" title="Save" aria-label="Save">${saved}</button>
-      <div class="fell" style="background:${fc}">${m.cat}</div></div>
-    <div class="when">${whenLbl}${rel?` · <span style="color:var(--now)">${rel}</span>`:""}${m._d!=null?` · ${m._d.toFixed(1)} mi`:""}</div>
-    <div class="where">${m.loc}</div>
+      <div class="fell" style="background:${fc}">${esc(m.cat)}</div></div>
+    <div class="when">${esc(whenLbl)}${rel?` · <span style="color:var(--now)">${esc(rel)}</span>`:""}${m._d!=null?` · ${m._d.toFixed(1)} mi`:""}</div>
+    <div class="where">${esc(m.loc)}</div>
     <div class="badges">${now?'<span class="b now">Now</span>':''}
       <span class="b ${m.fmt==="online"?"online":m.fmt==="hybrid"?"hybrid":""}">${fmtLabel(m.fmt)}</span>
-      ${trust}
-      ${(m.types||[]).slice(0,3).map(t=>`<span class="b">${t}</span>`).join("")}</div>
+      ${trust}${source}${approx}
+      ${(m.types||[]).slice(0,3).map(t=>`<span class="b">${esc(t)}</span>`).join("")}</div>
     <div class="linkrow">${dir}${join}${verify}
       <button type="button" class="dir" style="border:none;background:none;padding:0;cursor:pointer" data-copy="${id}">Copy info</button></div></div>`;
-  card.tabIndex=0;
-  card.setAttribute("role","button");
-  card.addEventListener("keydown",e=>{
-    if(e.key==="Enter"&&e.target===card){e.preventDefault();focusMeeting(m);}
-  });
   card.querySelector(".savebtn").onclick=e=>toggleSaved(id,e);
   card.querySelector("[data-copy]")?.addEventListener("click",e=>{
     e.stopPropagation();
@@ -989,23 +1254,33 @@ function render(){
   const sig=[state.mode,[...state.cat].sort().join(","),[...state.quick].sort().join(","),state.day,state.fmt,state.tod,state.nowOnly,state.q,state.near].join("|");
   if(sig!==_lastSig){state.limit=RENDER_STEP;_lastSig=sig;}
   const list=filtered();
+  updateHero(list);
   lastFilteredList=list;
   const el=document.getElementById("list");el.innerHTML="";
   const word=state.mode==="support"?"fellowships":"activity types";
   const loadingNow=state.mode==="support"?LIVE_LOADING:EVENTS_LOADING;
   const loading=loadingNow?'<span class="loading"><span class="spin"></span>loading live…</span> ':"";
   const sortNote=sortHint();
-  document.getElementById("count").innerHTML=loading+`<b>${list.length}</b> ${state.mode==="support"?"meeting":"activity"}${list.length!==1?"s":""} · ${sortNote}`;
+  const resultWord=state.mode==="support"?(list.length===1?"meeting":"meetings"):(list.length===1?"thing to do":"things to do");
+  const formatWords=state.mode==="activities"&&state.fmt==="in-person"?"in-person ":"";
+  document.getElementById("count").innerHTML=loading+`<b>${list.length}</b> ${formatWords}${resultWord} · ${state.mode==="activities"?"soonest first":sortNote}`;
   updateInsight(list);
   updateMapLegend(list);
   updateFilterUI();
   if(!list.length){renderEmpty(el);drawMarkers([]);pushUrl();return;}
   const onMap=list.filter(hasMapPin);
   const onlineOnly=list.filter(m=>!hasMapPin(m));
-  if(list.length>1)renderFeatured(el,list);
-  const shown=list.slice(0,state.limit);
-  let lastSection=null;
+  const featuredId=list.length>1?renderFeatured(el,list):null;
+  const shown=list.filter(m=>m._id!==featuredId).slice(0,state.limit);
+  let lastSection=null,overHdr=false;
   shown.forEach(m=>{
+    if(!overHdr&&!state.daySet&&state.day===todayDay()&&isOver(m)){
+      overHdr=true;
+      const h=document.createElement("div");
+      h.className="list-section";
+      h.textContent="Earlier today — already ended";
+      el.appendChild(h);
+    }
     if(isAllWeek()||state.daySet){
       const sec=state.daySet?DAYS[m.day]:sectionTitle(m);
       if(sec!==lastSection){
@@ -1035,10 +1310,11 @@ function render(){
 
 function popupHtml(m){
   const whenLbl=m.dateLabel?m.dateLabel:(m.day===todayDay()?"Today":DAYS[m.day]);
-  return `<div class="pop"><div class="pn">${m.name}</div><div class="pf">${META[m.cat].name}</div>
-    <div class="pw">${whenLbl} · ${fmtTime(m.time)} · ${fmtLabel(m.fmt)}</div><div class="pw">${m.loc}<br>${m.addr}</div>
+  const href=safeHref(m.url);
+  return `<div class="pop"><div class="pn">${esc(m.name)}</div><div class="pf">${esc(META[m.cat].name)}</div>
+    <div class="pw">${esc(whenLbl)} · ${fmtTime(m.time)} · ${fmtLabel(m.fmt)}</div><div class="pw">${esc(m.loc)}<br>${esc(m.addr)}</div>
     ${m.fmt!=="online"?`<a href="${mapsDir(m)}" target="_blank" rel="noopener">Directions ↗</a><br>`:""}
-    ${m.url?`<a href="${m.url}" target="_blank" rel="noopener">More info ↗</a>`:""}
+    ${href?`<a href="${href}" target="_blank" rel="noopener">More info ↗</a>`:""}
     <div class="pw" style="margin-top:6px"><button type="button" class="pop-pick" data-id="${m._id}" style="padding:6px 0;color:#0d9488;font-weight:600">Show in list ↓</button></div></div>`;
 }
 function spotPopupHtml(meetings){
@@ -1046,7 +1322,7 @@ function spotPopupHtml(meetings){
   return `<div class="pop spot-pop"><div class="pn">${sorted.length} ${state.mode==="support"?"meetings":"events"} here</div>
     <ul class="pop-list">${sorted.map(m=>{
       const whenLbl=m.dateLabel?m.dateLabel:(m.day===todayDay()?"Today":DAYS[m.day]);
-      return `<li><button type="button" class="pop-pick" data-id="${m._id}"><strong>${m.name}</strong><span>${whenLbl} · ${fmtTime(m.time)} · ${META[m.cat].name}</span></button></li>`;
+      return `<li><button type="button" class="pop-pick" data-id="${m._id}"><strong>${esc(m.name)}</strong><span>${esc(whenLbl)} · ${fmtTime(m.time)} · ${esc(META[m.cat].name)}</span></button></li>`;
     }).join("")}</ul></div>`;
 }
 function scrollCardIntoView(id){
@@ -1117,18 +1393,21 @@ function drawMarkers(list){
 
 function setMode(mode,opts={}){
   state.mode=mode;
-  if(!opts.keepFilters){state.cat.clear();state.quick.clear();activeId=null;state.daySet=null;state.day=todayDay();state.savedOnly=false;state.preset="";}
-  document.body.classList.toggle("mode-activities",mode==="activities");
-  const guide=document.getElementById("guide");
-  if(guide){
-    if(mode==="support"){try{if(!localStorage.getItem("gather-guide-hide"))guide.hidden=false;}catch(e){}}
-    else guide.hidden=true;
+  if(!opts.keepFilters){
+    state.cat.clear();state.quick.clear();activeId=null;state.daySet=null;state.day=todayDay();
+    state.fmt=mode==="activities"?"in-person":null;state.tod="";state.nowOnly=false;state.savedOnly=false;
+    state.preset=mode==="activities"?"today":"";
   }
+  document.body.classList.toggle("mode-activities",mode==="activities");
+  // guide stays closed until asked for (the "First visit" preset opens it) —
+  // auto-opening it buried the meeting list below the fold on phones
+  const guide=document.getElementById("guide");
+  if(guide&&mode!=="support")guide.hidden=true;
   const ms=document.getElementById("mSupport");ms.classList.toggle("on",mode==="support");ms.classList.toggle("support",mode==="support");
   const mp=document.getElementById("mPlay");mp.classList.toggle("on",mode==="activities");mp.classList.toggle("play",mode==="activities");
-  if(mode==="support"){META=FELLOWSHIPS;DATA=supportMeetings().map((m,i)=>({...m,_id:"s"+i}));}
-  else{META=ACTIVITIES;DATA=activityItems().map((m,i)=>({...m,_id:"p"+i}));}
-  document.getElementById("q").placeholder=mode==="support"?"Search meetings, neighborhoods, Open, beginners…":"Search activities, free events, yoga, games…";
+  if(mode==="support"){META=FELLOWSHIPS;DATA=supportMeetings().map(m=>({...m,_id:stableId(m,"s-")}));}
+  else{META=ACTIVITIES;DATA=activityItems().map(m=>({...m,_id:stableId(m,"p-")}));}
+  document.getElementById("q").placeholder=mode==="support"?"Search meetings, neighborhoods, beginners…":"Try music, games, art, yoga…";
   document.getElementById("mapHint").textContent=mode==="support"?"Tap a dot — meetings at that place":"Tap a dot — events at that spot";
   syncDayUI();buildQuickFilters();buildPresets();buildFilters();updateFooter();updateSavedBtn();render();
 }
@@ -1149,84 +1428,57 @@ function updateFooter(){
     const liveN=LIVE_EVENTS.length;
     if(liveN){
       const when=EVENTS_UPDATED?new Date(EVENTS_UPDATED).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):"";
-      const ok=EVENT_SOURCES.filter(x=>x.ok).map(x=>x.name).join(", ");
-      s.innerHTML=`<span style="color:var(--live)">${liveN} verified</span> events (45 days) + ${PLAY.length} sample groups. Venues: ${ok}.`+(when?` Updated ${when}.`:"");
+      const ok=EVENT_SOURCES.filter(x=>x.ok);
+      const failed=EVENT_SOURCES.filter(x=>!x.ok).length;
+      s.innerHTML=`<span style="color:var(--live)">${liveN} current events</span> from ${ok.length} live sources — Meetup, Eventbrite, Minneapolis Parks and local venues.`
+        +(failed?` ${failed} source${failed===1?" is":"s are"} retrying.`:"")+(when?` Updated ${when}.`:"");
     }else{
       s.innerHTML=`<b>${PLAY.length}</b> sample activities — live events load from <code>/api/events</code> when deployed.`;
     }
   }
 }
 
-// cache live feeds locally so repeat visits render instantly and a flaky
-// network still shows the last good data (refreshed in the background)
-function readCache(key,maxAgeMs){
-  try{
-    const c=JSON.parse(localStorage.getItem(key)||"null");
-    if(c&&c.ts&&Date.now()-c.ts<maxAgeMs)return c.data;
-  }catch(e){}
-  return null;
-}
-function writeCache(key,data){
-  try{localStorage.setItem(key,JSON.stringify({ts:Date.now(),data}));}catch(e){}
-}
-function applyMeetingsData(data){
-  LIVE=(data.meetings||[]).map(m=>({...m,verified:true}));
-  LIVE_CATS=new Set(LIVE.map(m=>m.cat));
-  LAST_UPDATED=data.updated||null;
-  SOURCE_INFO=data.sources||[];
-  if(state.mode==="support"){
-    // swap in live data without wiping the user's active filters
-    DATA=supportMeetings().map((m,i)=>({...m,_id:"s"+i}));
-    updateFooter();render();
-  }
-}
-function applyEventsData(data){
-  const d=new Date();
-  const todayStr=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-  LIVE_EVENTS=(data.events||[]).filter(m=>!m.date||m.date>=todayStr).map(m=>({...m,verified:true}));
-  EVENTS_UPDATED=data.updated||null;
-  EVENT_SOURCES=data.sources||[];
-  if(state.mode==="activities"){
-    DATA=activityItems().map((m,i)=>({...m,_id:"p"+i}));
-    updateFooter();render();
-  }
-}
 async function loadLive(){
-  const cached=readCache("gather-cache-meetings",864e5);
-  if(cached)applyMeetingsData(cached);
   try{
     const res=await fetch("/api/meetings",{headers:{Accept:"application/json"}});
     if(!res.ok)throw 0;
     const data=await res.json();
-    if((data.meetings||[]).length)writeCache("gather-cache-meetings",data);
+    LIVE=(data.meetings||[]).map(m=>({...m,verified:true}));
+    LIVE_CATS=new Set(LIVE.map(m=>m.cat));
+    LAST_UPDATED=data.updated||null;
+    SOURCE_INFO=data.sources||[];
+  }catch(e){/* backend unavailable (e.g. opened as a local file) — curated samples still show */}
+  finally{
     LIVE_LOADING=false;
-    applyMeetingsData(data);
-  }catch(e){
-    /* backend unavailable (e.g. opened as a local file) — cache or curated samples still show */
-    LIVE_LOADING=false;
-    if(state.mode==="support"){updateFooter();render();}
+    if(state.mode==="support"){
+      // swap in live data without wiping the user's active filters
+      DATA=supportMeetings().map(m=>({...m,_id:stableId(m,"s-")}));
+      updateFooter();render();
+    }
   }
 }
 
 async function loadEvents(){
-  const cached=readCache("gather-cache-events",864e5);
-  if(cached)applyEventsData(cached);
   try{
     const res=await fetch("/api/events",{headers:{Accept:"application/json"}});
     if(!res.ok)throw 0;
     const data=await res.json();
-    if((data.events||[]).length)writeCache("gather-cache-events",data);
+    LIVE_EVENTS=(data.events||[]).map(m=>({...m,verified:true}));
+    EVENTS_UPDATED=data.updated||null;
+    EVENT_SOURCES=data.sources||[];
+  }catch(e){/* backend unavailable — curated samples still show */}
+  finally{
     EVENTS_LOADING=false;
-    applyEventsData(data);
-  }catch(e){
-    EVENTS_LOADING=false;
-    if(state.mode==="activities"){updateFooter();render();}
+    if(state.mode==="activities"){
+      DATA=activityItems().map(m=>({...m,_id:stableId(m,"p-")}));
+      updateFooter();render();
+    }
   }
 }
 
 function init(){
-  map=L.map("map",{zoomControl:true}).setView([44.9537,-93.0900],11);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",{attribution:"© OpenStreetMap © CARTO",maxZoom:19}).addTo(map);
+  map=L.map("map",{zoomControl:true}).setView(TC_CENTER,11);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",{attribution:"© OpenStreetMap © CARTO",maxZoom:19}).addTo(map);
   markers=L.markerClusterGroup({
     chunkedLoading:true,
     maxClusterRadius:42,
@@ -1283,12 +1535,7 @@ function init(){
     this.classList.toggle("open",!collapsed);
   };
   document.getElementById("fClear").onclick=clearFilters;
-  let _qTimer=null;
-  document.getElementById("q").addEventListener("input",e=>{
-    state.q=e.target.value;
-    clearTimeout(_qTimer);
-    _qTimer=setTimeout(render,160);
-  });
+  document.getElementById("q").addEventListener("input",e=>{state.q=e.target.value;render();});
   document.getElementById("btnSaved").onclick=()=>{state.savedOnly=!state.savedOnly;state.preset=state.savedOnly?"saved":"";updateSavedBtn();buildPresets();render();};
   document.getElementById("btnShare").onclick=()=>{
     pushUrl();
@@ -1308,26 +1555,21 @@ function init(){
       btn.classList.add("on");btn.setAttribute("aria-selected","true");
       document.body.classList.remove("mobile-view-map","mobile-view-list");
       document.body.classList.add(btn.dataset.view==="map"?"mobile-view-map":"mobile-view-list");
+      if(btn.dataset.view==="map")setTimeout(()=>map.invalidateSize(),50);
     };
   });
-  const helpModal=document.getElementById("helpModal");
-  document.getElementById("btnHelp").onclick=()=>{helpModal.hidden=false;};
-  document.getElementById("helpClose").onclick=()=>{helpModal.hidden=true;};
-  helpModal.addEventListener("click",e=>{if(e.target===helpModal)helpModal.hidden=true;});
   document.addEventListener("keydown",e=>{
     if(e.key==="/"&&document.activeElement!==document.getElementById("q")){
       e.preventDefault();document.getElementById("q").focus();
     }
-    if(e.key==="Escape"){
-      if(!helpModal.hidden){helpModal.hidden=true;return;}
-      map?.closePopup();
-    }
+    if(e.key==="Escape")map?.closePopup();
   });
   document.getElementById("nowbtn").onclick=function(){state.nowOnly=!state.nowOnly;this.classList.toggle("on");render();};
   document.getElementById("nearme").onclick=function(){toggleMyArea(this);};
   buildDayBar();
   const urlId=readUrl();
-  if(!location.search){state.day=todayDay();state.daySet=null;}
+  if(!location.search){state.day=todayDay();state.daySet=null;state.preset="today";}
+  if(state.mode==="activities"&&!state.fmt)state.fmt="in-person";
   document.getElementById("q").value=state.q||"";
   document.getElementById("nowbtn").classList.toggle("on",state.nowOnly);
   syncTodUI();syncDayUI();updateSavedBtn();
@@ -1336,12 +1578,11 @@ function init(){
     document.getElementById("tips").hidden=true;
     try{localStorage.setItem("gather-tips-hide","1");}catch(e){}
   });
-  if(window.matchMedia("(max-width:760px)").matches)document.body.classList.add("mobile-view-map");
+  if(window.matchMedia("(max-width:760px)").matches)document.body.classList.add("mobile-view-list");
   setMode(state.mode,{keepFilters:true});
   buildPresets();
   loadLive();
   loadEvents();
-  requestMyArea(document.getElementById("nearme"),{onLoad:true});
   if(urlId)setTimeout(()=>focusFromId(urlId),800);
 }
 function setUserMarker(){
@@ -1350,7 +1591,7 @@ function setUserMarker(){
     .addTo(map).bindPopup("Your area");
 }
 function applyMyArea(btn){
-  if(btn){btn.classList.add("on");btn.classList.remove("locating");btn.textContent="My area";}
+  if(btn){btn.classList.add("on");btn.classList.remove("locating");btn.textContent="Near me";}
   setUserMarker();
   map.setView(state.near,state.nearGps?12:11);
   render();
@@ -1362,14 +1603,14 @@ function requestMyArea(btn,opts={}){
     applyMyArea(btn);
   };
   if(!navigator.geolocation){
-    if(opts.onLoad){if(btn){btn.classList.remove("locating");btn.textContent="My area";}return;}
+    if(opts.onLoad){if(btn){btn.classList.remove("locating");btn.textContent="Near me";}return;}
     finish(TC_CENTER,false);
     return;
   }
   navigator.geolocation.getCurrentPosition(
     p=>finish([p.coords.latitude,p.coords.longitude],true),
     ()=>{
-      if(opts.onLoad){if(btn){btn.classList.remove("locating");btn.textContent="My area";}return;}
+      if(opts.onLoad){if(btn){btn.classList.remove("locating");btn.textContent="Near me";}return;}
       finish(TC_CENTER,false);
     },
     {enableHighAccuracy:true,timeout:12000,maximumAge:300000}
@@ -1387,6 +1628,7 @@ function toggleMyArea(btn){
   requestMyArea(btn);
 }
 init();
+if("serviceWorker" in navigator&&(location.protocol==="https:"||/^(localhost|127\.0\.0\.1)$/.test(location.hostname)))navigator.serviceWorker.register("/sw.js").catch(()=>{});
 </script>
 </body>
 </html>

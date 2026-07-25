@@ -2,9 +2,11 @@
 // Pulls real, public event feeds server-side and normalizes them into the
 // activities schema the front-end uses.
 //
-// Two adapters:
+// Adapters:
 //   tribe  -> "The Events Calendar" WordPress REST API (no auth, public)
-//   ics    -> Google Calendar / iCal public feeds (.ics)  [ready for curated IDs]
+//   meetup -> Meetup's public city page (no paid API)
+//   eventbrite -> Eventbrite's public city results (no API key)
+//   ics    -> Google Calendar / iCal public feeds (.ics)
 //
 // Add a venue/org: drop it in SOURCES with its type. That's the whole job.
 
@@ -16,9 +18,9 @@ const SOURCES = [
   { type: "tribe", name: "Surly Brewing Co.", base: "https://surlybrewing.com", lat: 44.9696, lng: -93.2089, addr: "520 Malcolm Ave SE, Minneapolis" },
   { type: "tribe", name: "Modist Brewing", base: "https://modistbrewing.com", lat: 44.9852, lng: -93.2772, addr: "505 N 3rd St, Minneapolis" },
   { type: "tribe", name: "Indeed Brewing", base: "https://indeedbrewing.com", lat: 44.9996, lng: -93.2476, addr: "711 NE 15th Ave, Minneapolis" },
-  { type: "tribe", name: "Hook & Ladder Theater", base: "https://thehookmpls.com", lat: 44.9486, lng: -93.2308, addr: "3010 Minnehaha Ave, Minneapolis" },
   { type: "tribe", name: "Landmark Center", base: "https://landmarkcenter.org", lat: 44.9462, lng: -93.0969, addr: "75 W 5th St, St Paul" },
   { type: "tribe", name: "56 Brewing", base: "https://56brewing.com", lat: 45.0156, lng: -93.2410, addr: "3134 California St NE, Minneapolis" },
+  { type: "tribe", name: "Minneapolis Parks", base: "https://www.minneapolisparks.org", lat: 44.9778, lng: -93.2650, addr: "Minneapolis" },
 
   // --- Squarespace event collections (?format=json) — confirmed live ---
   { type: "squarespace", name: "Bad Weather Brewing", base: "https://www.badweatherbrewery.com/events", lat: 44.9276, lng: -93.1310, addr: "1505 7th St W, St Paul" },
@@ -26,16 +28,14 @@ const SOURCES = [
   { type: "squarespace", name: "Arbeiter Brewing", base: "https://www.arbeiterbrewing.com/events", lat: 44.9487, lng: -93.2310, addr: "3038 Minnehaha Ave, Minneapolis" },
   { type: "squarespace", name: "Pryes Brewing", base: "https://www.pryesbrewing.com/events", lat: 44.9920, lng: -93.2790, addr: "1401 West River Rd N, Minneapolis" },
 
-  // --- Google Calendar / ICS public feeds ---
-  // Add real Twin Cities public calendars here, e.g.:
-  // { type: "ics", name: "Hennepin County Library", cat: "Books",
-  //   url: "https://calendar.google.com/calendar/ical/<id>/public/basic.ics",
-  //   lat: 44.9788, lng: -93.2700, addr: "Minneapolis" },
+  // --- Wide public discovery pages ---
+  { type: "meetup", name: "Meetup", url: "https://www.meetup.com/find/us--mn--minneapolis/?eventType=inPerson&source=EVENTS" },
+  { type: "eventbrite", name: "Eventbrite", url: "https://www.eventbrite.com/d/mn--minneapolis/events--today/" },
 ];
 
 // skip taproom logistics / non-activity filler that some venues publish as "events"
 function isNoise(title) {
-  return /^(open|closed|now open|patio|taproom|kitchen|we'?re open|happy hour)\b|food truck|truck:|open at|hours|curbside|to[- ]go|growler/i.test(
+  return /^(open|closed|now open|patio|taproom|kitchen|we'?re open|happy hour)\b|food truck|truck:|open at|hours|curbside|to[- ]go|growler|lean six sigma|project management techniques training|certification training/i.test(
     title || ""
   );
 }
@@ -45,6 +45,7 @@ function classify(text) {
   const t = (text || "").toLowerCase();
   const has = (re) => re.test(t);
   if (has(/trivia|quiz|bingo|board game|tabletop|chess|d&d|dungeons|magic the|euchre|card game/)) return "Games";
+  if (has(/watch party|singles mixer|meet new|networking|happy hour/)) return "Social";
   if (has(/music|concert|\bband\b|\bjam\b|\bdj\b|open mic|singer|songwriter|orchestra|jazz|acoustic|hip[- ]?hop|punk|metal|indie|live at|festival|tour\b/)) return "Music";
   if (has(/meditat|mindful|sound bath|breathwork|yin yoga|restorative/)) return "Zen";
   if (has(/hike|trail|nature walk|birding|kayak|paddle|garden|cleanup|park\b/)) return "Outdoors";
@@ -63,6 +64,7 @@ function decode(s) {
     .replace(/&amp;/g, "&").replace(/&#0?38;/g, "&")
     .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&#8217;/g, "’")
+    .replace(/&#x27;|&apos;/gi, "'")
     .replace(/&#8211;/g, "–").replace(/&#8212;/g, "—").replace(/&nbsp;/g, " ")
     .replace(/\s+/g, " ").trim();
 }
@@ -78,13 +80,19 @@ function parseLocal(s) {
 }
 
 async function getJSON(url) {
-  const r = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/json", Referer: url } });
+  const r = await fetch(url, {
+    headers: { "User-Agent": UA, Accept: "application/json", Referer: url },
+    signal: AbortSignal.timeout(12000),
+  });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json();
 }
 
 async function getText(url) {
-  const r = await fetch(url, { headers: { "User-Agent": UA } });
+  const r = await fetch(url, {
+    headers: { "User-Agent": UA, Accept: "text/html,application/xhtml+xml" },
+    signal: AbortSignal.timeout(12000),
+  });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.text();
 }
@@ -103,7 +111,7 @@ async function fromTribe(src, startISO, endISO) {
     if (!p) continue;
     const title = decode(e.title);
     if (isNoise(title)) continue;
-    const v = e.venue || {};
+    const v = Array.isArray(e.venue) ? (e.venue[0] || {}) : (e.venue || {});
     const lat = parseFloat(v.geo_lat), lng = parseFloat(v.geo_lng);
     const catNames = (e.categories || []).map((c) => c.name);
     out.push({
@@ -122,6 +130,7 @@ async function fromTribe(src, startISO, endISO) {
       date: `${p.y}-${String(p.mo).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`,
       dateLabel: `${DOW[dayKey(p)]}, ${MON[p.mo - 1]} ${p.d}`,
       source: src.name,
+      image: e.image && e.image.url,
       live: true,
       verified: true,
     });
@@ -226,22 +235,125 @@ async function fromSquarespace(src) {
   return out;
 }
 
+function cityPoint(city) {
+  const c = String(city || "").toLowerCase();
+  if (c.includes("st. paul") || c.includes("saint paul")) return { lat: 44.9537, lng: -93.0900 };
+  if (c.includes("bloomington")) return { lat: 44.8408, lng: -93.2983 };
+  if (c.includes("edina")) return { lat: 44.8897, lng: -93.3499 };
+  if (c.includes("shoreview")) return { lat: 45.0791, lng: -93.1472 };
+  return { lat: 44.9778, lng: -93.2650 };
+}
+
+function duration(start, end) {
+  const mins = (Date.parse(end) - Date.parse(start)) / 60000;
+  return Number.isFinite(mins) && mins > 0 && mins < 1440 ? Math.round(mins) : 120;
+}
+
+async function fromMeetup(src) {
+  const html = await getText(src.url);
+  const match = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i);
+  if (!match) throw new Error("Meetup data not found");
+  const data = JSON.parse(match[1]);
+  const found = [], seen = new Set();
+  function walk(value) {
+    if (!value || typeof value !== "object") return;
+    if (Array.isArray(value)) return value.forEach(walk);
+    if (value.eventUrl && value.dateTime && value.title && !seen.has(value.eventUrl)) {
+      seen.add(value.eventUrl);
+      found.push(value);
+    }
+    Object.values(value).forEach(walk);
+  }
+  walk(data.props && data.props.pageProps);
+  return found.map((e) => {
+    const p = chicagoParts(Date.parse(e.dateTime));
+    const venue = e.venue || {};
+    const point = cityPoint(venue.city);
+    const address = [venue.address, venue.city, venue.state].filter(Boolean).join(", ");
+    const going = e.going && Number(e.going.totalCount);
+    return {
+      cat: classify(`${e.title} ${e.group && e.group.name || ""}`),
+      name: decode(e.title),
+      day: dayKey(p),
+      time: `${String(p.h).padStart(2, "0")}:${String(p.mi).padStart(2, "0")}`,
+      dur: duration(e.dateTime, e.endTime),
+      fmt: e.isOnline || e.eventType === "ONLINE" ? "online" : e.eventType === "HYBRID" ? "hybrid" : "in-person",
+      loc: decode(venue.name || (e.group && e.group.name) || "Meetup"),
+      addr: decode(address || "Twin Cities"),
+      lat: point.lat,
+      lng: point.lng,
+      approx: true,
+      types: [going ? `${going} going` : "", e.group && e.group.name].filter(Boolean).slice(0, 2),
+      url: e.eventUrl,
+      image: e.displayPhoto && e.displayPhoto.highResUrl,
+      date: `${p.y}-${String(p.mo).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`,
+      dateLabel: `${DOW[dayKey(p)]}, ${MON[p.mo - 1]} ${p.d}`,
+      source: src.name,
+      live: true,
+      verified: true,
+    };
+  });
+}
+
+async function fromEventbrite(src) {
+  const html = await getText(src.url);
+  const match = html.match(/window\.__SERVER_DATA__\s*=\s*({[\s\S]*?})\s*;\s*window\.__REACT_QUERY_STATE__/i);
+  if (!match) throw new Error("Eventbrite data not found");
+  const data = JSON.parse(match[1]);
+  const rows = data.search_data && data.search_data.events && data.search_data.events.results;
+  if (!Array.isArray(rows)) throw new Error("Eventbrite results not found");
+  return rows.filter((e) => !e.is_cancelled && !isNoise(e.name)).map((e) => {
+    const a = e.primary_venue && e.primary_venue.address || {};
+    const p = parseLocal(`${e.start_date} ${e.start_time}`);
+    const tags = (e.tags || []).map((t) => decode(t.display_name)).filter(Boolean);
+    const venueName = decode(e.primary_venue && e.primary_venue.name || a.city || "Twin Cities");
+    const address = decode(a.localized_address_display || [a.address_1, a.city, a.region].filter(Boolean).join(", "));
+    const onlinePlace = /(?:^|\b)(online|virtual|zoom)(?:\b|$)/i.test(`${venueName} ${address}`);
+    return {
+      cat: classify(`${e.name} ${tags.join(" ")}`),
+      name: decode(e.name),
+      day: dayKey(p),
+      time: e.start_time,
+      dur: 120,
+      fmt: e.is_online_event || onlinePlace ? "online" : "in-person",
+      loc: venueName,
+      addr: address,
+      lat: parseFloat(a.latitude),
+      lng: parseFloat(a.longitude),
+      types: tags.slice(0, 2),
+      url: e.url,
+      image: e.image && e.image.image_sizes && (e.image.image_sizes.medium || e.image.url),
+      date: e.start_date,
+      dateLabel: `${DOW[dayKey(p)]}, ${MON[p.mo - 1]} ${p.d}`,
+      source: src.name,
+      live: true,
+      verified: true,
+    };
+  });
+}
+
+function chicagoDateKey(date) {
+  const p = chicagoParts(date.getTime());
+  return `${p.y}-${String(p.mo).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`;
+}
+
 module.exports = async (req, res) => {
   const now = new Date();
   const end = new Date(now.getTime() + 45 * 864e5); // next 45 days
-  const startISO = now.toISOString().slice(0, 10) + " 00:00:00";
-  const endISO = end.toISOString().slice(0, 10) + " 23:59:59";
-  const todayStr = now.toISOString().slice(0, 10);
+  const startISO = chicagoDateKey(now) + " 00:00:00";
+  const endISO = chicagoDateKey(end) + " 23:59:59";
+  const endStr = chicagoDateKey(end);
+  const todayStr = chicagoDateKey(now);
 
   const sources = [];
   const results = await Promise.allSettled(
     SOURCES.map(async (src) => {
-      const list =
-        src.type === "ics"
-          ? parseICS(await getText(src.url), src)
-          : src.type === "squarespace"
-          ? await fromSquarespace(src)
-          : await fromTribe(src, startISO, endISO);
+      let list;
+      if (src.type === "ics") list = parseICS(await getText(src.url), src);
+      else if (src.type === "squarespace") list = await fromSquarespace(src);
+      else if (src.type === "meetup") list = await fromMeetup(src);
+      else if (src.type === "eventbrite") list = await fromEventbrite(src);
+      else list = await fromTribe(src, startISO, endISO);
       return { src, list };
     })
   );
@@ -250,11 +362,11 @@ module.exports = async (req, res) => {
   results.forEach((r, i) => {
     const src = SOURCES[i];
     if (r.status === "fulfilled") {
-      const list = r.value.list.filter((e) => e.date >= todayStr && e.lat && e.lng);
+      const list = r.value.list.filter((e) => e.date >= todayStr && e.date <= endStr && e.lat && e.lng);
       events = events.concat(list);
       sources.push({ name: src.name, count: list.length, ok: true });
     } else {
-      sources.push({ name: src.name, count: 0, ok: false });
+      sources.push({ name: src.name, count: 0, ok: false, error: String(r.reason && r.reason.message || r.reason || "Unavailable") });
     }
   });
 
@@ -262,14 +374,14 @@ module.exports = async (req, res) => {
   const seen = new Set();
   events = events
     .filter((e) => {
-      const k = e.name + "|" + e.date + "|" + e.loc;
+      const k = e.name.toLowerCase().replace(/\W+/g, " ").trim() + "|" + e.date + "|" + e.time;
       if (seen.has(k)) return false;
       seen.add(k);
       return true;
     })
     .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
 
-  res.setHeader("Cache-Control", "s-maxage=1800, stale-while-revalidate=86400");
+  res.setHeader("Cache-Control", "s-maxage=900, stale-while-revalidate=21600");
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.status(200).json({ updated: new Date().toISOString(), sources, events });
 };
