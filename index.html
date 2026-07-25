@@ -727,7 +727,7 @@ const QUICK={
 };
 let SAVED=new Set();
 try{SAVED=new Set(JSON.parse(localStorage.getItem("gather-saved")||"[]"));}catch(e){}
-const state={mode:"activities",cat:new Set(),day:null,daySet:null,fmt:null,tod:"",nowOnly:false,q:"",near:null,nearGps:false,quick:new Set(),savedOnly:false,preset:"",limit:RENDER_STEP};
+const state={mode:"activities",cat:new Set(),day:null,daySet:null,fmt:null,tod:"",nowOnly:false,q:"",near:null,nearGps:false,quick:new Set(),savedOnly:false,preset:"",area:"",limit:RENDER_STEP};
 let _urlTimer=null;
 function todayDay(){return nowInfo().day;}
 function dayViewLabel(){
@@ -787,6 +787,7 @@ function pushUrl(){
     if(state.fmt)p.set("fmt",state.fmt);
     if(state.nowOnly)p.set("now","1");
     if(state.savedOnly)p.set("saved","1");
+    if(state.area)p.set("area",state.area);
     if([...state.quick].length)p.set("quick",[...state.quick].join(","));
     if(activeId)p.set("id",activeId);
     history.replaceState(null,"",location.pathname+"?"+p);
@@ -803,6 +804,7 @@ function readUrl(){
   if(p.get("fmt"))state.fmt=p.get("fmt");
   if(p.get("now")==="1")state.nowOnly=true;
   if(p.get("saved")==="1")state.savedOnly=true;
+  if(/^(stpaul|mpls|suburbs)$/.test(p.get("area")||""))state.area=p.get("area");
   if(p.get("quick"))state.quick=new Set(p.get("quick").split(",").filter(Boolean));
   return p.get("id");
 }
@@ -1009,7 +1011,7 @@ function buildFilters(){
   document.getElementById("catLabel").textContent=state.mode==="support"?"Fellowship":"Activity type";
   Object.entries(META).forEach(([k,v])=>{
     const c=document.createElement("button");
-    c.className="chip";c.innerHTML=`<span class="swatch" style="background:${v.color}"></span>${k}`;
+    c.className="chip"+(state.cat.has(k)?" on":"");c.innerHTML=`<span class="swatch" style="background:${v.color}"></span>${k}`;
     c.onclick=()=>{state.cat.has(k)?state.cat.delete(k):state.cat.add(k);c.classList.toggle("on");render();};
     cf.appendChild(c);
   });
@@ -1047,6 +1049,13 @@ function filtered(){
     if(state.savedOnly)return SAVED.has(m._id)&&!(m.date&&dateOffset(m.date)<0);
     if(state.cat.size&&!state.cat.has(m.cat))return false;
     if(!matchesDayView(m))return false;
+    if(state.area){
+      const a=(m.addr||"").toLowerCase();
+      const sp=/st\.? ?paul|saint paul/.test(a),mp=/minneapolis/.test(a);
+      if(state.area==="stpaul"&&!sp)return false;
+      if(state.area==="mpls"&&!mp)return false;
+      if(state.area==="suburbs"&&(sp||mp||m.fmt==="online"))return false;
+    }
     if(state.fmt&&m.fmt!==state.fmt)return false;
     if(state.tod&&!inTod(m.time,state.tod))return false;
     if(state.nowOnly&&!isNow(m))return false;
@@ -1063,12 +1072,29 @@ function filtered(){
 function activeFilterCount(){
   const dayExtra=state.daySet?1:(isAllWeek()?1:(state.day!==todayDay()?1:0));
   const formatExtra=state.fmt&&!(state.mode==="activities"&&state.fmt==="in-person")?1:0;
-  return state.cat.size+dayExtra+state.quick.size+formatExtra+(state.tod?1:0)+(state.nowOnly?1:0)+(state.savedOnly?1:0);
+  return state.cat.size+dayExtra+state.quick.size+formatExtra+(state.tod?1:0)+(state.nowOnly?1:0)+(state.savedOnly?1:0)+(state.area?1:0);
 }
 function buildQuickFilters(){
   const row=document.getElementById("quickrow");
   if(!row)return;
   row.innerHTML="";
+  if(state.mode==="support"){
+    // where + which program up front — "AA in St Paul" should be two taps
+    [["","Everywhere"],["stpaul","St Paul"],["mpls","Minneapolis"],["suburbs","Suburbs"]].forEach(([v,lbl])=>{
+      const b=document.createElement("button");
+      b.type="button";b.className="qchip"+((state.area||"")===v?" on":"");
+      b.textContent=lbl;
+      b.onclick=()=>{state.area=v;buildQuickFilters();render();};
+      row.appendChild(b);
+    });
+    ["AA","NA"].forEach(k=>{
+      const b=document.createElement("button");
+      b.type="button";b.className="qchip"+(state.cat.has(k)?" on":"");
+      b.textContent=k;
+      b.onclick=()=>{state.cat.has(k)?state.cat.delete(k):state.cat.add(k);buildQuickFilters();buildFilters();render();};
+      row.appendChild(b);
+    });
+  }
   (QUICK[state.mode]||[]).forEach(q=>{
     const b=document.createElement("button");
     b.type="button";b.className="qchip"+(state.quick.has(q.id)?" on":"");
@@ -1169,7 +1195,7 @@ function updateFilterUI(){
   document.getElementById("fClear").classList.toggle("show",n>0);
 }
 function clearFilters(){
-  state.cat.clear();state.quick.clear();state.daySet=null;state.day=todayDay();state.fmt=state.mode==="activities"?"in-person":null;state.tod="";state.nowOnly=false;state.savedOnly=false;state.preset=state.mode==="activities"?"today":"";state.q="";
+  state.cat.clear();state.quick.clear();state.daySet=null;state.day=todayDay();state.fmt=state.mode==="activities"?"in-person":null;state.tod="";state.nowOnly=false;state.savedOnly=false;state.preset=state.mode==="activities"?"today":"";state.q="";state.area="";
   document.getElementById("q").value="";
   document.querySelectorAll("#fmtFilters .chip").forEach(x=>x.classList.remove("on"));
   syncTodUI();
@@ -1396,7 +1422,7 @@ function setMode(mode,opts={}){
   if(!opts.keepFilters){
     state.cat.clear();state.quick.clear();activeId=null;state.daySet=null;state.day=todayDay();
     state.fmt=mode==="activities"?"in-person":null;state.tod="";state.nowOnly=false;state.savedOnly=false;
-    state.preset=mode==="activities"?"today":"";
+    state.preset=mode==="activities"?"today":"";state.area="";
   }
   document.body.classList.toggle("mode-activities",mode==="activities");
   // guide stays closed until asked for (the "First visit" preset opens it) —

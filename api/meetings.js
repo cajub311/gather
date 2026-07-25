@@ -10,6 +10,10 @@
 const AA_URL = "https://aaminneapolis.org/wp-admin/admin-ajax.php?action=meetings";
 const NA_URL =
   "https://bmlt.naminnesota.org/main_server/client_interface/json/?switcher=GetSearchResults";
+// Statewide AA (aaminnesota.org) — fills the St Paul / suburbs gap the
+// Minneapolis intergroup doesn't cover. The TSML cache filename is hashed,
+// so discover it from the meetings page's tsml-ui data-src each time.
+const AA_MN_PAGE = "https://aaminnesota.org/meetings/";
 
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Gather/1.0";
@@ -29,6 +33,19 @@ async function getJSON(url) {
   });
   if (!r.ok) throw new Error(`${url} -> HTTP ${r.status}`);
   return r.json();
+}
+
+async function fetchAAMinnesota() {
+  const r = await fetch(AA_MN_PAGE, { headers: { "User-Agent": UA } });
+  if (!r.ok) throw new Error(`tsml page HTTP ${r.status}`);
+  const m = (await r.text()).match(/data-src=['"]([^'"]+)/);
+  if (!m) throw new Error("tsml data-src not found");
+  return getJSON(new URL(m[1], AA_MN_PAGE).href);
+}
+
+// Twin Cities metro bounding box — the statewide feed includes Duluth etc.
+function inMetro(m) {
+  return m.lat > 44.6 && m.lat < 45.35 && m.lng > -93.8 && m.lng < -92.75;
 }
 
 function hhmm(t) {
@@ -123,7 +140,11 @@ module.exports = async (req, res) => {
   const sources = [];
   let meetings = [];
 
-  const [aa, na] = await Promise.allSettled([getJSON(AA_URL), getJSON(NA_URL)]);
+  const [aa, na, aamn] = await Promise.allSettled([
+    getJSON(AA_URL),
+    getJSON(NA_URL),
+    fetchAAMinnesota(),
+  ]);
 
   if (aa.status === "fulfilled" && Array.isArray(aa.value)) {
     const m = normalizeAA(aa.value).filter((x) => x.lat && x.lng);
@@ -131,6 +152,18 @@ module.exports = async (req, res) => {
     sources.push({ name: "AA Minneapolis Intergroup", count: m.length, ok: true });
   } else {
     sources.push({ name: "AA Minneapolis Intergroup", count: 0, ok: false });
+  }
+
+  if (aamn.status === "fulfilled" && Array.isArray(aamn.value)) {
+    // skip meetings the Minneapolis intergroup already lists
+    const seen = new Set(meetings.map((x) => `${x.name}|${x.day}|${x.time}`.toLowerCase()));
+    const m = normalizeAA(aamn.value)
+      .filter((x) => x.lat && x.lng && inMetro(x))
+      .filter((x) => !seen.has(`${x.name}|${x.day}|${x.time}`.toLowerCase()));
+    meetings = meetings.concat(m);
+    sources.push({ name: "aaMinnesota (St Paul + metro)", count: m.length, ok: true });
+  } else {
+    sources.push({ name: "aaMinnesota (St Paul + metro)", count: 0, ok: false });
   }
 
   if (na.status === "fulfilled" && Array.isArray(na.value)) {

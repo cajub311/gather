@@ -21,6 +21,10 @@ const SOURCES = [
   { type: "tribe", name: "Landmark Center", base: "https://landmarkcenter.org", lat: 44.9462, lng: -93.0969, addr: "75 W 5th St, St Paul" },
   { type: "tribe", name: "56 Brewing", base: "https://56brewing.com", lat: 45.0156, lng: -93.2410, addr: "3134 California St NE, Minneapolis" },
   { type: "tribe", name: "Minneapolis Parks", base: "https://www.minneapolisparks.org", lat: 44.9778, lng: -93.2650, addr: "Minneapolis" },
+  { type: "tribe", name: "Como Zoo & Conservatory", base: "https://comozooconservatory.org", lat: 44.9822, lng: -93.1519, addr: "1225 Estabrook Dr, St Paul" },
+  { type: "tribe", name: "Summit Brewing", base: "https://www.summitbrewing.com", lat: 44.9160, lng: -93.1360, addr: "910 Montreal Cir, St Paul" },
+  { type: "tribe", name: "Utepils Brewing", base: "https://www.utepilsbrewing.com", lat: 44.9790, lng: -93.3080, addr: "225 Thomas Ave N, Minneapolis" },
+  { type: "tribe", name: "White Squirrel Bar", base: "https://whitesquirrelbar.com", lat: 44.9270, lng: -93.1250, addr: "974 W 7th St, St Paul" },
 
   // --- Squarespace event collections (?format=json) — confirmed live ---
   { type: "squarespace", name: "Bad Weather Brewing", base: "https://www.badweatherbrewery.com/events", lat: 44.9276, lng: -93.1310, addr: "1505 7th St W, St Paul" },
@@ -28,9 +32,16 @@ const SOURCES = [
   { type: "squarespace", name: "Arbeiter Brewing", base: "https://www.arbeiterbrewing.com/events", lat: 44.9487, lng: -93.2310, addr: "3038 Minnehaha Ave, Minneapolis" },
   { type: "squarespace", name: "Pryes Brewing", base: "https://www.pryesbrewing.com/events", lat: 44.9920, lng: -93.2790, addr: "1401 West River Rd N, Minneapolis" },
 
+  // --- Library systems (BiblioCommons JSON) — free events, storytimes, classes ---
+  { type: "biblio", name: "St Paul Library", lib: "sppl", addr: "St Paul" },
+  { type: "biblio", name: "Hennepin Co. Library", lib: "hclib", addr: "Minneapolis" },
+
   // --- Wide public discovery pages ---
   { type: "meetup", name: "Meetup", url: "https://www.meetup.com/find/us--mn--minneapolis/?eventType=inPerson&source=EVENTS" },
+  { type: "meetup", name: "Meetup St Paul", url: "https://www.meetup.com/find/us--mn--saint-paul/?eventType=inPerson&source=EVENTS" },
   { type: "eventbrite", name: "Eventbrite", url: "https://www.eventbrite.com/d/mn--minneapolis/events--today/" },
+  { type: "eventbrite", name: "Eventbrite (page 2)", url: "https://www.eventbrite.com/d/mn--minneapolis/events--today/?page=2" },
+  { type: "eventbrite", name: "Eventbrite St Paul", url: "https://www.eventbrite.com/d/mn--saint-paul/events--this-week/" },
 ];
 
 // skip taproom logistics / non-activity filler that some venues publish as "events"
@@ -235,6 +246,63 @@ async function fromSquarespace(src) {
   return out;
 }
 
+// BiblioCommons (library events). Entities carry the real data; items is the
+// ordered id list. Branch + place entities both have geocoded centrePoints.
+async function fromBiblio(src) {
+  const start = chicagoDateKey(new Date());
+  const end = chicagoDateKey(new Date(Date.now() + 45 * 864e5));
+  const out = [];
+  for (let page = 1; page <= 2; page++) {
+    let j;
+    try {
+      j = await getJSON(`https://gateway.bibliocommons.com/v2/libraries/${src.lib}/events?startDate=${start}&endDate=${end}&limit=100&page=${page}`);
+    } catch { break; }
+    const ids = (j.events && j.events.items) || [];
+    const ents = j.entities || {};
+    const evs = ents.events || {}, locs = ents.locations || {}, places = ents.places || {};
+    const typesEnt = ents.eventTypes || {}, auds = ents.eventAudiences || {}, imgs = ents.images || {};
+    for (const id of ids) {
+      const e = (evs[id] || {}).definition;
+      if (!e || e.isCancelled) continue;
+      const m = String(e.start || "").match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+      if (!m) continue;
+      const p = { y: +m[1], mo: +m[2], d: +m[3], h: +m[4], mi: +m[5] };
+      const title = decode(e.title);
+      if (!title || isNoise(title)) continue;
+      const locEnt = locs[e.branchLocationId] || places[e.nonBranchLocationId];
+      const cp = locEnt && locEnt.mapLocation && locEnt.mapLocation.centrePoint;
+      if (!cp || !cp.lat || !cp.lng) continue;
+      if (cp.lat < 44.6 || cp.lat > 45.35 || cp.lng < -93.8 || cp.lng > -92.75) continue; // metro only
+      const a = locEnt.address || {};
+      const typeNames = (e.typeIds || []).map((t) => (typesEnt[t] || {}).name).filter(Boolean);
+      const audNames = (e.audienceIds || []).map((t) => (auds[t] || {}).name).filter(Boolean);
+      const img = imgs[e.featuredImageId];
+      out.push({
+        cat: classify(title + " " + typeNames.join(" ")),
+        name: title,
+        day: dayKey(p),
+        time: `${String(p.h).padStart(2, "0")}:${String(p.mi).padStart(2, "0")}`,
+        dur: duration(e.start, e.end),
+        fmt: "in-person",
+        loc: decode(locEnt.name || src.name),
+        addr: decode([a.number && a.street ? `${a.number} ${a.street}` : a.street, a.city].filter(Boolean).join(", ")) || src.addr,
+        lat: cp.lat, lng: cp.lng,
+        types: ["Free", audNames[0] || typeNames[0] || ""].filter(Boolean).slice(0, 2),
+        url: `https://${src.lib}.bibliocommons.com/events/${id}`,
+        image: img && img.url,
+        date: `${p.y}-${String(p.mo).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`,
+        dateLabel: `${DOW[dayKey(p)]}, ${MON[p.mo - 1]} ${p.d}`,
+        source: src.name,
+        live: true,
+        verified: true,
+      });
+    }
+    const pg = j.events && j.events.pagination;
+    if (!pg || page >= pg.pages) break;
+  }
+  return out;
+}
+
 function cityPoint(city) {
   const c = String(city || "").toLowerCase();
   if (c.includes("st. paul") || c.includes("saint paul")) return { lat: 44.9537, lng: -93.0900 };
@@ -350,6 +418,7 @@ module.exports = async (req, res) => {
     SOURCES.map(async (src) => {
       let list;
       if (src.type === "ics") list = parseICS(await getText(src.url), src);
+      else if (src.type === "biblio") list = await fromBiblio(src);
       else if (src.type === "squarespace") list = await fromSquarespace(src);
       else if (src.type === "meetup") list = await fromMeetup(src);
       else if (src.type === "eventbrite") list = await fromEventbrite(src);
