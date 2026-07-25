@@ -82,6 +82,11 @@ function decode(s) {
     .replace(/\s+/g, " ").trim();
 }
 
+function short(s) {
+  s = decode(s);
+  return s.length > 180 ? s.slice(0, 177) + "…" : s;
+}
+
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -139,6 +144,7 @@ async function fromTribe(src, startISO, endISO) {
       lat: isFinite(lat) ? lat : src.lat,
       lng: isFinite(lng) ? lng : src.lng,
       types: [e.cost ? decode(e.cost) : "", catNames[0] || ""].filter(Boolean).slice(0, 2),
+      desc: short(e.description || "") || undefined,
       url: e.url,
       date: `${p.y}-${String(p.mo).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`,
       dateLabel: `${DOW[dayKey(p)]}, ${MON[p.mo - 1]} ${p.d}`,
@@ -236,6 +242,7 @@ async function fromSquarespace(src) {
         lat: isFinite(lat) && lat ? lat : src.lat,
         lng: isFinite(lng) && lng ? lng : src.lng,
         types: [],
+        desc: short(e.excerpt || "") || undefined,
         url: e.fullUrl ? origin + e.fullUrl : src.base,
         date,
         dateLabel: `${DOW[dayKey(p)]}, ${MON[p.mo - 1]} ${p.d}`,
@@ -290,6 +297,7 @@ async function fromBiblio(src) {
         addr: decode([a.number && a.street ? `${a.number} ${a.street}` : a.street, a.city].filter(Boolean).join(", ")) || src.addr,
         lat: cp.lat, lng: cp.lng,
         types: ["Free", audNames[0] || typeNames[0] || ""].filter(Boolean).slice(0, 2),
+        desc: short(e.description || "") || undefined,
         url: `https://${src.lib}.bibliocommons.com/events/${id}`,
         image: img && img.url,
         date: `${p.y}-${String(p.mo).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`,
@@ -391,6 +399,7 @@ async function fromEventbrite(src) {
       lat: parseFloat(a.latitude),
       lng: parseFloat(a.longitude),
       types: tags.slice(0, 2),
+      desc: short(e.summary || "") || undefined,
       url: e.url,
       image: e.image && e.image.image_sizes && (e.image.image_sizes.medium || e.image.url),
       date: e.start_date,
