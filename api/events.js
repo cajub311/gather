@@ -26,6 +26,7 @@ const SOURCES = [
   { type: "tribe", name: "Utepils Brewing", base: "https://www.utepilsbrewing.com", lat: 44.9790, lng: -93.3080, addr: "225 Thomas Ave N, Minneapolis" },
   { type: "tribe", name: "White Squirrel Bar", base: "https://whitesquirrelbar.com", lat: 44.9270, lng: -93.1250, addr: "974 W 7th St, St Paul" },
   { type: "tribe", name: "Science Museum of MN", base: "https://www.smm.org", lat: 44.9425, lng: -93.0990, addr: "120 W Kellogg Blvd, St Paul" },
+  { type: "tribe", name: "Malcolm Yards", base: "https://malcolmyards.market", lat: 44.9797, lng: -93.2130, addr: "501 30th Ave SE, Minneapolis" },
 
   // --- UMN public calendar (LiveWhale JSON) — lectures, arboretum, concerts ---
   { type: "livewhale", name: "UMN Events", url: "https://events.tc.umn.edu/live/json/events/max/300", lat: 44.9740, lng: -93.2277, addr: "Minneapolis" },
@@ -489,6 +490,19 @@ module.exports = async (req, res) => {
     } else {
       sources.push({ name: src.name, count: 0, ok: false, error: String(r.reason && r.reason.message || r.reason || "Unavailable") });
     }
+  });
+
+  // A venue's own calendar beats aggregators: drop Meetup/Eventbrite rows at
+  // venues we already pull directly — organizers leave stale times on
+  // aggregators (found live: Eventbrite said 6 PM, Malcolm Yards said 10 AM).
+  const venueKey = (s) => String(s || "").toLowerCase().replace(/\bmn\b/g, "minnesota")
+    .replace(/\b(the|at|market|taproom|co|company|of)\b/g, " ").replace(/[^a-z0-9]+/g, " ").trim();
+  const directKeys = SOURCES.filter((s) => s.base).map((s) => venueKey(s.name)).filter((k) => k.length > 5);
+  events = events.filter((e) => {
+    if (!/^(meetup|eventbrite)/i.test(e.source)) return true;
+    const k = venueKey(e.loc);
+    if (k.length < 6) return true;
+    return !directKeys.some((d) => k.includes(d) || d.includes(k));
   });
 
   // de-dupe (same title+date+venue) and sort by soonest
