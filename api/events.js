@@ -125,9 +125,18 @@ function dayKey(p) {
 }
 
 async function fromTribe(src, startISO, endISO) {
-  const url = `${src.base}/wp-json/tribe/events/v1/events?per_page=50&start_date=${startISO}&end_date=${endISO}`;
-  const data = await getJSON(url);
-  const events = Array.isArray(data.events) ? data.events : [];
+  // The Events Calendar paginates at 50/page and several venues run 3-12x
+  // that in a 45-day window (Como Zoo: 598, Mpls Parks: 306) — a single page
+  // was silently dropping 80-90% of real listings. Page through, capped so
+  // one venue can't starve the rest of the parallel fetch.
+  const events = [];
+  for (let page = 1; page <= 8; page++) {
+    const url = `${src.base}/wp-json/tribe/events/v1/events?per_page=50&page=${page}&start_date=${startISO}&end_date=${endISO}`;
+    const data = await getJSON(url);
+    const rows = Array.isArray(data.events) ? data.events : [];
+    events.push(...rows);
+    if (rows.length < 50 || page >= (data.total_pages || 1)) break;
+  }
   const out = [];
   for (const e of events) {
     const p = parseLocal(e.start_date);
