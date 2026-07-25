@@ -31,6 +31,8 @@ const SOURCES = [
   { type: "squarespace", name: "Lake Monster Brewing", base: "https://www.lakemonsterbrewing.com/events", lat: 44.9636, lng: -93.1880, addr: "550 Vandalia St, St Paul" },
   { type: "squarespace", name: "Arbeiter Brewing", base: "https://www.arbeiterbrewing.com/events", lat: 44.9487, lng: -93.2310, addr: "3038 Minnehaha Ave, Minneapolis" },
   { type: "squarespace", name: "Pryes Brewing", base: "https://www.pryesbrewing.com/events", lat: 44.9920, lng: -93.2790, addr: "1401 West River Rd N, Minneapolis" },
+  { type: "squarespace", name: "The Cedar", base: "https://www.thecedar.org/events", lat: 44.9689, lng: -93.2470, addr: "416 Cedar Ave S, Minneapolis", cat: "Music" },
+  { type: "squarespace", name: "Berlin", base: "https://www.berlinmpls.com/calendar", lat: 44.9822, lng: -93.2717, addr: "204 N 1st St, Minneapolis", cat: "Music" },
 
   // --- Library systems (BiblioCommons JSON) — free events, storytimes, classes ---
   { type: "biblio", name: "St Paul Library", lib: "sppl", addr: "St Paul" },

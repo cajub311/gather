@@ -14,6 +14,8 @@ const NA_URL =
 // Minneapolis intergroup doesn't cover. The TSML cache filename is hashed,
 // so discover it from the meetings page's tsml-ui data-src each time.
 const AA_MN_PAGE = "https://aaminnesota.org/meetings/";
+// Al-Anon Minnesota South Area (Twin Cities + southern MN) — standard TSML.
+const ALANON_URL = "https://mnsa-afg.org/wp-admin/admin-ajax.php?action=meetings";
 
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Gather/1.0";
@@ -67,7 +69,7 @@ function durMins(start, end) {
   }
 }
 
-function normalizeAA(rows) {
+function normalizeAA(rows, cat = "AA") {
   const out = [];
   for (const m of rows) {
     const lat = parseFloat(m.latitude), lng = parseFloat(m.longitude);
@@ -82,13 +84,13 @@ function normalizeAA(rows) {
       .filter(Boolean)
       .slice(0, 3);
     out.push({
-      cat: "AA",
-      name: m.name || "AA Meeting",
+      cat,
+      name: m.name || cat + " Meeting",
       day: typeof m.day === "number" ? m.day : Number(m.day) || 0,
       time: hhmm(m.time),
       dur: m.end_time ? durMins(hhmm(m.time), hhmm(m.end_time)) : 60,
       fmt,
-      loc: m.location || m.region || "AA Group",
+      loc: m.location || m.region || cat + " Group",
       addr: m.formatted_address || m.region || "Minneapolis area",
       lat: isFinite(lat) ? lat : null,
       lng: isFinite(lng) ? lng : null,
@@ -140,10 +142,11 @@ module.exports = async (req, res) => {
   const sources = [];
   let meetings = [];
 
-  const [aa, na, aamn] = await Promise.allSettled([
+  const [aa, na, aamn, alanon] = await Promise.allSettled([
     getJSON(AA_URL),
     getJSON(NA_URL),
     fetchAAMinnesota(),
+    getJSON(ALANON_URL),
   ]);
 
   if (aa.status === "fulfilled" && Array.isArray(aa.value)) {
@@ -164,6 +167,14 @@ module.exports = async (req, res) => {
     sources.push({ name: "aaMinnesota (St Paul + metro)", count: m.length, ok: true });
   } else {
     sources.push({ name: "aaMinnesota (St Paul + metro)", count: 0, ok: false });
+  }
+
+  if (alanon.status === "fulfilled" && Array.isArray(alanon.value)) {
+    const m = normalizeAA(alanon.value, "Al-Anon").filter((x) => x.lat && x.lng && inMetro(x));
+    meetings = meetings.concat(m);
+    sources.push({ name: "Al-Anon MN South Area", count: m.length, ok: true });
+  } else {
+    sources.push({ name: "Al-Anon MN South Area", count: 0, ok: false });
   }
 
   if (na.status === "fulfilled" && Array.isArray(na.value)) {
