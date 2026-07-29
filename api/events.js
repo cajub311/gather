@@ -10,26 +10,34 @@
 //
 // Add a venue/org: drop it in SOURCES with its type. That's the whole job.
 
+// Keep the honest Gather/1.0 token. Claiming to be Chrome without any of the
+// headers a real Chrome sends reads as spoofing to Cloudflare bot management —
+// measured: Surly 403s the Chrome UA and 200s this one, and no source prefers
+// the Chrome UA. Utepils' 403 came from Vercel's IPs, not the UA; the retry in
+// fetchWithRetry is what gives it a second chance.
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Gather/1.0";
 
+// `fallback` = what an unrecognized title at this venue most likely is. Without
+// it every unclassifiable row landed in "Social", which made Social 55% of the
+// whole feed (Como Zoo animal programs, library classes, park events).
 const SOURCES = [
   // --- The Events Calendar (Tribe) REST — confirmed live ---
   { type: "tribe", name: "Surly Brewing Co.", base: "https://surlybrewing.com", lat: 44.9696, lng: -93.2089, addr: "520 Malcolm Ave SE, Minneapolis" },
   { type: "tribe", name: "Modist Brewing", base: "https://modistbrewing.com", lat: 44.9852, lng: -93.2772, addr: "505 N 3rd St, Minneapolis" },
   { type: "tribe", name: "Indeed Brewing", base: "https://indeedbrewing.com", lat: 44.9996, lng: -93.2476, addr: "711 NE 15th Ave, Minneapolis" },
-  { type: "tribe", name: "Landmark Center", base: "https://landmarkcenter.org", lat: 44.9462, lng: -93.0969, addr: "75 W 5th St, St Paul" },
+  { type: "tribe", name: "Landmark Center", base: "https://landmarkcenter.org", lat: 44.9462, lng: -93.0969, addr: "75 W 5th St, St Paul", fallback: "Art" },
   { type: "tribe", name: "56 Brewing", base: "https://56brewing.com", lat: 45.0156, lng: -93.2410, addr: "3134 California St NE, Minneapolis" },
-  { type: "tribe", name: "Minneapolis Parks", base: "https://www.minneapolisparks.org", lat: 44.9778, lng: -93.2650, addr: "Minneapolis" },
-  { type: "tribe", name: "Como Zoo & Conservatory", base: "https://comozooconservatory.org", lat: 44.9822, lng: -93.1519, addr: "1225 Estabrook Dr, St Paul" },
+  { type: "tribe", name: "Minneapolis Parks", base: "https://www.minneapolisparks.org", lat: 44.9778, lng: -93.2650, addr: "Minneapolis", fallback: "Outdoors" },
+  { type: "tribe", name: "Como Zoo & Conservatory", base: "https://comozooconservatory.org", lat: 44.9822, lng: -93.1519, addr: "1225 Estabrook Dr, St Paul", fallback: "Family" },
   { type: "tribe", name: "Summit Brewing", base: "https://www.summitbrewing.com", lat: 44.9160, lng: -93.1360, addr: "910 Montreal Cir, St Paul" },
   { type: "tribe", name: "Utepils Brewing", base: "https://www.utepilsbrewing.com", lat: 44.9790, lng: -93.3080, addr: "225 Thomas Ave N, Minneapolis" },
-  { type: "tribe", name: "White Squirrel Bar", base: "https://whitesquirrelbar.com", lat: 44.9270, lng: -93.1250, addr: "974 W 7th St, St Paul" },
-  { type: "tribe", name: "Science Museum of MN", base: "https://www.smm.org", lat: 44.9425, lng: -93.0990, addr: "120 W Kellogg Blvd, St Paul" },
+  { type: "tribe", name: "White Squirrel Bar", base: "https://whitesquirrelbar.com", lat: 44.9270, lng: -93.1250, addr: "974 W 7th St, St Paul", fallback: "Music" },
+  { type: "tribe", name: "Science Museum of MN", base: "https://www.smm.org", lat: 44.9425, lng: -93.0990, addr: "120 W Kellogg Blvd, St Paul", fallback: "Family" },
   { type: "tribe", name: "Malcolm Yards", base: "https://malcolmyards.market", lat: 44.9797, lng: -93.2130, addr: "501 30th Ave SE, Minneapolis" },
 
   // --- UMN public calendar (LiveWhale JSON) — lectures, arboretum, concerts ---
-  { type: "livewhale", name: "UMN Events", url: "https://events.tc.umn.edu/live/json/events/max/300", lat: 44.9740, lng: -93.2277, addr: "Minneapolis" },
+  { type: "livewhale", name: "UMN Events", url: "https://events.tc.umn.edu/live/json/events/max/300", lat: 44.9740, lng: -93.2277, addr: "Minneapolis", fallback: "Learn" },
 
   // --- Squarespace event collections (?format=json) — confirmed live ---
   { type: "squarespace", name: "Bad Weather Brewing", base: "https://www.badweatherbrewery.com/events", lat: 44.9276, lng: -93.1310, addr: "1505 7th St W, St Paul" },
@@ -40,8 +48,8 @@ const SOURCES = [
   { type: "squarespace", name: "Berlin", base: "https://www.berlinmpls.com/calendar", lat: 44.9822, lng: -93.2717, addr: "204 N 1st St, Minneapolis", cat: "Music" },
 
   // --- Library systems (BiblioCommons JSON) — free events, storytimes, classes ---
-  { type: "biblio", name: "St Paul Library", lib: "sppl", addr: "St Paul" },
-  { type: "biblio", name: "Hennepin Co. Library", lib: "hclib", addr: "Minneapolis" },
+  { type: "biblio", name: "St Paul Library", lib: "sppl", addr: "St Paul", fallback: "Learn" },
+  { type: "biblio", name: "Hennepin Co. Library", lib: "hclib", addr: "Minneapolis", fallback: "Learn" },
 
   // --- Wide public discovery pages ---
   { type: "meetup", name: "Meetup", url: "https://www.meetup.com/find/us--mn--minneapolis/?eventType=inPerson&source=EVENTS" },
@@ -53,38 +61,93 @@ const SOURCES = [
 
 // skip taproom logistics / non-activity filler that some venues publish as "events"
 function isNoise(title) {
-  return /^(open|closed|now open|patio|taproom|kitchen|we'?re open|happy hour)\b|food truck|truck:|open at|hours|curbside|to[- ]go|growler|lean six sigma|project management techniques training|certification training/i.test(
-    title || ""
-  );
+  const t = title || "";
+  // Do NOT treat "Open Mic" / "Open Studio" as hours — only pure open/closed logistics.
+  if (/^(closed|now open|patio|taproom|kitchen|we'?re open)\b|^open\s*$|^open\s+at\b|food truck|truck:|curbside|to[- ]go|growler|lean six sigma|project management techniques training|certification training/i.test(t)) return true;
+  // civic process, not something to go do
+  if (/\b(open house|board meeting|public hearing|advisory committee|commissioners|city council|budget meeting|listening session)\b/i.test(t)) return true;
+  // A standing drink special ("A Modist Happy Hour", "Happy Hour: $5 before 6")
+  // is a price, not a plan — but a happy hour with a billed act is a real show
+  // ("The Current Happy Hour w/ Girl Tones"), so keep anything naming a guest.
+  if (/happy hour/i.test(t) && !/\bw\/|\bwith\b|\bfeat\.?\b|featuring|presents/i.test(t)) return true;
+  // Eventbrite is full of multi-day corporate cert bootcamps — not a Twin Cities night out
+  if (/\b(salesforce|compTIA|aws certified|azure admin|pmp exam|scrum master|six sigma|docker|kubernetes|professional skills bootcamp|sql for healthcare|certification (?:training|course|bootcamp)|admin certification)\b/i.test(t)) return true;
+  if (/\b(certified scrum|scrummaster|scrum product owner|\bcspo\b|\bcsm\b)\b/i.test(t)) return true;
+  // "2 Days Certified … Training", "1 Day Workshop in Minneapolis"
+  if (/\b\d+\s*days?\s+(?:certified|certification|training|workshop|course|bootcamp)\b/i.test(t)) return true;
+  if (/\b\d+\s*day\s+(?:workshop|training|bootcamp|course)\b/i.test(t)) return true;
+  return false;
 }
 
-// map a free-text title / category to one of the app's fixed activity types
-function classify(text) {
-  const t = (text || "").toLowerCase();
+// Venue categories that mean "this row is logistics, not an event". Only drops a
+// row when EVERY category is filler — 56 Brewing publishes its food-truck
+// schedule as ~50 events/month, but a fest tagged [Food Truck, Live Music] stays.
+// Deliberately excludes "taproom"/"patio": Modist files real events (MNUFC watch
+// party, comedy nights) under Taproom Event, and isNoise already catches the
+// happy-hour/"open at 10:30" filler by title.
+const FILLER_CATS = /^\s*(food truck|public meeting|kitchen|hours$|open hours)/i;
+function isFillerOnly(catNames) {
+  const c = (catNames || []).filter(Boolean);
+  return c.length > 0 && c.every((n) => FILLER_CATS.test(n));
+}
+
+// Map a title (+ the venue's own category names) to one of the app's activity
+// types. Returns null when nothing matches so the caller can fall back to the
+// venue's `fallback` instead of dumping everything into "Social".
+function classify(text, catNames) {
+  const cats = (catNames || []).filter(Boolean).join(" ").toLowerCase();
+  // A venue's own taxonomy beats guessing from the title: Surly files concerts
+  // under "On Stage @" and Mpls Parks files buckthorn pulls under
+  // "Environmental Volunteer Opportunities" — neither is guessable from the name.
+  if (cats) {
+    if (/trivia|quiz|bingo|game night/.test(cats)) return "Games";
+    if (/on stage|live music|music in the park|concert|dance/.test(cats)) return "Music";
+    if (/volunteer/.test(cats)) return "Volunteer";
+    if (/storytime|story time|kids|children|family|youth|preschool|toddler/.test(cats)) return "Family";
+    if (/movie|film|screening/.test(cats)) return "Art";
+  }
+  // "Classes & Workshops"-style categories deliberately do NOT short-circuit:
+  // libraries file poetry readings and dance-fitness classes under them, and the
+  // title is the better signal. Categories still feed the title pass below.
+  const t = ((text || "") + " " + cats).toLowerCase();
   const has = (re) => re.test(t);
-  if (has(/trivia|quiz|bingo|board game|tabletop|chess|d&d|dungeons|magic the|euchre|card game/)) return "Games";
-  if (has(/watch party|singles mixer|meet new|networking|happy hour/)) return "Social";
-  if (has(/music|concert|\bband\b|\bjam\b|\bdj\b|open mic|singer|songwriter|orchestra|jazz|acoustic|hip[- ]?hop|punk|metal|indie|live at|festival|tour\b/)) return "Music";
-  if (has(/meditat|mindful|sound bath|breathwork|yin yoga|restorative/)) return "Zen";
-  if (has(/hike|trail|nature walk|birding|kayak|paddle|garden|cleanup|park\b/)) return "Outdoors";
-  if (has(/book|author|reading|poetry|\blit\b|storytime|writers/)) return "Books";
-  if (has(/\barts?\b|craft|paint|pottery|knit|maker|\bdraw|ceramic|\bprint|gallery|exhibit/)) return "Art";
-  if (has(/\brun(?:ning|s)?\b|\b5k\b|fitness|workout|yoga|pilates|volleyball|pickleball|climb|cycling|bike ride|\bsports?\b/)) return "Fitness";
-  if (has(/volunteer|serve|donate|food shelf|fundrais|charity/)) return "Volunteer";
-  if (has(/language|spanish|french|german|conversation table|esl/)) return "Language";
-  return "Social";
+  if (has(/trivia|quiz night|\bbingo\b|board game|tabletop|chess|d&d|dungeons|magic the|euchre|card game|crokinole|jigsaw|puzzl|pinball|arcade|karaoke|game night|clocktower/)) return "Games";
+  if (has(/music|concert|\bband\b|\bjam\b|\bdj\b|open mic|singer|songwriter|orchestra|jazz|acoustic|hip[- ]?hop|\bpunk\b|\bmetal\b|indie|bluegrass|\bchoir\b|recital|honky tonk|\bfest\b|on stage|\blive at\b|\btrio\b|quartet|quintet|\bduo\b|\bvinyl\b/)) return "Music";
+  if (has(/meditat|mindful|sound bath|breathwork|yin yoga|restorative|reiki|sangha|zazen|dharma/)) return "Zen";
+  if (has(/storytime|story time|toddler|preschool|\bkids?\b|children|\bfamily\b|all ages|\bbabies?\b|\bteens?\b|puppet|face paint|\blego\b|zookeeper|gorilla|polar bear|tiger talk|giraffe|penguin|sea lion|petting|little explorer|sea stories|dinosaur/)) return "Family";
+  if (has(/\brun(?:ning|s)?\b|\b(?:5|10)k\b|marathon|fitness|workout|yoga|pilates|volleyball|pickleball|table tennis|ping pong|climb|cycling|bike ride|bike night|\bsports?\b|softball|basketball|\bswim|skate|zumba|\bbarre\b|crossfit/)) return "Fitness";
+  if (has(/volunteer|food shelf|fundrais|charity|blood drive|buckthorn|invasive plant|litter pick/)) return "Volunteer";
+  if (has(/book club|\bauthor\b|\bread(?:ing|s)?\b|poetry|writers|book sale|lit crawl/)) return "Books";
+  if (has(/\barts?\b|craft|paint|pottery|knit|maker|\bdraw|ceramic|\bprint|gallery|exhibit|quilt|\bsew\b|collage|photograph|mural|\bmovie|\bfilm\b|screening/)) return "Art";
+  // bare "trail" matched "training" (Salesforce Admin Training → Outdoors). Use trails? word.
+  if (has(/hike|\btrails?\b|nature walk|birding|\bbirders?\b|kayak|paddle|canoe|garden|\bpark\b|cleanup|prairie|arboretum|pollinator|\btrek|\bflower|\bbloom|meadow/)) return "Outdoors";
+  if (has(/tasting|brunch|\bdinner\b|beer release|cocktail|\bwine\b|farmers market|cooking|\bbake|\bchef\b|barbecue|\bbbq\b|ice cream|pizza night|brewer/)) return "Food";
+  if (has(/language|spanish|french|german|conversation table|\besl\b|somali|hmong|\basl\b|sign language/)) return "Language";
+  if (has(/\bclass\b|workshop|lecture|seminar|\bpanel\b|\btalk\b|\b101\b|intro to|how to|tech help|resume|job fair|info session|\bdemo\b|symposium|colloquium|training/)) return "Learn";
+  if (has(/watch party|singles mixer|meet new|networking|happy hour|\bmixer\b|block party|\bsocial\b|meetup/)) return "Social";
+  return null;
 }
 
+const NAMED_ENTITIES = {
+  amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", hellip: "…",
+  rsquo: "’", lsquo: "‘", ldquo: "“", rdquo: "”", ndash: "–", mdash: "—",
+  middot: "·", bull: "•", deg: "°", trade: "™", reg: "®", copy: "©",
+};
+// Feeds hand back a grab-bag of entities — the old list-of-replacements missed
+// whatever wasn't enumerated, so titles shipped literal "&#8230;" to the UI.
 function decode(s) {
   if (!s) return "";
   return String(s)
+    .replace(/<(?:br|p|div|li)\b[^>]*>/gi, " ")
     .replace(/<[^>]+>/g, "")
-    .replace(/&amp;/g, "&").replace(/&#0?38;/g, "&")
-    .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&#8217;/g, "’")
-    .replace(/&#x27;|&apos;/gi, "'")
-    .replace(/&#8211;/g, "–").replace(/&#8212;/g, "—").replace(/&nbsp;/g, " ")
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => codePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => codePoint(parseInt(d, 10)))
+    .replace(/&([a-z]+);/gi, (m, n) => NAMED_ENTITIES[n.toLowerCase()] ?? m)
     .replace(/\s+/g, " ").trim();
+}
+function codePoint(n) {
+  if (!Number.isFinite(n) || n < 32 || n > 0x10ffff) return " ";
+  try { return String.fromCodePoint(n); } catch { return " "; }
 }
 
 function short(s) {
@@ -102,22 +165,52 @@ function parseLocal(s) {
   return { y: +m[1], mo: +m[2], d: +m[3], h: +m[4], mi: +m[5] };
 }
 
-async function getJSON(url) {
-  const r = await fetch(url, {
-    headers: { "User-Agent": UA, Accept: "application/json", Referer: url },
-    signal: AbortSignal.timeout(12000),
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
+// 26 sources fetch in parallel, so a slow origin gets starved and trips its own
+// timeout even when it answers in <1s locally (UMN's 1MB feed did exactly that).
+// One retry with a longer budget recovers those instead of showing 0 events.
+// Hard wall-clock ceiling per source. The function's maxDuration is 30s, and
+// retries multiply: a paged venue could otherwise spend 8 pages x (try + retry)
+// and hang the whole response. Whatever a source has by its deadline is what
+// ships; the rest of the metro shouldn't wait on one slow origin.
+const SOURCE_BUDGET_MS = 21000;
+function deadline() {
+  const until = Date.now() + SOURCE_BUDGET_MS;
+  return { left: () => until - Date.now(), expired: () => Date.now() >= until };
 }
 
-async function getText(url) {
-  const r = await fetch(url, {
-    headers: { "User-Agent": UA, Accept: "text/html,application/xhtml+xml" },
-    signal: AbortSignal.timeout(12000),
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.text();
+async function fetchWithRetry(url, accept, ms, budget) {
+  let last;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (budget && budget.expired()) break;
+    if (budget) ms = Math.max(2000, Math.min(ms, budget.left()));
+    try {
+      const r = await fetch(url, {
+        headers: {
+          "User-Agent": UA,
+          Accept: accept,
+          "Accept-Language": "en-US,en;q=0.9",
+          Referer: new URL(url).origin + "/",
+        },
+        signal: AbortSignal.timeout(attempt ? ms * 2 : ms),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r;
+    } catch (e) {
+      last = e;
+      // a 4xx is a decision, not a hiccup — retrying just burns the time budget
+      if (/HTTP 4\d\d/.test(String(e.message))) break;
+      if (budget && budget.expired()) break;
+    }
+  }
+  throw last || new Error("source timed out");
+}
+
+async function getJSON(url, ms = 10000, budget) {
+  return (await fetchWithRetry(url, "application/json", ms, budget)).json();
+}
+
+async function getText(url, ms = 10000, budget) {
+  return (await fetchWithRetry(url, "text/html,application/xhtml+xml", ms, budget)).text();
 }
 
 function dayKey(p) {
@@ -125,18 +218,37 @@ function dayKey(p) {
 }
 
 async function fromTribe(src, startISO, endISO) {
-  // The Events Calendar paginates at 50/page and several venues run 3-12x
-  // that in a 45-day window (Como Zoo: 598, Mpls Parks: 306) — a single page
-  // was silently dropping 80-90% of real listings. Page through, capped so
-  // one venue can't starve the rest of the parallel fetch.
+  const budget = deadline();
+  // The Events Calendar paginates at 50/page and several venues run 3-12x that
+  // in a 45-day window (Como Zoo: 563, Mpls Parks: 282) — a single page was
+  // silently dropping 80-90% of real listings.
+  //
+  // Pages go out concurrently, not one after another. Waiting for page 1 to
+  // report total_pages costs a full round-trip before anything else starts, and
+  // Como Zoo's endpoint needs ~13s PER PAGE regardless of window size — serial
+  // paging there spent the entire budget on page 1. The first wave is
+  // speculative (a small venue wastes 2 cheap requests); a second wave only
+  // fires when page 1 says there is more and there's still time.
+  const MAX_PAGES = 8, WAVE = 3;
+  const pageUrl = (n) =>
+    `${src.base}/wp-json/tribe/events/v1/events?per_page=50&page=${n}&start_date=${startISO}&end_date=${endISO}`;
+  const fetchPages = (from, to) =>
+    Promise.allSettled(
+      Array.from({ length: to - from + 1 }, (_, i) => getJSON(pageUrl(from + i), 14000, budget))
+    );
+
   const events = [];
-  for (let page = 1; page <= 8; page++) {
-    const url = `${src.base}/wp-json/tribe/events/v1/events?per_page=50&page=${page}&start_date=${startISO}&end_date=${endISO}`;
-    const data = await getJSON(url);
-    const rows = Array.isArray(data.events) ? data.events : [];
-    events.push(...rows);
-    if (rows.length < 50 || page >= (data.total_pages || 1)) break;
-  }
+  const wave1 = await fetchPages(1, WAVE);
+  // page 1 failing is a dead source — report it as down rather than as empty
+  if (wave1[0].status === "rejected") throw wave1[0].reason;
+  const collect = (results) => {
+    for (const r of results) {
+      if (r.status === "fulfilled" && Array.isArray(r.value.events)) events.push(...r.value.events);
+    }
+  };
+  collect(wave1);
+  const pages = Math.min(MAX_PAGES, wave1[0].value.total_pages || 1);
+  if (pages > WAVE && !budget.expired()) collect(await fetchPages(WAVE + 1, pages));
   const out = [];
   for (const e of events) {
     const p = parseLocal(e.start_date);
@@ -145,9 +257,10 @@ async function fromTribe(src, startISO, endISO) {
     if (isNoise(title)) continue;
     const v = Array.isArray(e.venue) ? (e.venue[0] || {}) : (e.venue || {});
     const lat = parseFloat(v.geo_lat), lng = parseFloat(v.geo_lng);
-    const catNames = (e.categories || []).map((c) => c.name);
+    const catNames = (e.categories || []).map((c) => decode(c.name)).filter(Boolean);
+    if (isFillerOnly(catNames)) continue;
     out.push({
-      cat: src.cat || classify(title + " " + catNames.join(" ")),
+      cat: src.cat || classify(title, catNames) || src.fallback || "Social",
       name: title,
       day: dayKey(p),
       time: `${String(p.h).padStart(2, "0")}:${String(p.mi).padStart(2, "0")}`,
@@ -186,7 +299,7 @@ function parseICS(text, src) {
     const title = decode(get("SUMMARY"));
     if (!title || isNoise(title)) continue;
     out.push({
-      cat: src.cat || classify(title + " " + get("DESCRIPTION")),
+      cat: src.cat || classify(title, [get("CATEGORIES")]) || src.fallback || "Social",
       name: title,
       day: dayKey(p),
       time: `${String(p.h).padStart(2, "0")}:${String(p.mi).padStart(2, "0")}`,
@@ -221,6 +334,7 @@ function chicagoParts(ms) {
 }
 
 async function fromSquarespace(src) {
+  const budget = deadline();
   const now = new Date();
   const months = [];
   for (let i = 0; i < 3; i++) {
@@ -231,7 +345,8 @@ async function fromSquarespace(src) {
   const out = [], seen = new Set();
   for (const m of months) {
     let j;
-    try { j = await getJSON(`${src.base}?format=json&month=${m}`); } catch { continue; }
+    if (budget.expired()) break;
+    try { j = await getJSON(`${src.base}?format=json&month=${m}`, 10000, budget); } catch { continue; }
     const items = [...(j.upcoming || []), ...(j.items || [])];
     for (const e of items) {
       if (!e.startDate) continue;
@@ -245,7 +360,7 @@ async function fromSquarespace(src) {
       const loc = e.location || {};
       const lat = parseFloat(loc.mapLat), lng = parseFloat(loc.mapLng);
       out.push({
-        cat: src.cat || classify(title + " " + (e.tags || []).join(" ") + " " + (e.categories || []).join(" ")),
+        cat: src.cat || classify(title, [...(e.tags || []), ...(e.categories || [])]) || src.fallback || "Social",
         name: title,
         day: dayKey(p),
         time: `${String(p.h).padStart(2, "0")}:${String(p.mi).padStart(2, "0")}`,
@@ -272,13 +387,14 @@ async function fromSquarespace(src) {
 // BiblioCommons (library events). Entities carry the real data; items is the
 // ordered id list. Branch + place entities both have geocoded centrePoints.
 async function fromBiblio(src) {
+  const budget = deadline();
   const start = chicagoDateKey(new Date());
   const end = chicagoDateKey(new Date(Date.now() + 45 * 864e5));
   const out = [];
   for (let page = 1; page <= 2; page++) {
     let j;
     try {
-      j = await getJSON(`https://gateway.bibliocommons.com/v2/libraries/${src.lib}/events?startDate=${start}&endDate=${end}&limit=100&page=${page}`);
+      j = await getJSON(`https://gateway.bibliocommons.com/v2/libraries/${src.lib}/events?startDate=${start}&endDate=${end}&limit=100&page=${page}`, 10000, budget);
     } catch { break; }
     const ids = (j.events && j.events.items) || [];
     const ents = j.entities || {};
@@ -301,7 +417,7 @@ async function fromBiblio(src) {
       const audNames = (e.audienceIds || []).map((t) => (auds[t] || {}).name).filter(Boolean);
       const img = imgs[e.featuredImageId];
       out.push({
-        cat: classify(title + " " + typeNames.join(" ")),
+        cat: classify(title, [...typeNames, ...audNames]) || src.fallback || "Social",
         name: title,
         day: dayKey(p),
         time: `${String(p.h).padStart(2, "0")}:${String(p.mi).padStart(2, "0")}`,
@@ -331,7 +447,7 @@ async function fromBiblio(src) {
 // the raw feed is mostly all-day deadlines and webinars. No coordinates in the
 // feed, so events are approx (list-only, no map pin) with the address shown.
 async function fromLiveWhale(src) {
-  const rows = await getJSON(src.url);
+  const rows = await getJSON(src.url, 20000);
   const out = [];
   for (const e of (Array.isArray(rows) ? rows : [])) {
     if (e.is_all_day || e.is_canceled || e.is_online || !e.location) continue;
@@ -341,7 +457,7 @@ async function fromLiveWhale(src) {
     const title = decode(e.title);
     if (!title || isNoise(title)) continue;
     out.push({
-      cat: classify(title + " " + decode(e.description || "").slice(0, 120)),
+      cat: classify(title + " " + decode(e.description || "").slice(0, 120), [e.group_title]) || src.fallback || "Social",
       name: title,
       day: dayKey(p),
       time: `${String(p.h).padStart(2, "0")}:${String(p.mi).padStart(2, "0")}`,
@@ -400,7 +516,7 @@ async function fromMeetup(src) {
     const address = [venue.address, venue.city, venue.state].filter(Boolean).join(", ");
     const going = e.going && Number(e.going.totalCount);
     return {
-      cat: classify(`${e.title} ${e.group && e.group.name || ""}`),
+      cat: classify(`${e.title} ${(e.group && e.group.name) || ""}`) || "Social",
       name: decode(e.title),
       day: dayKey(p),
       time: `${String(p.h).padStart(2, "0")}:${String(p.mi).padStart(2, "0")}`,
@@ -430,15 +546,18 @@ async function fromEventbrite(src) {
   const data = JSON.parse(match[1]);
   const rows = data.search_data && data.search_data.events && data.search_data.events.results;
   if (!Array.isArray(rows)) throw new Error("Eventbrite results not found");
-  return rows.filter((e) => !e.is_cancelled && !isNoise(e.name)).map((e) => {
-    const a = e.primary_venue && e.primary_venue.address || {};
+  const out = [];
+  for (const e of rows) {
+    if (e.is_cancelled || isNoise(e.name)) continue;
+    const a = (e.primary_venue && e.primary_venue.address) || {};
     const p = parseLocal(`${e.start_date} ${e.start_time}`);
+    if (!p) continue;
     const tags = (e.tags || []).map((t) => decode(t.display_name)).filter(Boolean);
     const venueName = decode(e.primary_venue && e.primary_venue.name || a.city || "Twin Cities");
     const address = decode(a.localized_address_display || [a.address_1, a.city, a.region].filter(Boolean).join(", "));
     const onlinePlace = /(?:^|\b)(online|virtual|zoom)(?:\b|$)/i.test(`${venueName} ${address}`);
-    return {
-      cat: classify(`${e.name} ${tags.join(" ")}`),
+    out.push({
+      cat: classify(e.name, tags) || classify(`${e.name} ${tags.join(" ")}`) || "Social",
       name: decode(e.name),
       day: dayKey(p),
       time: e.start_time,
@@ -457,8 +576,9 @@ async function fromEventbrite(src) {
       source: src.name,
       live: true,
       verified: true,
-    };
-  });
+    });
+  }
+  return out;
 }
 
 function chicagoDateKey(date) {
@@ -524,6 +644,17 @@ module.exports = async (req, res) => {
       return true;
     })
     .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+
+  // Drop-in programs run on repeat all day (Como Zoo lists "Zookeeper Talk" up
+  // to 6x daily), which buried every other venue in a day's list. Keep the first
+  // few showings so the day is still browsable and the program is still findable.
+  const perDay = new Map();
+  events = events.filter((e) => {
+    const k = e.source + "|" + e.name.toLowerCase().replace(/\W+/g, " ").trim() + "|" + e.date;
+    const n = (perDay.get(k) || 0) + 1;
+    perDay.set(k, n);
+    return n <= 3;
+  });
 
   res.setHeader("Cache-Control", "s-maxage=900, stale-while-revalidate=21600");
   res.setHeader("Content-Type", "application/json; charset=utf-8");

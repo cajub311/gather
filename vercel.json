@@ -1,6 +1,6 @@
 {
   "functions": {
-    "api/events.js": { "maxDuration": 30 },
+    "api/events.js": { "maxDuration": 60 },
     "api/meetings.js": { "maxDuration": 30 }
   }
 }
