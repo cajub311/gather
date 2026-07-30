@@ -17,22 +17,31 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,500..800&amp;family=IBM+Plex+Mono:wght@500;600&amp;family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&amp;display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&amp;display=swap" rel="stylesheet" />
 <style>
   :root{
     --bg:#0c1017; --surface:#131a24; --surface2:#1a2330; --line:#263041;
     --txt:#eef2f6; --muted:#8b9cb3; --accent:#4fd1c5; --accent-dim:#2a6b64;
     --accent2:#60a5fa; --chip:#1e2836; --live:#4ade80; --now:#fbbf24;
     --radius:12px; --shadow:0 1px 0 rgba(255,255,255,.04) inset;
+    --font: "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
   body.mode-activities{--accent:#a78bfa;--accent-dim:#6d56b3;--accent2:#c4b5fd}
   *{box-sizing:border-box}
-  html,body{margin:0;height:100%;font-family:"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--txt);-webkit-font-smoothing:antialiased}
+  html,body{
+    margin:0;height:100%;
+    font-family:var(--font);
+    background:var(--bg);color:var(--txt);
+    -webkit-font-smoothing:antialiased;
+    letter-spacing:0;
+    word-spacing:normal;
+    line-height:1.45;
+  }
   #app{display:flex;flex-direction:column;height:100vh}
   header{border-bottom:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow)}
   .header-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px 10px;flex-wrap:wrap}
   .brand{display:flex;flex-direction:column;gap:2px}
-  .logo{font-weight:700;font-size:20px;letter-spacing:-.3px;display:flex;align-items:center;gap:9px}
+  .logo{font-weight:700;font-size:20px;letter-spacing:0;display:flex;align-items:center;gap:9px}
   .logo .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px rgba(79,209,197,.2)}
   .tagline{font-size:12.5px;color:var(--muted);font-weight:500;max-width:320px;line-height:1.4}
   .header-controls{display:flex;align-items:center;gap:10px;padding:0 20px 14px;flex-wrap:wrap}
@@ -114,18 +123,18 @@
   .card:hover{background:var(--surface2)}
   .card.active{background:var(--bg);border-left:3px solid var(--accent);padding-left:13px}
   .card .timecol{text-align:center}
-  .card .timepill{display:block;font-size:13px;font-weight:700;color:var(--txt);line-height:1.2}
-  .card .timeap{font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase}
+  .card .timepill{display:block;font-size:13px;font-weight:700;color:var(--txt);line-height:1.25;letter-spacing:0}
+  .card .timeap{display:block;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-top:2px}
   .card .body{min-width:0}
-  .card .top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap}
+  .card .top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}
   .card .savebtn{order:2;margin-left:auto}
   .card .fell{order:3}
-  .card .name{font-weight:600;font-size:14px;line-height:1.35;color:var(--txt);flex:1}
-  .card .fell{font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;color:#0a1218;white-space:nowrap;letter-spacing:.02em}
-  .card .when{font-size:12.5px;color:var(--accent);margin-top:5px;font-weight:500}
-  .card .where{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4}
-  .badges{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap}
-  .b{font-size:10px;font-weight:600;padding:3px 7px;border-radius:6px;background:var(--chip);color:var(--muted);letter-spacing:.02em}
+  .card .name{font-weight:700;font-size:15px;line-height:1.4;color:var(--txt);flex:1;min-width:0;letter-spacing:0;word-break:break-word}
+  .card .fell{font-size:11px;font-weight:700;padding:4px 8px;border-radius:6px;color:#0a1218;white-space:nowrap;letter-spacing:0}
+  .card .when{font-size:13px;color:var(--accent);margin-top:6px;font-weight:600;line-height:1.4;letter-spacing:0}
+  .card .where{font-size:13px;color:var(--muted);margin-top:5px;line-height:1.45;letter-spacing:0}
+  .badges{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;align-items:center}
+  .b{font-size:11px;font-weight:600;padding:4px 8px;border-radius:6px;background:var(--chip);color:var(--muted);letter-spacing:0;margin:0}
   .b.online{background:rgba(96,165,250,.12);color:#93c5fd}
   .b.hybrid{background:rgba(251,191,36,.1);color:#fcd34d}
   .b.now{background:rgba(251,191,36,.2);color:#fde68a}
@@ -225,8 +234,9 @@
     --accent:#e04f39;--accent-dim:#efad9f;--accent2:#2767c7;
   }
   html,body{
-    font-family:"Public Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    font-family:var(--font);
     background:var(--bg);color:var(--txt);
+    letter-spacing:0;word-spacing:normal;line-height:1.45;
   }
   #app{height:100dvh;background:var(--bg)}
   header{
@@ -237,29 +247,30 @@
   .header-top{align-items:flex-start;padding:16px 24px 10px;gap:16px}
   .brand{gap:0;max-width:690px}
   .logo{
-    font-family:"Bricolage Grotesque",sans-serif;font-size:18px;font-weight:750;
-    letter-spacing:-.02em;line-height:1;color:var(--txt);
+    font-family:var(--font);font-size:18px;font-weight:700;
+    letter-spacing:0;line-height:1.25;color:var(--txt);
   }
   .logo .dot{width:9px;height:9px;background:#157b73;box-shadow:0 0 0 4px rgba(21,123,115,.13)}
   .city-tag{
-    font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.08em;
-    color:#456564;border:1px solid #9eb8b4;border-radius:4px;padding:2px 4px;margin-left:3px;
+    font-family:var(--font);font-size:10px;letter-spacing:.04em;
+    color:#456564;border:1px solid #9eb8b4;border-radius:4px;padding:2px 6px;margin-left:6px;
+    font-weight:600;
   }
   .day-kicker{
-    margin-top:10px;font-family:"IBM Plex Mono",monospace;font-size:10px;
-    font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);
+    margin-top:10px;font-family:var(--font);font-size:12px;
+    font-weight:600;letter-spacing:.02em;text-transform:none;color:var(--accent);
   }
   .brand h1{
-    margin:3px 0 3px;font-family:"Bricolage Grotesque",sans-serif;
-    font-size:clamp(25px,3vw,34px);line-height:1.04;letter-spacing:-.04em;
-    font-weight:750;color:var(--txt);
+    margin:6px 0 6px;font-family:var(--font);
+    font-size:clamp(22px,3vw,30px);line-height:1.2;letter-spacing:0;
+    font-weight:700;color:var(--txt);
   }
-  .tagline{max-width:620px;font-size:13px;color:var(--muted)}
+  .tagline{max-width:620px;font-size:14px;color:var(--muted);line-height:1.5;letter-spacing:0}
   .hero-live{
-    display:flex;align-items:center;gap:7px;margin-top:9px;font-family:"IBM Plex Mono",monospace;
-    font-size:10px;font-weight:600;color:#4e6968;
+    display:flex;align-items:center;gap:8px;margin-top:10px;font-family:var(--font);
+    font-size:13px;font-weight:600;color:#4e6968;line-height:1.4;letter-spacing:0;flex-wrap:wrap;
   }
-  .hero-live span{width:7px;height:7px;border-radius:50%;background:var(--live);box-shadow:0 0 0 4px rgba(33,122,80,.12)}
+  .hero-live span{width:7px;height:7px;border-radius:50%;background:var(--live);box-shadow:0 0 0 4px rgba(33,122,80,.12);flex-shrink:0}
   .hdr-actions{margin-left:auto}
   .iconbtn,.btn{
     background:rgba(248,251,248,.75);border-color:#adc3c0;color:#3e5b5b;
@@ -307,8 +318,141 @@
   body:not(.mode-activities) .scout-activities-only{display:none!important}
   .card .where .addr{display:block;margin-top:2px;font-size:11.5px;color:#6b7f7d;line-height:1.35}
   .card .where{line-height:1.35}
-  /* Support markers need a light stroke on the light basemap */
-  body:not(.mode-activities) .leaflet-interactive{stroke:#fff!important}
+  .card .where .hood{color:#4e6b69;font-weight:600}
+  /* Support mode: force list+map side-by-side (activities mode overrides main to block) */
+  body:not(.mode-activities) main{
+    display:flex!important;flex-direction:row;min-height:0;overflow:hidden;flex:1;
+  }
+  body:not(.mode-activities) #sidebar{
+    width:520px;max-width:46vw;height:100%;max-height:100%;overflow:hidden;display:flex;flex-direction:column;
+  }
+  body:not(.mode-activities) #map{
+    display:block!important;flex:1 1 auto;min-width:280px;min-height:0;height:auto!important;
+    position:relative;
+  }
+  body:not(.mode-activities) .results-scroll{flex:1;min-height:0;overflow:auto;background:#eef2f6}
+  body:not(.mode-activities) #list{min-height:0;overflow:visible}
+  .show-ended{margin:10px 14px 16px;padding:10px 12px;text-align:center;background:#f0f5f4;border:1px dashed var(--line);border-radius:var(--radius);color:var(--muted);font-size:12.5px;font-weight:600;cursor:pointer;width:calc(100% - 28px)}
+  .show-ended:hover{color:var(--txt);border-color:#99bab4;background:#e8f1ef}
+  body:not(.mode-activities) .crisis{display:flex!important}
+  /* Support mode: strip chrome so the meeting list is the product */
+  body:not(.mode-activities) .filterbar{display:none}
+  body:not(.mode-activities) .filters{display:none!important}
+  body:not(.mode-activities) .insight{display:none}
+  body:not(.mode-activities) .tips{display:none!important}
+  body:not(.mode-activities) .header-top{align-items:center;padding:11px 20px 5px}
+  body:not(.mode-activities) .header-controls{padding:0 20px 10px}
+  body:not(.mode-activities) .day-kicker,
+  body:not(.mode-activities) .tagline{display:none}
+  body:not(.mode-activities) .hero-live{margin-top:4px}
+  body:not(.mode-activities) .daybar{padding:10px 14px 6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  body:not(.mode-activities) .daybar::-webkit-scrollbar{display:none}
+  body:not(.mode-activities) .daypick{flex-shrink:0}
+  body:not(.mode-activities) .presetrow{padding:8px 14px 6px}
+  body:not(.mode-activities) .quickrow{padding:6px 14px 8px}
+  body:not(.mode-activities) .todbar{padding:6px 14px 12px;border-bottom:1px solid var(--line)}
+  /* Less hero chrome on support — list is the product */
+  body:not(.mode-activities) .brand h1{font-size:clamp(22px,4vw,27px);margin:3px 0}
+  body:not(.mode-activities) .modes button{padding:10px 14px;font-size:14px;letter-spacing:0}
+  /* Support meeting cards — room to breathe, readable type */
+  body:not(.mode-activities) #list{padding:8px 0 24px;background:#eef2f6}
+  body:not(.mode-activities) .count{font-size:14px;line-height:1.5;padding:12px 16px}
+  .meet-card{
+    display:grid!important;grid-template-columns:72px minmax(0,1fr)!important;gap:12px!important;
+    margin:0 10px 10px!important;padding:16px!important;
+    background:#fff!important;border:1px solid var(--line)!important;border-radius:14px!important;
+    border-bottom:1px solid var(--line)!important;
+  }
+  .meet-card::before,.meet-card::after{display:none!important}
+  .meet-card:hover{background:#f8fbfa!important}
+  .meet-card.active{background:#eef6f4!important;border-color:var(--accent-dim)!important;box-shadow:0 0 0 1px var(--accent-dim)}
+  .meet-card .timecol{
+    text-align:center;background:#f3f6fa!important;border-radius:12px;
+    padding:10px 6px!important;align-self:start;
+  }
+  .meet-card .timepill{font-size:15px!important;font-weight:700;letter-spacing:0;font-family:var(--font)!important}
+  .meet-card .timeap{font-size:11px!important;font-weight:600;letter-spacing:.03em;font-family:var(--font)!important;margin-top:3px}
+  .meet-card .name{
+    font-size:16px!important;font-weight:700;line-height:1.35!important;letter-spacing:0!important;
+    font-family:var(--font)!important;padding-right:8px;
+  }
+  .meet-card .when{font-size:13px!important;line-height:1.45;margin-top:6px;letter-spacing:0}
+  .meet-card .where{font-size:13px!important;line-height:1.5;margin-top:6px;letter-spacing:0}
+  .meet-card .where .hood{display:inline;font-weight:600;color:#3d5c59}
+  .meet-card .where strong{font-weight:600}
+  .meet-card .where .addr{display:block;margin-top:3px;font-size:12.5px;line-height:1.45;color:#66788a}
+  .meet-card .door{
+    margin-top:8px;padding:8px 10px;border-radius:8px;background:#f3f7f6;
+    border:1px solid #d5e3e0;font-size:13px;line-height:1.45;color:#3f5c59;letter-spacing:0;
+  }
+  .meet-card .door b{color:#1f3d3a;font-weight:700;margin-right:4px}
+  .meet-card .badges{margin-top:10px;gap:6px}
+  .meet-card .meet-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .meet-card .act{
+    display:inline-flex;align-items:center;gap:5px;padding:8px 12px;border-radius:8px;
+    font-size:13px;font-weight:600;text-decoration:none;border:1px solid var(--line);
+    background:#fff;color:var(--accent2);cursor:pointer;font-family:inherit;letter-spacing:0;line-height:1.2;
+  }
+  .meet-card .act.primary{background:var(--txt);color:#fff;border-color:var(--txt)}
+  .meet-card .act.primary:hover{opacity:.92}
+  .meet-card .b{font-size:12px;padding:4px 9px}
+  .meet-card .b.open-b{background:#dcefe4;color:#176b43;font-weight:700}
+  .meet-card .b.closed-b{background:#f1e8e6;color:#8a4b3d}
+  .meet-card .top{align-items:flex-start;gap:8px}
+  .meet-card .fell{font-size:11px;padding:4px 8px;flex-shrink:0}
+  .meet-card .savebtn{flex-shrink:0;font-size:18px;opacity:.55;line-height:1}
+  body:not(.mode-activities) .featured{
+    margin:10px 10px 12px;padding:16px;line-height:1.45;
+  }
+  body:not(.mode-activities) .featured .fname{
+    font-family:var(--font);font-size:17px;font-weight:700;letter-spacing:0;line-height:1.35;
+  }
+  body:not(.mode-activities) .featured .fmeta{font-size:13px;line-height:1.45;letter-spacing:0}
+  body:not(.mode-activities) .daypick,
+  body:not(.mode-activities) .qchip,
+  body:not(.mode-activities) .pchip,
+  body:not(.mode-activities) .tod{
+    font-size:13px;letter-spacing:0;line-height:1.3;
+  }
+  /* Your scene / Everything toggle */
+  .vibebar{
+    display:flex;gap:8px;padding:12px 14px 4px;background:var(--surface);
+    border-bottom:1px solid var(--line);flex-wrap:wrap;
+  }
+  .vibebar[hidden]{display:none!important}
+  .vchip{
+    flex:1;min-width:140px;text-align:left;padding:10px 12px;border-radius:12px;
+    border:1px solid var(--line);background:#f5f7fa;cursor:pointer;font-family:inherit;
+    color:var(--muted);transition:border-color .12s,background .12s,color .12s;
+  }
+  .vchip strong{display:block;font-size:14px;font-weight:700;color:var(--txt);margin-bottom:2px;letter-spacing:0}
+  .vchip span{display:block;font-size:11.5px;line-height:1.35;letter-spacing:0;color:var(--muted)}
+  .vchip:hover{border-color:#99bab4;background:#fff}
+  .vchip.on{
+    background:var(--txt);border-color:var(--txt);color:rgba(255,255,255,.75);
+  }
+  .vchip.on strong,.vchip.on span{color:#fff}
+  .vchip.on span{opacity:.8}
+  body:not(.mode-activities) .vibebar{display:none!important}
+  /* More room for the list — less hero chrome so plans are actually visible */
+  .mode-activities .brand h1{font-size:clamp(20px,2.5vw,26px);margin:4px 0}
+  .mode-activities .tagline{font-size:13px;max-width:560px}
+  .mode-activities .day-kicker{margin-top:6px}
+  .mode-activities .hero-live{margin-top:6px}
+  .mode-activities .header-top{padding-bottom:6px}
+  .mode-activities .vibebar{padding-top:10px;padding-bottom:8px}
+  .mode-activities .activity-card{
+    padding:16px 18px;margin:0;border-bottom:1px solid var(--line);
+  }
+  .mode-activities .event-title{font-size:17px;line-height:1.35}
+  .mode-activities .event-time,.mode-activities .event-place{font-size:14px}
+  .mode-activities .count{font-size:14px;font-weight:500;padding:12px 16px;position:sticky;top:0;z-index:3;background:#fff;border-bottom:1px solid var(--line)}
+  .mode-activities #list{padding-bottom:40px}
+  @media(max-width:760px){
+    body:not(.mode-activities) .crisis{display:flex!important;position:absolute;right:14px;top:48px}
+    body:not(.mode-activities) .crisis a{font-size:11px;padding:5px 9px}
+    body:not(.mode-activities) .brand{padding-right:90px}
+  }
   .source-scout summary{cursor:pointer;color:var(--muted);font-size:12px;font-weight:650}
   .mode-activities .tips,
   .mode-activities .daybar,
@@ -320,15 +464,16 @@
   .scout-links{display:flex;gap:6px;margin-top:8px;overflow-x:auto;scrollbar-width:none}
   .scout-links::-webkit-scrollbar{display:none}
   .scout-links a{
-    flex-shrink:0;text-decoration:none;font-family:"IBM Plex Mono",monospace;font-size:9.5px;
-    font-weight:600;color:#355b91;background:#fff;border:1px solid var(--line);border-radius:7px;padding:6px 9px;
+    flex-shrink:0;text-decoration:none;font-family:var(--font);font-size:12px;
+    font-weight:600;color:#355b91;background:#fff;border:1px solid var(--line);border-radius:7px;padding:7px 10px;
+    letter-spacing:0;
   }
   .scout-links a:hover{border-color:var(--accent);color:var(--accent)}
   .tips{background:#edf5f6;color:var(--muted);border-color:var(--line)}
   .daybar,.todbar{background:var(--surface)}
   .daybar{padding:11px 14px 8px}
   .daybar-label,.flabel,.list-section,.map-legend .lg-title{
-    font-family:"IBM Plex Mono",monospace;letter-spacing:.09em;
+    font-family:var(--font);letter-spacing:.03em;font-size:11px;
   }
   .daypick,.todbar .tod{background:#edf3f1;border-color:#c8d7d4;color:#56706f}
   .daypick.on{
@@ -350,7 +495,7 @@
   .filters{background:#f1f6f4;border-color:var(--line)}
   .insight{background:#edf4f2;border-color:var(--line);padding:9px 14px}
   .insight-pill{background:#fff;border-color:#cad9d6;color:#5b7372;border-radius:6px}
-  .count{font-family:"Public Sans",sans-serif;background:#fff;border-color:var(--line);font-size:13px;padding:11px 18px}
+  .count{font-family:var(--font);background:#fff;border-color:var(--line);font-size:14px;padding:12px 18px;line-height:1.5;letter-spacing:0}
   .mode-activities .count b{font-size:16px}
   #list{padding:0 0 10px;background:var(--surface);scroll-behavior:smooth}
   .featured{
@@ -360,9 +505,9 @@
   }
   .mode-activities .featured{grid-template-columns:auto minmax(0,1fr) auto}
   .featured:hover{transform:translateY(-1px);border-color:var(--accent)}
-  .featured .eyebrow{font-family:"IBM Plex Mono",monospace;color:var(--accent)}
-  .featured .fname{font-family:"Bricolage Grotesque",sans-serif;font-size:18px;color:var(--txt)}
-  .featured .fmeta{color:var(--muted)}
+  .featured .eyebrow{font-family:var(--font);color:var(--accent);letter-spacing:.03em}
+  .featured .fname{font-family:var(--font);font-size:17px;font-weight:700;color:var(--txt);letter-spacing:0;line-height:1.35}
+  .featured .fmeta{color:var(--muted);font-size:13px;line-height:1.45;letter-spacing:0}
   .feature-stamp{display:grid;place-items:center;width:58px;height:58px;border-radius:16px;background:#f3f6fa;font-size:29px}
   .feature-art{width:84px;height:84px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
   .list-section{top:0;background:rgba(248,251,248,.96);backdrop-filter:blur(8px);color:#587170;border-color:var(--line)}
@@ -383,19 +528,19 @@
   }
   .event-topline{display:flex;align-items:center;gap:7px;margin-bottom:6px}
   .event-format{
-    display:inline-flex;align-items:center;gap:4px;border-radius:6px;padding:4px 7px;
-    background:#e5f4ec;color:#116b45;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;
+    display:inline-flex;align-items:center;gap:4px;border-radius:6px;padding:4px 8px;
+    background:#e5f4ec;color:#116b45;font-size:11px;font-weight:700;text-transform:none;letter-spacing:0;
   }
   .event-format.online{background:#e7effc;color:#2f5f9d}
-  .event-category{font-size:11px;font-weight:650;color:var(--muted)}
-  .event-title{font-family:"Bricolage Grotesque",sans-serif;font-size:18px;font-weight:750;line-height:1.2;color:var(--txt)}
-  .event-time{margin-top:7px;color:var(--accent);font-size:13px;font-weight:750}
-  .event-place{margin-top:5px;color:#4e607b;font-size:13px;line-height:1.35}
-  .event-place span{display:block;color:#78869b;font-size:11.5px;margin-top:2px}
+  .event-category{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:0}
+  .event-title{font-family:var(--font);font-size:17px;font-weight:700;line-height:1.35;color:var(--txt);letter-spacing:0;word-break:break-word}
+  .event-time{margin-top:7px;color:var(--accent);font-size:14px;font-weight:600;line-height:1.4;letter-spacing:0}
+  .event-place{margin-top:6px;color:#4e607b;font-size:14px;line-height:1.45;letter-spacing:0}
+  .event-place span{display:block;color:#78869b;font-size:13px;margin-top:3px}
   .event-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
-  .event-tags .b{font-size:10.5px;border-radius:6px}
-  .event-actions{display:flex;align-items:center;gap:14px;margin-top:11px}
-  .event-details{font-size:12px;font-weight:750;color:var(--accent2);text-decoration:none}
+  .event-tags .b{font-size:12px;border-radius:6px}
+  .event-actions{display:flex;align-items:center;gap:14px;margin-top:11px;flex-wrap:wrap}
+  .event-details{font-size:13px;font-weight:600;color:var(--accent2);text-decoration:none;letter-spacing:0}
   .event-details:hover{text-decoration:underline}
   .activity-card .savebtn{position:absolute;right:16px;top:16px;font-size:20px}
   .activity-card{position:relative;padding-right:48px}
@@ -412,11 +557,11 @@
   .card.activity-card:hover{background:#f8faff}
   .card.activity-card.active{padding:18px 48px 18px 14px;background:#f0f5ff;border-left:4px solid var(--accent)}
   .card .timecol{position:relative;z-index:1;background:var(--surface);padding:0 4px 4px 0;text-align:left}
-  .card .timepill{font-family:"Bricolage Grotesque",sans-serif;font-size:14px;color:var(--txt)}
-  .card .timeap{font-family:"IBM Plex Mono",monospace;font-size:8px}
-  .card .name{font-family:"Bricolage Grotesque",sans-serif;font-size:15px;font-weight:700}
+  .card .timepill{font-family:var(--font);font-size:14px;color:var(--txt);font-weight:700}
+  .card .timeap{font-family:var(--font);font-size:11px}
+  .card .name{font-family:var(--font);font-size:15px;font-weight:700;letter-spacing:0}
   .card .fell{border-radius:5px;color:#102128}
-  .card .when{color:var(--accent);font-size:11.5px}
+  .card .when{color:var(--accent);font-size:13px}
   .card .where{color:#587170}
   .b{border-radius:4px;background:#e8efed;color:#587170}
   .b.ok{background:#dcefe4;color:#176b43}
@@ -426,6 +571,8 @@
   .stamp-img{width:100%;height:100%;object-fit:cover;border-radius:inherit}
   .event-desc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:6px;font-size:12.5px;line-height:1.45;color:#66788f}
   .b.source{background:#dfecef;color:#315f69}
+  .b.wx{background:#e6f0f7;color:#2c5875}
+  .b.wx.wet{background:#dde7f5;color:#274b86}
   .linkrow{gap:12px}
   .verify,.dir{color:var(--accent2)}
   .map-hint,.map-legend{
@@ -482,6 +629,36 @@
     .feature-stamp{width:50px;height:50px;font-size:25px}
     .feature-art{width:68px;height:68px}
     .map-legend{max-height:135px;overflow:hidden}
+    body:not(.mode-activities) .header-top{padding:10px 14px 4px}
+    body:not(.mode-activities) .header-controls{padding:0 14px 9px}
+    body:not(.mode-activities) .brand{padding-right:82px}
+    body:not(.mode-activities) .brand h1{font-size:22px;margin:2px 0}
+    body:not(.mode-activities) .hero-live{font-size:12px;margin-top:3px}
+    body:not(.mode-activities) .crisis{top:45px}
+    body:not(.mode-activities) main{
+      display:flex!important;flex-direction:column!important;min-height:0;overflow:hidden!important;
+    }
+    body:not(.mode-activities) .viewtabs{order:0;flex:0 0 auto;width:100%;margin:0}
+    body:not(.mode-activities) #sidebar{
+      order:1;width:100%;max-width:none;height:auto;max-height:none;min-height:0;
+    }
+    body:not(.mode-activities).mobile-view-list #app{height:auto;min-height:100dvh}
+    body:not(.mode-activities).mobile-view-list main{overflow:visible!important}
+    body:not(.mode-activities).mobile-view-list #sidebar{display:flex;height:auto;overflow:visible}
+    body:not(.mode-activities).mobile-view-list #map{display:none!important}
+    body:not(.mode-activities).mobile-view-list .results-scroll{overflow:visible}
+    body:not(.mode-activities).mobile-view-map #app{height:100dvh}
+    body:not(.mode-activities).mobile-view-map #sidebar{display:none!important}
+    body:not(.mode-activities).mobile-view-map #map{
+      display:block!important;order:1;flex:1 1 auto;width:100%;min-width:0;min-height:320px;height:auto!important;
+    }
+    body:not(.mode-activities) .daybar{padding-top:7px}
+    body:not(.mode-activities) .presetrow{padding-top:5px}
+    body:not(.mode-activities) .quickrow{padding-top:4px}
+    body:not(.mode-activities) .todbar{padding-top:4px;padding-bottom:8px}
+    .meet-card{grid-template-columns:62px minmax(0,1fr)!important;margin:0 8px 8px!important;padding:13px!important}
+    .meet-card .meet-actions{gap:6px;margin-top:10px}
+    .meet-card .act{padding:7px 10px;font-size:12px}
   }
 </style>
 </head>
@@ -524,6 +701,7 @@
         <p><strong style="color:var(--txt)">How Gather works:</strong> Pick a day, open a listing, or use quick filters. Live listings come from public event pages and official feeds — confirm before you go.</p>
         <button type="button" id="tipsDismiss">Got it</button>
       </div>
+      <div class="vibebar" id="vibebar" hidden></div>
       <div class="daybar" id="daybar"></div>
       <div class="presetrow" id="presetrow"></div>
       <div class="quickrow" id="quickrow"></div>
@@ -556,9 +734,10 @@
         <div class="frow" id="fmtFilters"><span class="flabel">Format</span></div>
       </div>
       <div class="insight" id="insight"></div>
-      <div class="count" id="count" aria-live="polite"></div>
-      <div id="list"></div>
-      <details class="source-scout" id="programScout">
+      <div class="results-scroll">
+        <div class="count" id="count" aria-live="polite"></div>
+        <div id="list"></div>
+        <details class="source-scout" id="programScout">
         <summary>Other programs — official meeting finders</summary>
         <div class="scout-links" id="programLinks"></div>
       </details>
@@ -572,6 +751,21 @@
           <a href="https://al-anon.org/al-anon-meetings/electronic-meetings/" target="_blank" rel="noopener">Al-Anon</a>
         </div>
       </details>
+      <details class="source-scout scout-activities-only" id="venueScout">
+        <summary>Big rooms we can&#39;t list — no public feed, check them direct</summary>
+        <div class="scout-links">
+          <a href="https://first-avenue.com/calendar/" target="_blank" rel="noopener">First Ave / Entry / Turf Club</a>
+          <a href="https://www.icehousempls.com/events" target="_blank" rel="noopener">Icehouse</a>
+          <a href="https://finelinemusic.com/events/" target="_blank" rel="noopener">Fine Line</a>
+          <a href="https://www.thehookmpls.com/events" target="_blank" rel="noopener">Hook &amp; Ladder</a>
+          <a href="https://www.guthrietheater.org/shows-and-tickets/" target="_blank" rel="noopener">Guthrie</a>
+          <a href="https://walkerart.org/calendar/" target="_blank" rel="noopener">Walker</a>
+          <a href="https://new.artsmia.org/events" target="_blank" rel="noopener">Mia</a>
+          <a href="https://www.ordway.org/events/" target="_blank" rel="noopener">Ordway</a>
+          <a href="https://trylon.org/" target="_blank" rel="noopener">Trylon</a>
+          <a href="https://theparkwaytheater.com/" target="_blank" rel="noopener">Parkway</a>
+        </div>
+      </details>
       <details class="source-scout scout-activities-only">
         <summary>Still looking? Check social posts and flyers</summary>
         <div class="scout-links">
@@ -582,7 +776,8 @@
           <a href="https://www.google.com/search?tbm=isch&amp;q=Minneapolis+events+today+flyer" target="_blank" rel="noopener">Flyers</a>
         </div>
       </details>
-      <div class="footer" id="src"></div>
+        <div class="footer" id="src"></div>
+      </div>
     </div>
     <div id="map">
       <div class="map-hint" id="mapHint">Tap a dot to see details</div>
@@ -735,32 +930,39 @@ const PLAY = [
 let DATA=[], META=FELLOWSHIPS;
 let LIVE=[], LIVE_CATS=new Set(), LAST_UPDATED=null, SOURCE_INFO=[], LIVE_LOADING=true;
 let LIVE_EVENTS=[], EVENTS_UPDATED=null, EVENT_SOURCES=[], EVENTS_LOADING=true;
-const RENDER_STEP=150;
+const RENDER_STEP_ACT=80;
+const RENDER_STEP_SUP=40;
+function renderStep(){return state.mode==="support"?RENDER_STEP_SUP:RENDER_STEP_ACT;}
 const QUICK={
   support:[
     {id:"open",label:"Open",match:m=>(m.types||[]).some(t=>/^open$/i.test(t))},
-    {id:"new",label:"Newcomers",match:m=>/beginner|young|newcomer/i.test(((m.types||[]).join(" "))+" "+m.name)},
-    {id:"online",label:"Online",match:m=>m.fmt==="online"||m.fmt==="hybrid"},
-    {id:"women",label:"Women",match:m=>/women/i.test((m.types||[]).join(" "))},
+    {id:"new",label:"Newcomers",match:m=>(m.flags||[]).includes("Beginners")||(m.flags||[]).includes("Young People")||/beginner|young|newcomer/i.test(((m.types||[]).join(" "))+" "+m.name)},
+    {id:"online",label:"Online only",match:m=>m.fmt==="online"},
+    {id:"hybrid",label:"Hybrid",match:m=>m.fmt==="hybrid"},
   ],
+  // Order = what he actually wants first (games games / dance / meet people / music)
   activities:[
-    {id:"music",label:"🎵 Music",match:m=>m.cat==="Music"},
-    {id:"family",label:"🧒 Kids & family",match:m=>m.cat==="Family"},
-    {id:"outdoor",label:"🌿 Outdoors",match:m=>m.cat==="Outdoors"},
-    {id:"games",label:"🎲 Games",match:m=>m.cat==="Games"},
-    {id:"art",label:"🎨 Art & film",match:m=>m.cat==="Art"},
-    {id:"learn",label:"🎓 Classes & talks",match:m=>m.cat==="Learn"},
-    {id:"social",label:"🤝 Social",match:m=>m.cat==="Social"||m.cat==="Language"},
-    {id:"wellness",label:"🧘 Wellness",match:m=>m.cat==="Zen"||m.cat==="Fitness"},
+    {id:"games",label:"🎲 Board games",match:m=>m.cat==="Games"||/trivia|bingo|board game|tabletop|d&d|dungeons|game night|card game/i.test(m.name||"")},
+    {id:"dance",label:"💃 Dance",match:m=>/dance|dj\b|communion|edm|techno|rave|dance church|zouk|salsa|swing dance/i.test((m.name||"")+" "+(m.desc||"")+" "+(m.types||[]).join(" "))},
+    {id:"music",label:"🎵 Music & shows",match:m=>m.cat==="Music"},
+    {id:"social",label:"🤝 Meet people",match:m=>m.cat==="Social"||m.cat==="Language"||/mixer|meetup|social|networking|20s|30s|singles|open mic|new in town/i.test(m.name||"")},
     {id:"food",label:"🍽️ Food & drink",match:m=>m.cat==="Food"},
+    {id:"wellness",label:"🧘 Move / chill",match:m=>m.cat==="Zen"||m.cat==="Fitness"},
+    {id:"art",label:"🎨 Art & film",match:m=>m.cat==="Art"},
+    {id:"outdoor",label:"🌿 Outdoors",match:m=>m.cat==="Outdoors"},
+    {id:"learn",label:"🎓 Classes",match:m=>m.cat==="Learn"},
     {id:"books",label:"📚 Books",match:m=>m.cat==="Books"},
     {id:"volunteer",label:"🤲 Volunteer",match:m=>m.cat==="Volunteer"},
-    {id:"free",label:"🆓 Free",match:m=>(m.types||[]).some(t=>/free/i.test(t))},
+    {id:"family",label:"🧒 Kids (if you want)",match:m=>m.cat==="Family"||isKidsy(m)},
+    {id:"free",label:"🆓 Free",match:m=>m.free===true||(m.types||[]).some(t=>/^free$/i.test(t))},
   ],
 };
 let SAVED=new Set();
 try{SAVED=new Set(JSON.parse(localStorage.getItem("gather-saved")||"[]"));}catch(e){}
-const state={mode:"activities",cat:new Set(),day:null,daySet:null,fmt:null,tod:"",nowOnly:false,q:"",near:null,nearGps:false,quick:new Set(),savedOnly:false,preset:"",area:"",horizon:6,limit:RENDER_STEP};
+// vibe "social" = default feed for him (meet people, games, dance, 20–40). "all" = zoo/kids/everything.
+let _vibeStored="social";
+try{const v=localStorage.getItem("gather-vibe");if(v==="all"||v==="social")_vibeStored=v;}catch(e){}
+const state={mode:"activities",cat:new Set(),day:null,daySet:null,fmt:null,tod:"",nowOnly:false,q:"",near:null,nearGps:false,quick:new Set(),savedOnly:false,preset:"",area:"",horizon:6,radius:0,hideSeries:true,soonOnly:false,flag:"",hideEnded:true,vibe:_vibeStored,limit:80};
 let _urlTimer=null;
 function todayDay(){return nowInfo().day;}
 function dayViewLabel(){
@@ -787,6 +989,93 @@ function matchesFmt(m,fmt){
   if(!fmt)return true;
   if(fmt==="in-person")return m.fmt==="in-person"||m.fmt==="hybrid";
   return m.fmt===fmt;
+}
+// "Online only" quick chip used to fight the default in-person format filter
+// and return zero rows. When those chips are on, they own format.
+function effectiveFmt(){
+  if(state.quick.has("online"))return "online";
+  if(state.quick.has("hybrid"))return "hybrid";
+  return state.fmt;
+}
+function placeBlob(m){
+  return [m.loc,m.addr,m.region,m.name].filter(Boolean).join(" ").toLowerCase();
+}
+function isStPaul(m){return /st\.?\s*paul|saint\s*paul/.test(placeBlob(m));}
+function isMpls(m){return /minneapolis/.test(placeBlob(m));}
+// Kids / zoo / preschool noise — fine for "Everything", not the default open
+function isKidsy(m){
+  if(!m)return false;
+  if(m.cat==="Family")return true;
+  const t=((m.name||"")+" "+(m.types||[]).join(" ")+" "+(m.desc||"")+" "+(m.source||"")+" "+(m.loc||"")).toLowerCase();
+  return /storytime|story time|toddler|preschool|\bkids?\b|\bchildren\b|\bbabies?\b|zookeeper|gorilla|polar bear|giraffe|penguin|sea lion|petting|little explorer|face paint|puppet show|como zoo|school[- ]age|elementary|for kids|children'?s|family day|all ages 0|ages 0|ages 2|ages 3|ages 4|ages 5|baby time|lapsit|stroller|youth only/.test(t);
+}
+// Score how well an event matches "I'd actually go" — games, dance, meet people, 20–40 social
+function socialScore(m){
+  if(!m)return 0;
+  let s=0;
+  const cat=m.cat||"";
+  if(cat==="Games")s+=6;
+  else if(cat==="Music")s+=5;
+  else if(cat==="Social"||cat==="Language")s+=5;
+  else if(cat==="Food")s+=4;
+  else if(cat==="Fitness"||cat==="Zen")s+=3;
+  else if(cat==="Art"||cat==="Books")s+=2;
+  else if(cat==="Outdoors"||cat==="Learn"||cat==="Volunteer")s+=1;
+  else if(cat==="Family")s-=12;
+  const t=((m.name||"")+" "+(m.types||[]).join(" ")+" "+(m.desc||"")+" "+(m.loc||"")+" "+(m.source||"")).toLowerCase();
+  if(/trivia|bingo|board game|tabletop|d&d|dungeons|game night|card game|crokinole|magic the|pinball|arcade/.test(t))s+=5;
+  if(/dance church|dance party|\bdj\b|communion|\bedm\b|techno|rave|open mic|karaoke|jam session|live music|concert|show\b/.test(t))s+=5;
+  if(/mixer|meetup|networking|singles|20s|30s|new in town|social|friends|hangout|pub quiz|quiz night/.test(t))s+=4;
+  if(/brewery|taproom|bar |nightclub|cabooze|first avenue|fine line|turf club|cedar|berlin/.test(t))s+=2;
+  if(/21\+|18\+|after dark|nightlife/.test(t))s+=2;
+  if(isKidsy(m))s-=15;
+  if(/board meeting|city council|public hearing|certification|salesforce|bootcamp/.test(t))s-=8;
+  return s;
+}
+function matchesVibe(m){
+  if(state.mode!=="activities")return true;
+  if(state.vibe==="all")return true;
+  // "Your scene" only strips kids/zoo/preschool noise — NOT half the city calendar.
+  // Social stuff is sorted first; adult art/hikes/classes still show.
+  return !isKidsy(m);
+}
+function persistVibe(){
+  try{localStorage.setItem("gather-vibe",state.vibe);}catch(e){}
+}
+function setVibe(v){
+  state.vibe=v==="all"?"all":"social";
+  persistVibe();
+  // Turning on "Your scene" clears a stuck Kids chip so the feed actually changes
+  if(state.vibe==="social")state.quick.delete("family");
+  buildQuickFilters();buildVibeBar();render();
+}
+function buildVibeBar(){
+  const row=document.getElementById("vibebar");
+  if(!row)return;
+  if(state.mode!=="activities"){row.hidden=true;row.innerHTML="";return;}
+  row.hidden=false;
+  row.innerHTML="";
+  [
+    {id:"social",label:"Your scene",hint:"Games, dance, music, meet people"},
+    {id:"all",label:"Everything",hint:"Including kids, zoo, libraries"},
+  ].forEach(v=>{
+    const b=document.createElement("button");
+    b.type="button";
+    b.className="vchip"+(state.vibe===v.id?" on":"");
+    b.title=v.hint;
+    b.innerHTML=`<strong>${v.label}</strong><span>${v.hint}</span>`;
+    b.onclick=()=>setVibe(v.id);
+    row.appendChild(b);
+  });
+}
+function hoodLabel(m){
+  if(m.fmt==="online")return "";
+  const r=(m.region||"").replace(/,?\s*MN\s*$/i,"").trim();
+  if(r&&!/^(minneapolis|st\.?\s*paul|saint\s*paul)$/i.test(r))return r;
+  // pull city from "123 Main, Minneapolis, MN"
+  const a=m.addr||"";
+  const city=(a.match(/,\s*([^,]+),\s*MN\b/i)||[])[1];
+  return city&&!/united states/i.test(city)?city.trim():"";
 }
 function toast(msg){
   const t=document.getElementById("toast");
@@ -815,7 +1104,11 @@ function updateSavedBtn(){
 }
 function meetingBlurb(m){
   const when=m.dateLabel?m.dateLabel:(m.day===todayDay()?"Today":DAYS[m.day]);
-  return `${m.name}\n${when} · ${fmtTime(m.time)} · ${fmtLabel(m.fmt)}\n${m.loc}\n${m.addr}${m.url?"\n"+m.url:""}`;
+  const bits=[m.name,`${when} · ${fmtTime(m.time)} · ${fmtLabel(m.fmt)}`,m.loc,m.addr];
+  if(m.door)bits.push("Entrance: "+m.door);
+  if(m.notes)bits.push(m.notes);
+  if(m.url)bits.push(m.url);
+  return bits.filter(Boolean).join("\n");
 }
 function pushUrl(){
   clearTimeout(_urlTimer);
@@ -832,6 +1125,7 @@ function pushUrl(){
     if(state.savedOnly)p.set("saved","1");
     if(state.area)p.set("area",state.area);
     if(state.horizon!==6)p.set("days",state.horizon+1);
+    if(state.mode==="activities"&&state.vibe!=="social")p.set("vibe","all");
     if([...state.quick].length)p.set("quick",[...state.quick].join(","));
     if(activeId)p.set("id",activeId);
     history.replaceState(null,"",location.pathname+"?"+p);
@@ -840,6 +1134,9 @@ function pushUrl(){
 function readUrl(){
   const p=new URLSearchParams(location.search);
   if(p.get("mode")==="activities"||p.get("mode")==="support")state.mode=p.get("mode");
+  // Track whether the URL actually asked for a day scope. Bare ?mode=support used
+  // to leave day=null → "all week" (1500+ rows) and a broken map.
+  const hasDayScope=p.get("weekend")==="1"||p.get("week")==="1"||p.has("day");
   if(p.get("weekend")==="1")state.daySet=new Set([5,6,0]);
   else if(p.get("week")==="1"){state.day=null;state.daySet=null;}
   else if(p.has("day")){state.day=+p.get("day");state.daySet=null;}
@@ -852,7 +1149,16 @@ function readUrl(){
   const days=+(p.get("days")||0);
   if(days>=1&&days<=45)state.horizon=days-1;
   if(p.get("quick"))state.quick=new Set(p.get("quick").split(",").filter(Boolean));
-  return p.get("id");
+  if(p.get("vibe")==="all"||p.get("vibe")==="social"){state.vibe=p.get("vibe");persistVibe();}
+  return {id:p.get("id"),hasDayScope};
+}
+// Search terms, deduped. Quoted phrases are kept intact so "open mic" can still
+// be searched as a phrase when someone wants that.
+function qTokens(q){
+  const raw=String(q||"").toLowerCase();
+  const phrases=[...raw.matchAll(/"([^"]+)"/g)].map(m=>m[1].trim()).filter(Boolean);
+  const rest=raw.replace(/"[^"]*"/g," ").split(/\s+/).filter(Boolean);
+  return [...new Set([...phrases,...rest])];
 }
 function inTod(time,tod){if(!tod)return true;const h=parseInt(time.split(":")[0],10);
   if(tod==="morning")return h>=5&&h<12;
@@ -867,6 +1173,11 @@ function supportMeetings(){
   if(LIVE.length)return [...LIVE];
   return SUPPORT.map(m=>({...m,verified:false}));
 }
+// Soft evening default: after 4pm Central, "Today" is mostly about tonight
+function defaultSupportTod(){
+  const h=Math.floor(nowInfo().mins/60);
+  return h>=16?"evening":"";
+}
 // Activities = live venue/calendar events (verified) + curated sample groups (unverified)
 function activityItems(){
   const curated=PLAY.map(m=>({...m,verified:false}));
@@ -877,7 +1188,11 @@ let map,markers,userMarker,activeId=null,markerById=new Map(),lastFilteredList=[
 // Stable per-event id (name+date+time) so saved stars and shared links
 // survive reloads — live feeds re-order every fetch, so index ids break.
 function stableId(m,p){return p+(m.name+"|"+(m.date||m.day)+"|"+m.time).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"").slice(0,80);}
-function isOver(m){return m._minsUntil<-(m.dur||120);}
+function isOver(m){
+  // don't rely on _minsUntil cache — filter() runs before enrichSort
+  const mins=m._minsUntil!=null?m._minsUntil:minutesUntil(m,nowInfo());
+  return mins<-(m.dur||120);
+}
 
 const TC_CENTER=[44.9650,-93.1800];
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
@@ -885,6 +1200,20 @@ function safeHref(u){if(!u||typeof u!=="string")return "";try{const x=new URL(u,
 function fmtTime(t){let[h,m]=t.split(":").map(Number);const ap=h<12?"AM":"PM";h=h%12||12;return `${h}:${String(m).padStart(2,"0")} ${ap}`;}
 function fmtParts(t){const [h,m]=t.split(":").map(Number);const ap=h<12?"AM":"PM";const hr=h%12||12;return{hr:`${hr}:${String(m).padStart(2,"0")}`,ap};}
 function fmtLabel(f){return f==="online"?"Online":f==="hybrid"?"Hybrid":"In person";}
+// Forecast at the event hour, from api.weather.gov. Only outdoor-ish categories
+// carry it, and only inside the ~6.5-day hourly window.
+function wxChip(m){
+  if(!m.wx)return "";
+  const w=m.wx;
+  const wet=w.pop!=null&&w.pop>=30;
+  const icon=/thunder|storm/i.test(w.summary)?"\u26C8\uFE0F"
+    :/rain|shower|drizzle/i.test(w.summary)?"\u{1F327}\uFE0F"
+    :/snow|flurr|sleet|ice/i.test(w.summary)?"\u{1F328}\uFE0F"
+    :/cloud|overcast/i.test(w.summary)?"\u26C5"
+    :/smoke|haze|fog/i.test(w.summary)?"\u{1F32B}\uFE0F":"\u2600\uFE0F";
+  const pop=wet?` \u00B7 ${w.pop}% rain`:"";
+  return `<span class="b wx${wet?" wet":""}" title="${esc(w.summary)}">${icon} ${w.temp}\u00B0${esc(w.unit)}${pop}</span>`;
+}
 function activityEmoji(cat){
   return {Music:"🎵",Art:"🎨",Outdoors:"🌿",Games:"🎲",Social:"🤝",Zen:"🧘",Fitness:"🏃",Books:"📚",Volunteer:"🤲",Language:"💬",Family:"🧒",Learn:"🎓",Food:"🍽️"}[cat]||"✨";
 }
@@ -969,6 +1298,8 @@ function enrichSort(list){
 function smartSort(list){
   enrichSort(list);
   const pin=state.day!==null&&!state.daySet,useNear=!!state.near;
+  const boostSocial=state.mode==="activities"&&state.vibe==="social";
+  list.forEach(m=>{m._social=boostSocial?socialScore(m):0;});
   list.sort((a,b)=>{
     if(!pin&&!state.daySet&&a._dayOff!==b._dayOff)return a._dayOff-b._dayOff;
     // events that already ended today sink below everything still coming up
@@ -981,6 +1312,11 @@ function smartSort(list){
       if(aUp!==bUp)return aUp?-1:1;
       if(aUp&&bUp&&a._minsUntil!==b._minsUntil)return a._minsUntil-b._minsUntil;
     }
+    // In "Your scene", rank board games / dance / meetups above random filler of the same hour
+    if(boostSocial&&a._dayOff===b._dayOff&&!aOver&&!bOver){
+      const ds=(b._social||0)-(a._social||0);
+      if(Math.abs(ds)>=2)return ds;
+    }
     if(useNear&&a._d!=null&&b._d!=null&&Math.abs(a._d-b._d)>0.25)return a._d-b._d;
     if(a._dayOff===b._dayOff){
       if(a._minsUntil!==b._minsUntil)return a._minsUntil-b._minsUntil;
@@ -992,6 +1328,7 @@ function smartSort(list){
 }
 function sortHint(){
   const parts=[dayViewLabel()];
+  if(state.mode==="activities"&&state.vibe==="social")parts.push("your scene");
   if(state.near)parts.push("closest to you");
   else parts.push("by time");
   return parts.join(" · ");
@@ -1036,10 +1373,9 @@ function buildPresets(){
     {id:"week",label:"Next 7 days"},
     {id:"month",label:"Next 30 days"},
   ]:[
+    {id:"soon",label:"Starting soon"},
     {id:"tonight",label:"Tonight"},
-    {id:"weekend",label:"This weekend"},
-    {id:"saved",label:state.savedOnly?"Show all":"Saved only"},
-    {id:"first",label:"First visit"},
+    {id:"first",label:"First visit · open"},
   ];
   items.forEach(pr=>{
     const b=document.createElement("button");
@@ -1051,22 +1387,30 @@ function buildPresets(){
 }
 function applyPreset(id){
   if(id==="saved"){state.savedOnly=!state.savedOnly;state.preset=state.savedOnly?"saved":"";updateSavedBtn();buildPresets();render();return;}
-  state.preset=id;state.savedOnly=false;state.cat.clear();state.quick.clear();state.tod="";state.nowOnly=false;state.horizon=6;
+  state.preset=id;state.savedOnly=false;state.cat.clear();state.quick.clear();state.tod="";state.nowOnly=false;state.horizon=6;state.hideEnded=true;state.soonOnly=false;state.flag="";
+  // presets re-assert walk-in unless the user is hunting online
+  state.fmt="in-person";
   if(id==="today"){state.daySet=null;state.day=todayDay();state.tod="";state.nowOnly=false;}
-  else if(id==="now"){state.daySet=null;state.day=todayDay();state.tod="";state.nowOnly=true;}
+  else if(id==="now"){state.daySet=null;state.day=todayDay();state.tod="";state.nowOnly=true;state.hideEnded=false;}
+  else if(id==="soon"){
+    // The crisis path: on now or within 2 hours, closest first. Ask for location
+    // if we don't have it — "soon" without "near me" isn't much help.
+    state.daySet=null;state.day=todayDay();state.tod="";state.nowOnly=false;state.soonOnly=true;
+    if(!state.near)requestMyArea(document.getElementById("nearme"),{quiet:true});
+  }
   else if(id==="tonight"){state.daySet=null;state.day=todayDay();state.tod="evening";state.nowOnly=false;}
   else if(id==="weekend"){state.day=null;state.daySet=new Set([5,6,0]);state.tod="";}
   else if(id==="week"){state.day=null;state.daySet=null;state.tod="";state.nowOnly=false;state.horizon=6;}
   else if(id==="month"){state.day=null;state.daySet=null;state.tod="";state.nowOnly=false;state.horizon=29;}
-  else if(id==="first"){state.daySet=null;state.day=todayDay();state.tod="";state.quick.add("open");document.getElementById("guide").hidden=false;}
-  syncTodUI();syncDayUI();buildQuickFilters();buildPresets();updateSavedBtn();render();
+  else if(id==="first"){state.daySet=null;state.day=todayDay();state.tod="";state.quick.add("open");state.fmt="in-person";document.getElementById("guide").hidden=false;}
+  syncTodUI();syncDayUI();syncFmtUI();buildQuickFilters();buildPresets();updateSavedBtn();render();
 }
 function buildDayBar(){
   const bar=document.getElementById("daybar");
   if(!bar||bar.dataset.built)return;
   bar.dataset.built="1";
   const today=todayDay();
-  bar.innerHTML='<span class="daybar-label">Map &amp; list</span>';
+  bar.innerHTML='<span class="daybar-label">Day</span>';
   for(let offset=0;offset<7;offset++){
     const i=(today+offset)%7,d=DAYS[i];
     const b=document.createElement("button");
@@ -1131,38 +1475,71 @@ function matchesDayView(m){
   // unreachable — nothing in the UI could ever show next month's concert.
   return off<=state.horizon;
 }
-function filtered(){
+function filtered(opts={}){
   const quicks=QUICK[state.mode]||[];
+  const fmt=effectiveFmt();
+  // Enrich BEFORE filtering. _minsUntil/_dayOff were only set by smartSort, which
+  // runs after this filter — so isOver() saw undefined on first paint (the
+  // hide-ended gate silently did nothing) and stale values on every render after.
+  enrichSort(DATA);
+  const hideEnded=state.hideEnded&&!opts.includeEnded&&state.day===todayDay()&&!state.daySet&&!state.savedOnly&&!state.nowOnly;
   let list=DATA.filter(m=>{
     // Saved view shows everything you starred (any day/format), minus past dates
     if(state.savedOnly)return SAVED.has(m._id)&&!(m.date&&dateOffset(m.date)<0);
     if(state.cat.size&&!state.cat.has(m.cat))return false;
     if(!matchesDayView(m))return false;
     if(state.area){
-      const a=(m.addr||"").toLowerCase();
-      const sp=/st\.? ?paul|saint paul/.test(a),mp=/minneapolis/.test(a);
+      const sp=isStPaul(m),mp=isMpls(m);
       if(state.area==="stpaul"&&!sp)return false;
       if(state.area==="mpls"&&!mp)return false;
       if(state.area==="suburbs"&&(sp||mp||m.fmt==="online"))return false;
     }
-    if(state.fmt&&!matchesFmt(m,state.fmt))return false;
+    if(fmt&&!matchesFmt(m,fmt))return false;
     if(state.tod&&!inTod(m.time,state.tod))return false;
     if(state.nowOnly&&!isNow(m))return false;
-    if(state.quick.size){
-      const ok=[...state.quick].some(id=>quicks.find(q=>q.id===id)?.match(m));
-      if(!ok)return false;
+    // "Starting soon" is the support-mode crisis path: on now, or within 2 hours
+    if(state.soonOnly&&!(isNow(m)||(m._minsUntil>=-15&&m._minsUntil<=120)))return false;
+    if(state.hideSeries&&m.series)return false;
+    if(state.flag&&!(m.flags||[]).includes(state.flag))return false;
+    // radius only bites once we know where the user is, and never on approx pins
+    if(state.radius&&state.near){
+      if(m.approx||m.lat==null)return false;
+      if(dist(state.near[0],state.near[1],m.lat,m.lng)>state.radius)return false;
     }
-    if(state.q){const h=(m.name+" "+m.loc+" "+m.addr+" "+(m.desc||"")+" "+(m.source||"")+" "+(m.types||[]).join(" ")+" "+meta(m.cat).name).toLowerCase();if(!h.includes(state.q.toLowerCase()))return false;}
+    if(hideEnded&&isOver(m))return false;
+    // Default activities feed = his scene (games games / dance / meet people). Kids & zoo sit under Everything.
+    // If they explicitly tapped Kids chip, let that through even in "Your scene".
+    if(state.mode==="activities"&&state.vibe==="social"&&!state.quick.has("family")&&!matchesVibe(m))return false;
+    if(state.quick.size){
+      // format-owned chips are handled by effectiveFmt — don't double-filter them out
+      const ids=[...state.quick].filter(id=>id!=="online"&&id!=="hybrid");
+      if(ids.length){
+        const ok=ids.some(id=>quicks.find(q=>q.id===id)?.match(m));
+        if(!ok)return false;
+      }
+    }
+    if(state.q){
+      const h=(m.name+" "+m.loc+" "+m.addr+" "+(m.region||"")+" "+(m.door||"")+" "+(m.notes||"")+" "+(m.desc||"")+" "+(m.source||"")+" "+(m.types||[]).join(" ")+" "+(m.flags||[]).join(" ")+" "+meta(m.cat).name).toLowerCase();
+      // Every word must appear somewhere, not the phrase verbatim: "friday music"
+      // and "yoga st paul" matched nothing when this was a single includes().
+      if(!qTokens(state.q).every(t=>h.includes(t)))return false;
+    }
     return true;
   });
   return smartSort(list);
+}
+function endedTodayCount(){
+  if(state.day!==todayDay()||state.daySet||state.savedOnly||state.nowOnly)return 0;
+  // count rows that match filters except the hideEnded gate
+  return filtered({includeEnded:true}).filter(isOver).length;
 }
 
 function activeFilterCount(){
   const dayExtra=state.daySet?1:(isAllWeek()?1:(state.day!==todayDay()?1:0));
   // in-person is the default for both modes — don't count it as an "extra" filter
   const formatExtra=state.fmt&&state.fmt!=="in-person"?1:0;
-  return state.cat.size+dayExtra+state.quick.size+formatExtra+(state.tod?1:0)+(state.nowOnly?1:0)+(state.savedOnly?1:0)+(state.area?1:0);
+  const vibeExtra=state.mode==="activities"&&state.vibe==="all"?1:0;
+  return state.cat.size+dayExtra+state.quick.size+formatExtra+vibeExtra+(state.tod?1:0)+(state.nowOnly?1:0)+(state.savedOnly?1:0)+(state.area?1:0)+(state.radius?1:0)+(state.hideSeries?1:0)+(state.soonOnly?1:0)+(state.flag?1:0);
 }
 function buildQuickFilters(){
   const row=document.getElementById("quickrow");
@@ -1186,8 +1563,21 @@ function buildQuickFilters(){
       b.onclick=()=>{state.cat.has(k)?state.cat.delete(k):state.cat.add(k);buildQuickFilters();buildFilters();render();};
       row.appendChild(b);
     });
+    // Access + identity. The feeds carry these as codes and we already parse
+    // them; only offer the ones that actually have rows right now.
+    [["Wheelchair","♿ Wheelchair"],["Women","Women"],["Men","Men"],["Spanish","Español"],["LGBTQ","LGBTQ"],["People of Color","POC"],["Babysitting","Childcare"]].forEach(([f,lbl])=>{
+      if(!DATA.some(m=>(m.flags||[]).includes(f)))return;
+      const b=document.createElement("button");
+      b.type="button";b.className="qchip"+(state.flag===f?" on":"");
+      b.setAttribute("aria-pressed",state.flag===f?"true":"false");
+      b.textContent=lbl;
+      b.onclick=()=>{state.flag=state.flag===f?"":f;buildQuickFilters();render();};
+      row.appendChild(b);
+    });
   }
   (QUICK[state.mode]||[]).forEach(q=>{
+    // Kids chip lives under Everything so it doesn't clutter the default social feed
+    if(state.mode==="activities"&&state.vibe==="social"&&q.id==="family"&&!state.quick.has("family"))return;
     // Feeds shift week to week — Food or Language can legitimately be empty, and
     // a chip that returns "no matches" every time just wastes a tap.
     if(!state.quick.has(q.id)&&!DATA.some(m=>{try{return q.match(m);}catch(e){return false;}}))return;
@@ -1195,9 +1585,43 @@ function buildQuickFilters(){
     b.type="button";b.className="qchip"+(state.quick.has(q.id)?" on":"");
     b.setAttribute("aria-pressed",state.quick.has(q.id)?"true":"false");
     b.textContent=q.label;
-    b.onclick=()=>{state.quick.has(q.id)?state.quick.delete(q.id):state.quick.add(q.id);buildQuickFilters();render();};
+    b.onclick=()=>{
+      const on=state.quick.has(q.id);
+      if(on)state.quick.delete(q.id);
+      else{
+        state.quick.add(q.id);
+        // Online/hybrid chips take over format so they don't fight the in-person default
+        if(q.id==="online"){state.fmt="online";state.quick.delete("hybrid");}
+        if(q.id==="hybrid"){state.fmt="hybrid";state.quick.delete("online");}
+      }
+      if((q.id==="online"||q.id==="hybrid")&&on)state.fmt="in-person";
+      syncFmtUI();buildQuickFilters();render();
+    };
     row.appendChild(b);
   });
+
+  // Standing drop-in programs (Como Zoo animal talks). Only offer when Everything
+  // is on — Your scene already strips kids/zoo, so the chip was just noise.
+  if(state.mode==="activities"&&state.vibe==="all"&&DATA.some(m=>m.series)){
+    const b=document.createElement("button");
+    b.type="button";b.className="qchip"+(state.hideSeries?" on":"");
+    b.setAttribute("aria-pressed",state.hideSeries?"true":"false");
+    b.textContent="Hide daily repeats";
+    b.onclick=()=>{state.hideSeries=!state.hideSeries;buildQuickFilters();render();};
+    row.appendChild(b);
+  }
+
+  // Distance only means something once we know where they are.
+  // 15 mi ≈ half-hour drive (Shoreview, Bloomington, etc.)
+  if(state.near){
+    [[0,"Any distance"],[5,"\u22645 mi"],[10,"\u226410 mi"],[15,"\u226415 mi"]].forEach(([r,lbl])=>{
+      const b=document.createElement("button");
+      b.type="button";b.className="qchip"+(state.radius===r?" on":"");
+      b.textContent=lbl;
+      b.onclick=()=>{state.radius=r;buildQuickFilters();render();};
+      row.appendChild(b);
+    });
+  }
 }
 function updateInsight(list){
   const el=document.getElementById("insight");
@@ -1205,13 +1629,14 @@ function updateInsight(list){
   const nowCt=list.filter(isNow).length;
   const verified=list.filter(m=>m.verified).length;
   const openCt=state.mode==="support"?list.filter(m=>(m.types||[]).some(t=>/^open$/i.test(t))).length:0;
+  const onMapN=list.filter(hasMapPin).length;
   const pills=[
     `<span class="insight-pill"><strong>${list.length}</strong> on ${dayViewLabel()}</span>`,
     nowCt?`<span class="insight-pill live"><strong>${nowCt}</strong> happening now</span>`:"",
-    verified?`<span class="insight-pill live"><strong>${verified}</strong> live listings</span>`:"",
-    state.mode==="support"&&openCt?`<span class="insight-pill"><strong>${openCt}</strong> open meetings</span>`:"",
-    state.near?`<span class="insight-pill">sorted near you</span>`:"",
-    list.some(m=>!hasMapPin(m))?`<span class="insight-pill"><strong>${list.filter(m=>!hasMapPin(m)).length}</strong> not on map</span>`:"",
+    state.mode==="support"&&openCt?`<span class="insight-pill"><strong>${openCt}</strong> open</span>`:"",
+    state.near?`<span class="insight-pill">nearest first</span>`:"",
+    state.mode==="support"&&onMapN?`<span class="insight-pill"><strong>${onMapN}</strong> on map</span>`:"",
+    state.mode==="activities"&&verified?`<span class="insight-pill live"><strong>${verified}</strong> live</span>`:"",
   ].filter(Boolean);
   el.innerHTML=pills.join("");
 }
@@ -1222,16 +1647,29 @@ function updateHero(list){
   if(kicker)kicker.textContent=new Intl.DateTimeFormat("en-US",{
     timeZone:"America/Chicago",weekday:"long",month:"long",day:"numeric"
   }).format(new Date())+" · Twin Cities";
-  if(title)title.textContent=state.mode==="support"?"Find a meeting that fits.":"Find something to do.";
+  if(title)title.textContent=state.mode==="support"
+    ?"Find a meeting."
+    :(state.vibe==="social"?"Find people & plans.":"Find something to do.");
   const tag=document.querySelector(".tagline");
   if(tag)tag.textContent=state.mode==="support"
-    ?"Recovery and support meetings across the Twin Cities, from official sources."
-    :"In-person events around Minneapolis and St. Paul, starting soon.";
+    ?"Live AA, NA, and Al-Anon times from official Twin Cities feeds. Confirm before you go."
+    :(state.vibe==="social"
+      ?"Games, dance, music, meetups first — kids & zoo talks hidden. Tap Everything anytime."
+      :"Full Twin Cities feed including family, zoo, and library programs.");
   if(live){
-    const noun=state.mode==="support"?"meeting":"event";
-    const format=state.mode==="activities"&&state.fmt==="in-person"&&!state.savedOnly?" in-person":"";
-    live.innerHTML=`<span></span>${list.length}${format} ${noun}${list.length===1?"":"s"} ${dayViewLabel()}`;
+    if(state.mode==="support"){
+      const next=list.find(m=>!isOver(m));
+      const bits=[`${list.length} meeting${list.length===1?"":"s"}`, dayViewLabel()];
+      if(next)bits.push("next at "+fmtTime(next.time));
+      if(state.near)bits.push("nearest first");
+      live.innerHTML=`<span></span>${esc(bits.join("  ·  "))}`;
+    }else{
+      const vibeBit=state.vibe==="social"?" in your scene":"";
+      const bits=[`${list.length}${vibeBit} plan${list.length===1?"":"s"}`, dayViewLabel()];
+      live.innerHTML=`<span></span>${esc(bits.join("  ·  "))}`;
+    }
   }
+  buildVibeBar();
 }
 function updateMapLegend(list){
   const el=document.getElementById("mapLegend");
@@ -1267,26 +1705,28 @@ function renderFeatured(el,list){
       <div class="fcta">${hasMapPin(next)?"View on map":"View details"} →</div></div>
       ${image?`<img class="feature-art" src="${image}" alt="" loading="lazy">`:""}`;
   }
-  // in activities mode the map is hidden, so "See event" must actually open it
-  const fhref=safeHref(next.url);
-  box.onclick=()=>{
-    if(state.mode==="activities"&&fhref)window.open(fhref,"_blank","noopener");
-    else focusMeeting(next);
-  };
+  box.onclick=()=>state.mode==="activities"?openActivity(next):focusMeeting(next);
   el.appendChild(box);
   return next._id;
 }
 function renderEmpty(el){
+  const tips=state.mode==="support"
+    ?"Try Tonight, Open, a different area, or turn on Online only."
+    :(state.vibe==="social"
+      ?"Nothing in your scene for this day — try Tonight, or switch to Everything."
+      :"Try another day, turn off a filter, or search All week.");
   el.innerHTML=`<div class="empty">
     <div class="empty-title">No matches for ${dayViewLabel()}</div>
-    Try another day, turn off a filter, or search All week.<br>
+    ${tips}<br>
     <div class="empty-actions">
       <button type="button" class="btn" data-empty="today">Today</button>
-      <button type="button" class="btn" data-empty="week">All week</button>
+      <button type="button" class="btn" data-empty="tonight">Tonight</button>
+      ${state.mode==="activities"&&state.vibe==="social"?`<button type="button" class="btn" data-empty="all">Everything</button>`:""}
       <button type="button" class="btn" data-empty="clear">Clear filters</button>
     </div></div>`;
-  el.querySelector('[data-empty="today"]')?.addEventListener("click",()=>setViewDay(todayDay()));
-  el.querySelector('[data-empty="week"]')?.addEventListener("click",()=>setViewDay(null));
+  el.querySelector('[data-empty="today"]')?.addEventListener("click",()=>applyPreset("today"));
+  el.querySelector('[data-empty="tonight"]')?.addEventListener("click",()=>applyPreset("tonight"));
+  el.querySelector('[data-empty="all"]')?.addEventListener("click",()=>setVibe("all"));
   el.querySelector('[data-empty="clear"]')?.addEventListener("click",clearFilters);
 }
 function updateFilterUI(){
@@ -1296,15 +1736,23 @@ function updateFilterUI(){
   document.getElementById("fClear").classList.toggle("show",n>0);
 }
 function clearFilters(){
-  state.cat.clear();state.quick.clear();state.daySet=null;state.day=todayDay();state.horizon=6;state.fmt="in-person";state.tod="";state.nowOnly=false;state.savedOnly=false;state.preset=state.mode==="activities"?"today":"";state.q="";state.area="";
+  state.cat.clear();state.quick.clear();state.daySet=null;state.day=todayDay();state.horizon=6;state.radius=0;state.hideSeries=true;state.soonOnly=false;state.flag="";state.fmt="in-person";state.tod="";state.nowOnly=false;state.savedOnly=false;state.hideEnded=true;state.preset=state.mode==="activities"?"today":"";state.q="";state.area="";
+  // Keep his preferred vibe (don't force Everything on clear)
   document.getElementById("q").value="";
   syncTodUI();
   document.getElementById("nowbtn").classList.remove("on");
-  syncDayUI();buildQuickFilters();buildPresets();buildFilters();updateSavedBtn();render();
+  syncDayUI();buildQuickFilters();buildPresets();buildFilters();buildVibeBar();updateSavedBtn();render();
 }
 function focusFromId(id){
   const m=DATA.find(x=>x._id===id)||lastFilteredList.find(x=>x._id===id);
   if(m)focusMeeting(m);
+}
+function openActivity(m){
+  const href=safeHref(m.url);
+  if(href){location.assign(href);return;}
+  if(!hasMapPin(m)){toast("This listing has no event page or exact map pin.");return;}
+  document.querySelector('#viewtabs [data-view="map"]')?.click();
+  focusMeeting(m);
 }
 function renderCard(el,m){
   const id=m._id,fc=meta(m.cat).color,now=isNow(m);
@@ -1322,7 +1770,8 @@ function renderCard(el,m){
     const placeAddress=m.addr&&m.addr!==m.loc?`<span>${esc(m.addr)}</span>`:"";
     const details=href?`<a class="event-details" href="${href}" target="_blank" rel="noopener" onclick="event.stopPropagation()">See event details →</a>`:"";
     const directions=hasMapPin(m)?`<a class="event-details" href="${mapsDir(m)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Directions</a>`:"";
-    const usefulTypes=(m.types||[]).filter(Boolean).slice(0,2);
+    // libraries put "Free" in types AND set the free flag — don't print it twice
+    const usefulTypes=(m.types||[]).filter(Boolean).filter(t=>!(m.free&&/^free$/i.test(t))).slice(0,2);
     const thumb=safeHref(m.image);
     card.innerHTML=`<div class="activity-stamp" aria-hidden="true">${thumb?`<img class="stamp-img" src="${thumb}" alt="" loading="lazy" onerror="this.replaceWith('${activityEmoji(m.cat)}')">`:activityEmoji(m.cat)}</div>
       <div class="event-main">
@@ -1334,73 +1783,135 @@ function renderCard(el,m){
         <div class="event-time">${esc(whenLbl)} · ${fmtTime(m.time)}${rel?` · ${esc(rel)}`:""}${m._d!=null?` · ${m._d.toFixed(1)} mi away`:""}</div>
         <div class="event-place">📍 ${esc(m.loc)}${placeAddress}</div>
         ${m.desc?`<div class="event-desc">${esc(m.desc)}</div>`:""}
-        ${now||usefulTypes.length?`<div class="event-tags">${now?'<span class="b now">Happening now</span>':""}${usefulTypes.map(t=>`<span class="b">${esc(t)}</span>`).join("")}</div>`:""}
+        ${now||usefulTypes.length||m.wx||m.free?`<div class="event-tags">${now?'<span class="b now">Happening now</span>':""}${m.free?'<span class="b ok">Free</span>':""}${wxChip(m)}${usefulTypes.map(t=>`<span class="b">${esc(t)}</span>`).join("")}</div>`:""}
         <div class="event-actions">${details}${directions}<a class="event-details" href="${icsFor(m)}" download="${m._id}.ics" onclick="event.stopPropagation()">📅 Calendar</a></div>
       </div>
       <button type="button" class="savebtn${SAVED.has(id)?" on":""}" title="Save event" aria-label="Save event">${SAVED.has(id)?"★":"☆"}</button>`;
     card.querySelector(".savebtn").onclick=e=>toggleSaved(id,e);
-    card.onclick=()=>{if(href)window.open(href,"_blank","noopener");else focusMeeting(m);};
+    card.setAttribute("role","link");
+    card.setAttribute("aria-label",`Open ${m.name}`);
+    card.onclick=()=>openActivity(m);
     el.appendChild(card);
     return;
   }
-  const join=href?`<a class="verify" href="${href}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${m.fmt==="online"||m.fmt==="hybrid"?"Join ↗":"Details ↗"}</a>`:"";
-  const official=state.mode==="support"?FINDERS[m.cat]:null;
-  const verify=(official&&official!==m.url)?`<a class="verify vbtn" href="${official}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Official list ↗</a>`:"";
-  const dir=hasMapPin(m)?`<a class="dir" href="${mapsDir(m)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Directions ↗</a>`:"";
+  // —— Support meeting card (designed for "I need a meeting", not event browsing)
+  card.classList.add("meet-card");
   const saved=SAVED.has(id)?"★":"☆";
-  const source=state.mode==="activities"&&m.source?`<span class="b source">${esc(m.source)}</span>`:"";
-  const approx=m.approx&&m.fmt!=="online"?'<span class="b">Area only</span>':"";
   const showAddr=m.addr&&m.addr!==m.loc&&!/^online$/i.test(m.addr);
+  const hood=hoodLabel(m);
+  const typeBadges=[...(m.types||[])];
+  const badgeHtml=typeBadges.slice(0,4).map(t=>{
+    const cls=/^open$/i.test(t)?" open-b":/^closed$/i.test(t)?" closed-b":"";
+    return `<span class="b${cls}">${esc(t)}</span>`;
+  }).join("");
+  // Explicit spaces / line breaks so nothing runs together if flex/gap fails
   const placeLine=m.fmt==="online"
-    ?`<div class="where">💻 Online${href?"":" · join link on official list"}</div>`
-    :`<div class="where">${esc(m.loc)}${showAddr?`<span class="addr">${esc(m.addr)}</span>`:""}</div>`;
-  card.innerHTML=`<div class="timecol"><span class="timepill">${tp.hr}</span><span class="timeap">${tp.ap}</span></div>
-    <div class="body"><div class="top"><div class="name">${esc(m.name)}</div>
-      <button type="button" class="savebtn${SAVED.has(id)?" on":""}" title="Save" aria-label="Save">${saved}</button>
-      <div class="fell" style="background:${fc}">${esc(m.cat)}</div></div>
-    <div class="when">${esc(whenLbl)}${rel?` · <span style="color:var(--now)">${esc(rel)}</span>`:""}${m._d!=null?` · ${m._d.toFixed(1)} mi`:""}</div>
-    ${placeLine}
-    <div class="badges">${now?'<span class="b now">Now</span>':''}
-      <span class="b ${m.fmt==="online"?"online":m.fmt==="hybrid"?"hybrid":""}">${fmtLabel(m.fmt)}</span>
-      ${!m.verified?'<span class="b warn">Sample</span>':''}${source}${approx}
-      ${(m.types||[]).slice(0,3).map(t=>`<span class="b">${esc(t)}</span>`).join("")}</div>
-    <div class="linkrow">${dir}${join}${verify}
-      <a class="dir" href="${icsFor(m)}" download="${id}.ics" onclick="event.stopPropagation()">Calendar</a>
-      <button type="button" class="dir" style="border:none;background:none;padding:0;cursor:pointer" data-copy="${id}">Copy info</button></div></div>`;
+    ?`<div class="where">Online meeting</div>`
+    :`<div class="where">${hood?`<span class="hood">${esc(hood)}</span><span> · </span>`:""}<strong style="font-weight:600;color:var(--txt)">${esc(m.loc)}</strong>${showAddr?`<span class="addr">${esc(m.addr)}</span>`:""}</div>`;
+  const door=m.door?`<div class="door"><b>Entrance:</b> ${esc(m.door)}</div>`:"";
+  const note=m.notes&&m.notes!==m.door?`<div class="door" style="background:#f7f8fa;border-color:#e2e7ee"><b>Note:</b> ${esc(m.notes)}</div>`:"";
+  const whenParts=[whenLbl, fmtTime(m.time)];
+  if(rel)whenParts.push(rel);
+  if(m.fmt==="hybrid")whenParts.push("Hybrid");
+  if(m._d!=null)whenParts.push(m._d.toFixed(1)+" mi");
+  if(now)whenParts.push("Now");
+  const whenLine=whenParts.join("  ·  ");
+  let actions="";
+  if(hasMapPin(m))actions+=`<a class="act primary" href="${mapsDir(m)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Directions</a>`;
+  if(href)actions+=`<a class="act${m.fmt==="online"?" primary":""}" href="${href}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${m.fmt==="online"||m.fmt==="hybrid"?"Join meeting":"Details"}</a>`;
+  actions+=`<button type="button" class="act" data-copy="${id}">Copy</button>`;
+  actions+=`<a class="act" href="${icsFor(m)}" download="${id}.ics" onclick="event.stopPropagation()">Calendar</a>`;
+  card.innerHTML=`<div class="timecol"><span class="timepill">${esc(tp.hr)}</span><span class="timeap">${esc(tp.ap)}</span></div>
+    <div class="body">
+      <div class="top">
+        <div class="name">${esc(m.name)}</div>
+        <button type="button" class="savebtn${SAVED.has(id)?" on":""}" title="Save" aria-label="Save">${saved}</button>
+        <div class="fell" style="background:${fc}">${esc(m.cat)}</div>
+      </div>
+      <div class="when">${esc(whenLine)}</div>
+      ${placeLine}
+      ${door}${note}
+      <div class="badges">${badgeHtml}${m.fmt==="online"?" "+'<span class="b online">Online</span>':""}${m.approx&&m.fmt!=="online"?" "+'<span class="b">Area only</span>':""}</div>
+      <div class="meet-actions">${actions}</div>
+    </div>`;
   card.querySelector(".savebtn").onclick=e=>toggleSaved(id,e);
   card.querySelector("[data-copy]")?.addEventListener("click",e=>{
     e.stopPropagation();
-    navigator.clipboard?.writeText(meetingBlurb(m)).then(()=>toast("Copied to clipboard"));
+    navigator.clipboard?.writeText(meetingBlurb(m)).then(()=>toast("Copied — time, place, entrance notes"));
   });
   card.onclick=()=>focusMeeting(m);
   el.appendChild(card);
 }
 let _lastSig="";
+function ensureMapReady(cb){
+  if(!map)return;
+  // Map is created while activities mode hides it (display:none) → Leaflet gets
+  // 0×0 size and never paints tiles/markers until invalidateSize after show.
+  requestAnimationFrame(()=>{
+    try{map.invalidateSize({animate:false});}catch(e){}
+    if(typeof cb==="function")cb();
+  });
+}
+function fitMapToResults(list){
+  if(!map)return;
+  // Don't steal the view while the user is looking at a pin they just tapped
+  if(activeId)return;
+  const pts=list.filter(hasMapPin);
+  if(!pts.length){
+    map.setView(TC_CENTER,11,{animate:false});
+    return;
+  }
+  if(pts.length===1){
+    map.setView([pts[0].lat,pts[0].lng],14,{animate:false});
+    return;
+  }
+  try{
+    const b=L.latLngBounds(pts.map(m=>[m.lat,m.lng]));
+    if(b.isValid())map.fitBounds(b,{padding:[40,40],maxZoom:12,animate:false});
+  }catch(e){
+    map.setView(TC_CENTER,11,{animate:false});
+  }
+}
 function render(){
   // every field that changes the result set must be here, or "show more" stays
   // expanded across an unrelated filter change and shows the wrong slice
-  const sig=[state.mode,[...state.cat].sort().join(","),[...state.quick].sort().join(","),state.day,state.daySet?"wknd":"",state.fmt,state.tod,state.nowOnly,state.q,state.near,state.savedOnly,state.area,state.horizon].join("|");
-  if(sig!==_lastSig){state.limit=RENDER_STEP;_lastSig=sig;}
+  const sig=[state.mode,state.vibe,[...state.cat].sort().join(","),[...state.quick].sort().join(","),state.day,state.daySet?"wknd":"",effectiveFmt(),state.tod,state.nowOnly,state.q,state.near,state.savedOnly,state.area,state.horizon,state.hideEnded,state.radius,state.hideSeries,state.soonOnly,state.flag].join("|");
+  const filtersChanged=sig!==_lastSig;
+  if(filtersChanged){state.limit=renderStep();_lastSig=sig;}
   const list=filtered();
+  const endedN=state.hideEnded?endedTodayCount():0;
   updateHero(list);
   lastFilteredList=list;
   const el=document.getElementById("list");el.innerHTML="";
-  const word=state.mode==="support"?"fellowships":"activity types";
   const loadingNow=state.mode==="support"?LIVE_LOADING:EVENTS_LOADING;
   const loading=loadingNow?'<span class="loading"><span class="spin"></span>loading live…</span> ':"";
   const sortNote=sortHint();
   const resultWord=state.mode==="support"?(list.length===1?"meeting":"meetings"):(list.length===1?"thing to do":"things to do");
-  const formatWords=state.mode==="activities"&&state.fmt==="in-person"?"in-person ":"";
-  document.getElementById("count").innerHTML=loading+`<b>${list.length}</b> ${formatWords}${resultWord} · ${state.mode==="activities"?"soonest first":sortNote}`;
+  const fmt=effectiveFmt();
+  const formatWords=fmt==="in-person"?"walk-in ":fmt==="online"?"online ":fmt==="hybrid"?"hybrid ":"";
+  const sortPart=sortNote;
+  const kidsHidden=state.mode==="activities"&&state.vibe==="social"?DATA.filter(m=>matchesDayView(m)&&isKidsy(m)).length:0;
+  const kidsNote=kidsHidden?` <span aria-hidden="true">·</span> <button type="button" class="dir" style="border:none;background:none;padding:0;font:inherit;color:var(--muted)" id="countShowAll">${kidsHidden} kids/zoo hidden — show everything</button>`:"";
+  const endedNote=endedN?` <span aria-hidden="true">·</span> <button type="button" class="dir" style="border:none;background:none;padding:0;font:inherit;color:var(--muted)" id="countShowEnded">${endedN} earlier hidden</button>`:"";
+  document.getElementById("count").innerHTML=loading+`<b>${list.length}</b> ${formatWords}${resultWord} <span aria-hidden="true">·</span> ${esc(sortPart)}${kidsNote}${endedNote}`;
+  document.getElementById("countShowAll")?.addEventListener("click",()=>setVibe("all"));
+  document.getElementById("countShowEnded")?.addEventListener("click",()=>{state.hideEnded=false;render();});
   updateInsight(list);
   updateMapLegend(list);
   updateFilterUI();
-  if(!list.length){renderEmpty(el);drawMarkers([]);pushUrl();return;}
+  if(!list.length){
+    renderEmpty(el);
+    if(endedN){
+      const b=document.createElement("button");
+      b.type="button";b.className="show-ended";
+      b.textContent=`Show ${endedN} earlier today →`;
+      b.onclick=()=>{state.hideEnded=false;render();};
+      el.appendChild(b);
+    }
+    drawMarkers([]);pushUrl();return;
+  }
   const onMap=list.filter(hasMapPin);
-  // Support: keep online/no-address meetings in the main time-sorted list (they
-  // already show "Online" / no Directions). Dumping them in a second bucket past
-  // the show-more limit made the page feel endless and broken.
-  const featuredId=list.length>1?renderFeatured(el,list):null;
+  const featuredId=state.mode==="activities"&&list.length>1?renderFeatured(el,list):null;
   const shown=list.filter(m=>m._id!==featuredId).slice(0,state.limit);
   let lastSection=null,overHdr=false;
   shown.forEach(m=>{
@@ -1425,13 +1936,29 @@ function render(){
   });
   if(list.length>state.limit){
     const more=document.createElement("div");more.className="showmore";
+    const step=renderStep();
     const rest=list.length-state.limit;
-    more.textContent=`Show ${Math.min(RENDER_STEP,rest)} more (${rest} hidden) ↓`;
-    more.onclick=()=>{state.limit+=RENDER_STEP;render();};
+    more.textContent=`Show ${Math.min(step,rest)} more (${rest} hidden) ↓`;
+    more.onclick=()=>{state.limit+=step;render();};
     el.appendChild(more);
   }
+  if(endedN){
+    const b=document.createElement("button");
+    b.type="button";b.className="show-ended";
+    b.textContent=`Show ${endedN} meetings from earlier today →`;
+    b.onclick=()=>{state.hideEnded=false;render();};
+    el.appendChild(b);
+  }
   document.getElementById("count").setAttribute("aria-label",`${list.length} results`);
-  drawMarkers(onMap);
+  // Paint map after layout — especially when switching out of activities (map was display:none)
+  if(state.mode==="support"){
+    ensureMapReady(()=>{
+      drawMarkers(onMap);
+      if(filtersChanged)fitMapToResults(list);
+    });
+  }else{
+    drawMarkers(onMap);
+  }
   pushUrl();
 }
 
@@ -1441,9 +1968,11 @@ function popupHtml(m){
   const place=m.fmt==="online"
     ?`Online meeting`
     :`${esc(m.loc)}${m.addr&&m.addr!==m.loc?`<br>${esc(m.addr)}`:""}`;
+  const door=m.door?`<div class="pw" style="margin-top:6px;padding:6px 8px;background:#f1f5f4;border-radius:6px;font-size:12px"><b>Entrance:</b> ${esc(m.door)}</div>`:"";
   return `<div class="pop"><div class="pn">${esc(m.name)}</div><div class="pf">${esc(meta(m.cat).name)} · ${fmtLabel(m.fmt)}</div>
     <div class="pw">${esc(whenLbl)} · ${fmtTime(m.time)}</div><div class="pw">${place}</div>
-    ${(m.types||[]).length?`<div class="pw" style="margin-top:4px;color:#64748b">${esc((m.types||[]).slice(0,3).join(" · "))}</div>`:""}
+    ${(m.types||[]).length?`<div class="pw" style="margin-top:4px;color:#64748b">${esc((m.types||[]).slice(0,4).join(" · "))}</div>`:""}
+    ${door}
     ${hasMapPin(m)?`<a href="${mapsDir(m)}" target="_blank" rel="noopener">Directions ↗</a><br>`:""}
     ${href?`<a href="${href}" target="_blank" rel="noopener">${m.fmt==="online"||m.fmt==="hybrid"?"Join meeting ↗":"More info ↗"}</a>`:""}
     <div class="pw" style="margin-top:6px"><button type="button" class="pop-pick" data-id="${m._id}" style="padding:6px 0;color:#0d9488;font-weight:600">Show in list ↓</button></div></div>`;
@@ -1469,12 +1998,25 @@ function openMapPopup(m){
 function focusMeeting(m){
   if(!m)return;
   activeId=m._id;
+  // On phone list view, jump to the map so the pin is actually visible
+  if(window.matchMedia("(max-width:760px)").matches){
+    document.body.classList.remove("mobile-view-list");
+    document.body.classList.add("mobile-view-map");
+    document.querySelectorAll("#viewtabs button").forEach(b=>{
+      const on=b.dataset.view==="map";
+      b.classList.toggle("on",on);
+      b.setAttribute("aria-selected",on?"true":"false");
+    });
+  }
   render();
   scrollCardIntoView(m._id);
-  if(!hasMapPin(m)){map.closePopup();return;}
-  const z=Math.max(map.getZoom(),15);
-  map.setView([m.lat,m.lng],z,{animate:true});
-  requestAnimationFrame(()=>openMapPopup(m));
+  if(!hasMapPin(m)){map?.closePopup();return;}
+  ensureMapReady(()=>{
+    const z=Math.max(map.getZoom(),14);
+    map.setView([m.lat,m.lng],z,{animate:true});
+    // marker may be new after re-render
+    requestAnimationFrame(()=>openMapPopup(m));
+  });
 }
 function focusSpotMeetings(meetings,latlng){
   if(!meetings.length)return;
@@ -1496,18 +2038,23 @@ function meetingsFromLayers(layers){
   const ids=new Set(layers.map(l=>l._gatherId).filter(Boolean));
   return lastFilteredList.filter(m=>ids.has(m._id));
 }
+const MAP_PIN_CAP=250; // markercluster chokes / greys out past a few hundred
 function drawMarkers(list){
+  if(!markers||!map)return;
   markers.clearLayers();
   markerById.clear();
-  list.forEach(m=>{
-    if(!m.lat)return;
+  // Prefer soonest / closest pins when we have to cap (all-week dump)
+  const pinList=list.filter(m=>m.lat!=null&&m.lng!=null&&hasMapPin(m));
+  const draw=pinList.length>MAP_PIN_CAP?pinList.slice(0,MAP_PIN_CAP):pinList;
+  draw.forEach(m=>{
     const fc=meta(m.cat).color,on=activeId===m._id;
     const mk=L.circleMarker([m.lat,m.lng],{
-      radius:on?12:10,
+      radius:on?11:9,
       fillColor:fc,
       color:on?"#0f172a":"#ffffff",
       weight:on?3:2,
-      fillOpacity:.92,
+      fillOpacity:.95,
+      opacity:1,
       className:on?"gather-marker-active":"",
     });
     mk._gatherId=m._id;
@@ -1525,10 +2072,15 @@ function drawMarkers(list){
 function setMode(mode,opts={}){
   state.mode=mode;
   if(!opts.keepFilters){
-    state.cat.clear();state.quick.clear();activeId=null;state.daySet=null;state.day=todayDay();state.horizon=6;
+    state.cat.clear();state.quick.clear();activeId=null;state.daySet=null;state.day=todayDay();state.horizon=6;state.radius=0;state.hideSeries=true;state.soonOnly=false;state.flag="";
     // Both modes default to walk-in listings; hybrid still matches in-person.
-    state.fmt="in-person";state.tod="";state.nowOnly=false;state.savedOnly=false;
-    state.preset=mode==="activities"?"today":"";state.area="";
+    state.fmt="in-person";state.nowOnly=false;state.savedOnly=false;state.hideEnded=true;
+    // After late afternoon, jump to evening — mornings aren't useful at 7pm
+    state.tod=mode==="support"?defaultSupportTod():"";
+    state.preset=mode==="support"?(state.tod==="evening"?"tonight":"today"):(mode==="activities"?"today":"");
+    state.area="";
+    state.limit=renderStep();
+    // Activities stay on "Your scene" unless they picked Everything (persisted)
   }
   document.body.classList.toggle("mode-activities",mode==="activities");
   // guide stays closed until asked for (the "First visit" preset opens it) —
@@ -1539,9 +2091,32 @@ function setMode(mode,opts={}){
   const mp=document.getElementById("mPlay");mp.classList.toggle("on",mode==="activities");mp.classList.toggle("play",mode==="activities");
   if(mode==="support"){META=FELLOWSHIPS;DATA=supportMeetings().map(m=>({...m,_id:stableId(m,"s-")}));}
   else{META=ACTIVITIES;DATA=activityItems().map(m=>({...m,_id:stableId(m,"p-")}));}
-  document.getElementById("q").placeholder=mode==="support"?"Search meetings, neighborhoods, beginners…":"Try music, games, art, yoga…";
+  document.getElementById("q").placeholder=mode==="support"?"Search name, street, neighborhood…":"Try music, games, art, yoga…";
   document.getElementById("mapHint").textContent=mode==="support"?"Tap a dot — meetings at that place":"Tap a dot — events at that spot";
-  syncDayUI();buildQuickFilters();buildPresets();buildFilters();updateFooter();updateSavedBtn();render();
+  // Mode-specific tip copy
+  const tipsP=document.querySelector("#tips p");
+  if(tipsP){
+    tipsP.innerHTML=mode==="support"
+      ?`<strong style="color:var(--txt)">Tip:</strong> Use <b>Near me</b> or pick <b>Open</b> if it’s your first meeting. Times come from official AA/NA/Al-Anon lists — double-check before you go.`
+      :`<strong style="color:var(--txt)">How Gather works:</strong> Pick a day, open a listing, or use quick filters. Live listings come from public event pages and official feeds — confirm before you go.`;
+  }
+  syncTodUI();syncDayUI();buildQuickFilters();buildPresets();buildFilters();buildVibeBar();updateFooter();updateSavedBtn();render();
+  // Map was hidden under activities — force Leaflet to remeasure once it's shown
+  if(mode==="support"){
+    setTimeout(()=>ensureMapReady(()=>{
+      drawMarkers(lastFilteredList.filter(hasMapPin));
+      fitMapToResults(lastFilteredList);
+    }),80);
+  }
+}
+// The service worker answers from cache when the network fails, and does it
+// silently — `updated` is the only way to tell the user they're on a saved copy.
+function staleNote(updated){
+  if(!updated)return "";
+  const hrs=(Date.now()-Date.parse(updated))/36e5;
+  if(!Number.isFinite(hrs)||hrs<3)return "";
+  const when=hrs<48?`${Math.round(hrs)} hours`:`${Math.round(hrs/24)} days`;
+  return ` <span style="color:var(--now)">Showing a saved copy from ${when} ago — reconnect to refresh.</span>`;
 }
 function updateFooter(){
   const pl=document.getElementById("programLinks");
@@ -1560,20 +2135,20 @@ function updateFooter(){
     const liveN=LIVE.length;
     if(liveN){
       const when=LAST_UPDATED?new Date(LAST_UPDATED).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):"";
-      const ok=SOURCE_INFO.filter(x=>x.ok).map(x=>`${x.name} (${x.count})`).join(", ");
-      s.innerHTML=`Not affiliated with any fellowship. Confirm time &amp; format on official sites before attending.`+
-        `<br><span style="color:var(--live)">${liveN} live</span> from ${ok}. Other programs: use the finder links above.`+(when?` Updated ${when}.`:"");
+      const ok=SOURCE_INFO.filter(x=>x.ok).map(x=>x.name.replace(/\s*\(.*\)/,"").trim()).join(" · ");
+      s.innerHTML=`Not affiliated with AA, NA, or Al-Anon. Confirm time &amp; format before you go.<br>`+
+        `<span style="color:var(--live)">${liveN} meetings</span> from ${ok}.`+(when?` Updated ${when}.`:"")+staleNote(LAST_UPDATED);
     }else{
-      s.innerHTML=`Not affiliated with any program. Sample listings shown until live feeds connect via <code>/api/meetings</code>.`;
+      s.innerHTML=`Not affiliated with any program. Sample listings shown until live feeds connect.`;
     }
   }else{
     const liveN=LIVE_EVENTS.length;
     if(liveN){
       const when=EVENTS_UPDATED?new Date(EVENTS_UPDATED).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):"";
       const ok=EVENT_SOURCES.filter(x=>x.ok);
-      const failed=EVENT_SOURCES.filter(x=>!x.ok).length;
+      const failed=EVENT_SOURCES.filter(x=>!x.ok);
       s.innerHTML=`<span style="color:var(--live)">${liveN} current events</span> from ${ok.length} live sources — Meetup, Eventbrite, Minneapolis Parks and local venues.`
-        +(failed?` ${failed} source${failed===1?" is":"s are"} retrying.`:"")+(when?` Updated ${when}.`:"");
+        +(failed.length?` <span title="${esc(failed.map(x=>x.name+(x.error?" — "+x.error:"")).join(", "))}">${failed.length} source${failed.length===1?" is":"s are"} down: ${esc(failed.map(x=>x.name).join(", "))}.</span>`:"")+(when?` Updated ${when}.`:"")+staleNote(EVENTS_UPDATED);
     }else{
       s.innerHTML=`<b>${PLAY.length}</b> sample activities — live events load from <code>/api/events</code> when deployed.`;
     }
@@ -1591,7 +2166,7 @@ function refreshAfterLive(mode){
 
 async function loadLive(){
   try{
-    const res=await fetch("/api/meetings",{headers:{Accept:"application/json"}});
+    const res=await fetch("/api/meetings",{headers:{Accept:"application/json"},signal:AbortSignal.timeout(45000)});
     if(!res.ok)throw 0;
     const data=await res.json();
     LIVE=(data.meetings||[]).map(m=>({...m,verified:true}));
@@ -1607,7 +2182,8 @@ async function loadLive(){
 
 async function loadEvents(){
   try{
-    const res=await fetch("/api/events",{headers:{Accept:"application/json"}});
+    // Aggregator fans out to many venues — 20s was aborting and leaving a tiny sample list
+    const res=await fetch("/api/events",{headers:{Accept:"application/json"},signal:AbortSignal.timeout(45000)});
     if(!res.ok)throw 0;
     const data=await res.json();
     LIVE_EVENTS=(data.events||[]).map(m=>({...m,verified:true}));
@@ -1703,7 +2279,12 @@ function init(){
       btn.classList.add("on");btn.setAttribute("aria-selected","true");
       document.body.classList.remove("mobile-view-map","mobile-view-list");
       document.body.classList.add(btn.dataset.view==="map"?"mobile-view-map":"mobile-view-list");
-      if(btn.dataset.view==="map")setTimeout(()=>map.invalidateSize(),50);
+      if(btn.dataset.view==="map"){
+        setTimeout(()=>ensureMapReady(()=>{
+          drawMarkers(lastFilteredList.filter(hasMapPin));
+          fitMapToResults(lastFilteredList);
+        }),80);
+      }
     };
   });
   document.addEventListener("keydown",e=>{
@@ -1715,10 +2296,22 @@ function init(){
   document.getElementById("nowbtn").onclick=function(){state.nowOnly=!state.nowOnly;this.classList.toggle("on");render();};
   document.getElementById("nearme").onclick=function(){toggleMyArea(this);};
   buildDayBar();
-  const urlId=readUrl();
-  if(!location.search){state.day=todayDay();state.daySet=null;state.preset="today";}
+  const urlInfo=readUrl();
+  const urlId=urlInfo&&urlInfo.id;
+  // Default to TODAY unless the link explicitly asked for a day/week/weekend.
+  // Bare ?mode=support used to mean "all week" (day stayed null) → 1500 rows + dead map.
+  if(!urlInfo?.hasDayScope){
+    state.day=todayDay();
+    state.daySet=null;
+    if(!state.preset)state.preset="today";
+  }
   // Both modes: walk-in first. Shared links with ?fmt= still win via readUrl.
   if(!state.fmt&&!new URLSearchParams(location.search).has("fmt"))state.fmt="in-person";
+  // Support: evening default after 4pm only when URL didn't pick a time-of-day
+  if(state.mode==="support"&&!new URLSearchParams(location.search).has("tod")&&!state.tod){
+    state.tod=defaultSupportTod();
+    if(state.tod==="evening"&&state.preset==="today")state.preset="tonight";
+  }
   document.getElementById("q").value=state.q||"";
   document.getElementById("nowbtn").classList.toggle("on",state.nowOnly);
   syncTodUI();syncDayUI();updateSavedBtn();
@@ -1731,7 +2324,11 @@ function init(){
   // remembered location: grant "Near me" once, distances show on every visit
   try{
     const s=JSON.parse(localStorage.getItem("gather-near")||"null");
-    if(s&&s.c){state.near=s.c;state.nearGps=!!s.g;setUserMarker();document.getElementById("nearme").classList.add("on");}
+    if(s&&s.c){
+      state.near=s.c;state.nearGps=!!s.g;
+      if(!state.radius)state.radius=15; // ~30 min drive default
+      setUserMarker();document.getElementById("nearme").classList.add("on");
+    }
   }catch(e){}
   setMode(state.mode,{keepFilters:true});
   buildPresets();
@@ -1749,13 +2346,19 @@ function persistNear(){
 }
 function applyMyArea(btn){
   if(btn){btn.classList.add("on");btn.classList.remove("locating");btn.textContent="Near me";}
+  // Default ~30 min drive so Shoreview / suburbs aren't cut off
+  if(!state.radius)state.radius=15;
   setUserMarker();
-  map.setView(state.near,state.nearGps?12:11);
+  map.setView(state.near,state.nearGps?11:10);
   persistNear();
+  buildQuickFilters();
   render();
 }
 function requestMyArea(btn,opts={}){
   if(btn){btn.classList.add("locating");btn.textContent="Locating…";}
+  // quiet = triggered by a preset, not a tap: never fall back to city centre,
+  // because a fake location would silently fake every distance
+  if(opts.quiet)opts.onLoad=true;
   const finish=(coords,gps)=>{
     state.near=coords;state.nearGps=gps;
     applyMyArea(btn);
