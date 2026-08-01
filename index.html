@@ -1086,7 +1086,7 @@ const QUICK={
     {id:"music",label:"🎵 Music & shows",match:m=>m.cat==="Music"},
     {id:"social",label:"🤝 Meet people",match:m=>m.cat==="Social"||m.cat==="Language"||/mixer|meetup|social|networking|20s|30s|singles|open mic|new in town/i.test(m.name||"")},
     {id:"food",label:"🍽️ Food & drink",match:m=>m.cat==="Food"},
-    {id:"wellness",label:"🧘 Move / chill",match:m=>m.cat==="Zen"||m.cat==="Fitness"},
+    {id:"wellness",label:"🧘 Meditation / wellness",match:m=>m.cat==="Zen"||m.cat==="Fitness"},
     {id:"art",label:"🎨 Art & film",match:m=>m.cat==="Art"},
     {id:"outdoor",label:"🌿 Outdoors",match:m=>m.cat==="Outdoors"},
     {id:"learn",label:"🎓 Classes",match:m=>m.cat==="Learn"},
@@ -1098,7 +1098,8 @@ const QUICK={
 };
 let SAVED=new Set();
 try{SAVED=new Set(JSON.parse(localStorage.getItem("gather-saved")||"[]"));}catch(e){}
-// vibe "social" = default feed for him (meet people, games, dance, 20–40). "all" = zoo/kids/everything.
+// Internal value stays "social" so old saved links keep working; the visible
+// default is For You, ranked from what he actually likes without onboarding.
 let _vibeStored="social";
 try{const v=localStorage.getItem("gather-vibe");if(v==="all"||v==="social")_vibeStored=v;}catch(e){}
 const state={mode:"activities",cat:new Set(),day:null,daySet:null,fmt:null,tod:"",nowOnly:false,q:"",near:null,nearGps:false,quick:new Set(),savedOnly:false,preset:"",area:"",horizon:6,radius:0,hideSeries:true,soonOnly:false,flag:"",hideEnded:true,vibe:_vibeStored,limit:80};
@@ -1148,33 +1149,54 @@ function isKidsy(m){
   const t=((m.name||"")+" "+(m.types||[]).join(" ")+" "+(m.desc||"")+" "+(m.source||"")+" "+(m.loc||"")).toLowerCase();
   return /storytime|story time|toddler|preschool|\bkids?\b|\bchildren\b|\bbabies?\b|zookeeper|gorilla|polar bear|giraffe|penguin|sea lion|petting|little explorer|face paint|puppet show|como zoo|school[- ]age|elementary|for kids|children'?s|family day|all ages 0|ages 0|ages 2|ages 3|ages 4|ages 5|baby time|lapsit|stroller|youth only/.test(t);
 }
-// Score how well an event matches "I'd actually go" — games, dance, meet people, 20–40 social
+// Score the default For You feed from his known interests. This changes order;
+// Everything remains one tap away and no profile/account is required.
 function socialScore(m){
   if(!m)return 0;
   let s=0;
   const cat=m.cat||"";
-  if(cat==="Games")s+=6;
+  if(cat==="Games")s+=8;
+  else if(cat==="Zen")s+=7;
+  else if(cat==="Art"||cat==="Learn")s+=6;
   else if(cat==="Music")s+=5;
   else if(cat==="Social"||cat==="Language")s+=5;
-  else if(cat==="Food")s+=4;
-  else if(cat==="Fitness"||cat==="Zen")s+=3;
-  else if(cat==="Art"||cat==="Books")s+=2;
-  else if(cat==="Outdoors"||cat==="Learn"||cat==="Volunteer")s+=1;
+  else if(cat==="Fitness"||cat==="Books"||cat==="Volunteer")s+=3;
+  else if(cat==="Food"||cat==="Outdoors")s+=2;
   else if(cat==="Family")s-=12;
   const t=((m.name||"")+" "+(m.types||[]).join(" ")+" "+(m.desc||"")+" "+(m.loc||"")+" "+(m.source||"")).toLowerCase();
-  if(/trivia|bingo|board game|tabletop|d&d|dungeons|game night|card game|crokinole|magic the|pinball|arcade/.test(t))s+=5;
-  if(/dance church|dance party|\bdj\b|communion|\bedm\b|techno|rave|open mic|karaoke|jam session|live music|concert|show\b/.test(t))s+=5;
+  if(/trivia|bingo|board game|tabletop|d&d|dungeons|game night|card game|crokinole|magic the|pinball|arcade|can can wonderland/.test(t))s+=7;
+  if(/meditat|mindful|zazen|zen center|sangha|dharma|sound bath|breathwork|qigong/.test(t))s+=8;
+  if(/maker|hack factory|creative coding|game dev|digital art|animation|robot|artificial intelligence|\bai\b|technology/.test(t))s+=7;
+  if(/dance church|dance party|\bdj\b|communion|\bedm\b|techno|rave|open mic|karaoke|jam session|live music|concert|show\b/.test(t))s+=6;
   if(/mixer|meetup|networking|singles|20s|30s|new in town|social|friends|hangout|pub quiz|quiz night/.test(t))s+=4;
-  if(/brewery|taproom|bar |nightclub|cabooze|first avenue|fine line|turf club|cedar|berlin/.test(t))s+=2;
+  if(/ukrain|swedish|german|norway|french|cultural|community center|international/.test(t))s+=4;
+  if(/free|donation|drop[- ]?in|beginner|newcomer|all levels|no one turned away/.test(t))s+=3;
+  if(/cabooze|hook and ladder|twin cities maker|clouds in water|common ground|minnesota zen|dharma field/.test(t))s+=3;
+  const liked=DATA.filter(x=>SAVED.has(x._id));
+  if(liked.some(x=>x.cat===cat))s+=4;
+  if(m.source&&liked.some(x=>x.source===m.source))s+=6;
   if(/21\+|18\+|after dark|nightlife/.test(t))s+=2;
   if(isKidsy(m))s-=15;
   if(/board meeting|city council|public hearing|certification|salesforce|bootcamp/.test(t))s-=8;
   return s;
 }
+function forYouReasons(m){
+  const t=((m.name||"")+" "+(m.types||[]).join(" ")+" "+(m.source||"")).toLowerCase();
+  const reasons=[];
+  if(m.free||/free|donation/.test(t))reasons.push("Free / donation");
+  if(m.cat==="Zen"||/meditat|mindful|zazen|sangha|dharma/.test(t))reasons.push("Meditation");
+  else if(m.cat==="Games"||/game|trivia|pinball|arcade/.test(t))reasons.push("Games");
+  else if(/maker|creative coding|digital art|animation|robot|technology/.test(t))reasons.push("Creative tech");
+  else if(m.cat==="Art")reasons.push("Art");
+  else if(/dance|\bdj\b|communion/.test(t))reasons.push("Dance");
+  else if(/ukrain|swedish|german|norway|french|cultural/.test(t))reasons.push("Culture");
+  if(DATA.some(x=>SAVED.has(x._id)&&(x.cat===m.cat||x.source===m.source)))reasons.push("Like your saves");
+  return reasons.slice(0,2);
+}
 function matchesVibe(m){
   if(state.mode!=="activities")return true;
   if(state.vibe==="all")return true;
-  // "Your scene" only strips kids/zoo/preschool noise — NOT half the city calendar.
+  // For You only strips kids/zoo/preschool noise — not half the city calendar.
   // Social stuff is sorted first; adult art/hikes/classes still show.
   return !isKidsy(m);
 }
@@ -1184,7 +1206,7 @@ function persistVibe(){
 function setVibe(v){
   state.vibe=v==="all"?"all":"social";
   persistVibe();
-  // Turning on "Your scene" clears a stuck Kids chip so the feed actually changes
+  // Turning on For You clears a stuck Kids chip so the feed actually changes.
   if(state.vibe==="social")state.quick.delete("family");
   buildQuickFilters();buildVibeBar();render();
 }
@@ -1195,7 +1217,7 @@ function buildVibeBar(){
   row.hidden=false;
   row.innerHTML="";
   [
-    {id:"social",label:"Your scene",hint:"Games, dance, music, meet people"},
+    {id:"social",label:"For You",hint:"Games · creative tech · meditation · dance · community"},
     {id:"all",label:"Everything",hint:"Including kids, zoo, libraries"},
   ].forEach(v=>{
     const b=document.createElement("button");
@@ -1456,7 +1478,7 @@ function smartSort(list){
       if(aUp!==bUp)return aUp?-1:1;
       if(aUp&&bUp&&a._minsUntil!==b._minsUntil)return a._minsUntil-b._minsUntil;
     }
-    // In "Your scene", rank board games / dance / meetups above random filler of the same hour
+    // In For You, rank known interests above random filler on the same day.
     if(boostSocial&&a._dayOff===b._dayOff&&!aOver&&!bOver){
       const ds=(b._social||0)-(a._social||0);
       if(Math.abs(ds)>=2)return ds;
@@ -1472,7 +1494,7 @@ function smartSort(list){
 }
 function sortHint(){
   const parts=[dayViewLabel()];
-  if(state.mode==="activities"&&state.vibe==="social")parts.push("your scene");
+  if(state.mode==="activities"&&state.vibe==="social")parts.push("For You");
   if(state.near)parts.push("closest to you");
   else parts.push("by time");
   return parts.join(" · ");
@@ -1654,7 +1676,7 @@ function filtered(opts={}){
     }
     if(hideEnded&&isOver(m))return false;
     // Default activities feed = his scene (games games / dance / meet people). Kids & zoo sit under Everything.
-    // If they explicitly tapped Kids chip, let that through even in "Your scene".
+    // If they explicitly tapped Kids, let that through even in For You.
     if(state.mode==="activities"&&state.vibe==="social"&&!state.quick.has("family")&&!matchesVibe(m))return false;
     if(state.quick.size){
       // format-owned chips are handled by effectiveFmt — don't double-filter them out
@@ -1665,7 +1687,7 @@ function filtered(opts={}){
       }
     }
     if(state.q){
-      const h=(m.name+" "+m.loc+" "+m.addr+" "+(m.region||"")+" "+(m.door||"")+" "+(m.notes||"")+" "+(m.desc||"")+" "+(m.source||"")+" "+(m.types||[]).join(" ")+" "+(m.flags||[]).join(" ")+" "+meta(m.cat).name).toLowerCase();
+      const h=(m.name+" "+m.loc+" "+m.addr+" "+(m.region||"")+" "+(m.door||"")+" "+(m.notes||"")+" "+(m.desc||"")+" "+(m.source||"")+" "+(m.free?"free ":"")+(m.types||[]).join(" ")+" "+(m.flags||[]).join(" ")+" "+meta(m.cat).name).toLowerCase();
       // Every word must appear somewhere, not the phrase verbatim: "friday music"
       // and "yoga st paul" matched nothing when this was a single includes().
       if(!qTokens(state.q).every(t=>h.includes(t)))return false;
@@ -1747,7 +1769,7 @@ function buildQuickFilters(){
   });
 
   // Standing drop-in programs (Como Zoo animal talks). Only offer when Everything
-  // is on — Your scene already strips kids/zoo, so the chip was just noise.
+  // is on — For You already strips kids/zoo, so the chip was just noise.
   if(state.mode==="activities"&&state.vibe==="all"&&DATA.some(m=>m.series)){
     const b=document.createElement("button");
     b.type="button";b.className="qchip"+(state.hideSeries?" on":"");
@@ -1758,9 +1780,9 @@ function buildQuickFilters(){
   }
 
   // Distance only means something once we know where they are.
-  // 15 mi ≈ half-hour drive (Shoreview, Bloomington, etc.)
+  // 20 mi reaches the nearby-ring places the user asked not to miss.
   if(state.near){
-    [[0,"Any distance"],[5,"\u22645 mi"],[10,"\u226410 mi"],[15,"\u226415 mi"]].forEach(([r,lbl])=>{
+    [[0,"Any distance"],[5,"\u22645 mi"],[10,"\u226410 mi"],[15,"\u226415 mi"],[20,"\u226420 mi"]].forEach(([r,lbl])=>{
       const b=document.createElement("button");
       b.type="button";b.className="qchip"+(state.radius===r?" on":"");
       b.textContent=lbl;
@@ -1795,12 +1817,12 @@ function updateHero(list){
   }).format(new Date())+" · Twin Cities";
   if(title)title.textContent=state.mode==="support"
     ?"Find a meeting."
-    :(state.vibe==="social"?"Find people & plans.":"Find something to do.");
+    :(state.vibe==="social"?"Picked for you.":"Find something to do.");
   const tag=document.querySelector(".tagline");
   if(tag)tag.textContent=state.mode==="support"
     ?"Live AA, NA, and Al-Anon times from official Twin Cities feeds. Confirm before you go."
     :(state.vibe==="social"
-      ?"Games, dance, music, meetups first — kids & zoo talks hidden. Tap Everything anytime."
+      ?"Games, creative tech, meditation, dance, and community picks first. Tap Everything anytime."
       :"Full Twin Cities feed including family, zoo, and library programs.");
   if(live){
     if(state.mode==="support"){
@@ -1810,7 +1832,7 @@ function updateHero(list){
       if(state.near)bits.push("nearest first");
       live.innerHTML=`<span></span>${esc(bits.join("  ·  "))}`;
     }else{
-      const vibeBit=state.vibe==="social"?" in your scene":"";
+      const vibeBit=state.vibe==="social"?" For You":"";
       const bits=[`${list.length}${vibeBit} plan${list.length===1?"":"s"}`, dayViewLabel()];
       live.innerHTML=`<span></span>${esc(bits.join("  ·  "))}`;
     }
@@ -1836,13 +1858,14 @@ function renderFeatured(el,list){
   const whenLbl=next.dateLabel?next.dateLabel:(next.day===todayDay()?"Today":DAYS[next.day]);
   const rel=relWhen(next);
   const href=safeHref(next.url);
+  const why=state.mode==="activities"&&state.vibe==="social"?forYouReasons(next):[];
   const box=document.createElement(state.mode==="activities"&&href?"a":"div");
   box.className="featured";
   if(box.tagName==="A"){box.href=href;box.target="_blank";box.rel="noopener";}
   const image=safeHref(next.image);
   if(state.mode==="activities"){
     box.innerHTML=`<div class="feature-stamp" aria-hidden="true">${image?`<img class="stamp-img" src="${image}" alt="" loading="lazy" onerror="this.replaceWith('${activityEmoji(next.cat)}')">`:activityEmoji(next.cat)}</div>
-      <div><div class="eyebrow">${isNow(next)?"Happening now":"Try this first"}</div>
+      <div><div class="eyebrow">${isNow(next)?"Happening now":why.length?`For You · ${esc(why.join(" · "))}`:"Try this first"}</div>
       <div class="fname">${esc(next.name)}</div>
       <div class="fmeta">${esc(whenLbl)} · ${fmtTime(next.time)}${rel?` · ${esc(rel)}`:""} · 📍 ${esc(next.loc)}</div>
       <div class="fcta">See event →</div></div>`;
@@ -1869,7 +1892,7 @@ function renderEmpty(el){
   const tips=state.mode==="support"
     ?"Try Tonight, Open, a different area, or turn on Online only."
     :(state.vibe==="social"
-      ?"Nothing in your scene for this day — try Tonight, or switch to Everything."
+      ?"No For You picks on this day — try Tonight, or switch to Everything."
       :"Try another day, turn off a filter, or search All week.");
   const weekBtn=weekHits?`<button type="button" class="btn" data-empty="week">Show ${weekHits} match${weekHits===1?"":"es"} this month</button>`:"";
   el.innerHTML=`<div class="empty">
@@ -2258,7 +2281,7 @@ function setMode(mode,opts={}){
     state.preset=mode==="support"?(state.tod==="evening"?"tonight":"today"):(mode==="activities"?"today":"");
     state.area="";
     state.limit=renderStep();
-    // Activities stay on "Your scene" unless they picked Everything (persisted)
+    // Activities stay on For You unless they picked Everything (persisted).
   }
   document.body.classList.toggle("mode-activities",mode==="activities");
   // guide stays closed until asked for (the "First visit" preset opens it) —
@@ -2513,7 +2536,7 @@ function init(){
     const s=JSON.parse(localStorage.getItem("gather-near")||"null");
     if(s&&s.c){
       state.near=s.c;state.nearGps=!!s.g;
-      if(!state.radius)state.radius=15; // ~30 min drive default
+      if(!state.radius)state.radius=20;
       setUserMarker();document.getElementById("nearme").classList.add("on");
     }
   }catch(e){}
@@ -2533,8 +2556,8 @@ function persistNear(){
 }
 function applyMyArea(btn){
   if(btn){btn.classList.add("on");btn.classList.remove("locating");btn.textContent="Near me";}
-  // Default ~30 min drive so Shoreview / suburbs aren't cut off
-  if(!state.radius)state.radius=15;
+  // Default to the wider nearby ring the user asked for.
+  if(!state.radius)state.radius=20;
   setUserMarker();
   map.setView(state.near,state.nearGps?11:10);
   persistNear();

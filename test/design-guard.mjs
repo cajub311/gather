@@ -8,6 +8,8 @@ const initBody = html.match(/function init\(\)\{([\s\S]*?)\n\}\nfunction setUser
 
 const checks = [
   ["dayboard design marker", html.includes('data-design="dayboard-v4"')],
+  ["For You is the default activity view", html.includes('{id:"social",label:"For You"')],
+  ["20 mile radius option", html.includes('[20,"\\u226420 mi"]')],
   ["dayboard metadata", html.includes('name="gather-design" content="dayboard-v4"')],
   [
     "desktop and mobile Map/List stay visible",
@@ -31,7 +33,7 @@ const checks = [
   ["soft distance sort for approx", html.includes("_sortD")],
   ["automatic startup does not request location", !initBody.includes("getCurrentPosition") && !initBody.includes("requestMyArea")],
   ["installed app refreshes itself", html.includes('serviceWorker.addEventListener("controllerchange"')],
-  ["current app cache", sw.includes('const CACHE = "gather-v9"')],
+  ["current app cache", sw.includes('const CACHE = "gather-v10"')],
 ];
 
 const failed = checks.filter(([, ok]) => !ok);

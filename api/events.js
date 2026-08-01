@@ -7,6 +7,7 @@
 //   meetup -> Meetup's public city page (no paid API)
 //   eventbrite -> Eventbrite's public city results (no API key)
 //   ics    -> Google Calendar / iCal public feeds (.ics)
+//   commonground -> Common Ground's public calendar endpoint
 //   rss    -> Wild Apricot community calendars
 //   cabooze -> Cabooze RHP events HTML (Communion Sundays, shows)
 //   firstave -> First Avenue WP event posts (also Fine Line, Turf Club, Entry)
@@ -45,6 +46,9 @@ const SOURCES = [
   { type: "tribe", name: "American Swedish Institute", base: "https://asimn.org", lat: 44.9552, lng: -93.2659, addr: "2600 Park Ave, Minneapolis", fallback: "Art" },
   { type: "tribe", name: "DanceMN", base: "https://dancemn.org", lat: 44.9778, lng: -93.2650, addr: "Twin Cities", fallback: "Music" },
   { type: "tribe", name: "Quatrefoil Library", base: "https://qlibrary.org", lat: 44.9482, lng: -93.2575, addr: "1220 E Lake St, Minneapolis", fallback: "Books" },
+  { type: "tribe", name: "The Meditation Center", base: "https://themeditationcenter.org", lat: 44.9954, lng: -93.2611, addr: "631 University Ave NE, Minneapolis", fallback: "Zen" },
+  { type: "tribe", name: "Northern Clay Center", base: "https://northernclaycenter.org", lat: 44.9620, lng: -93.2336, addr: "2424 E Franklin Ave, Minneapolis", fallback: "Art" },
+  { type: "tribe", name: "Minnesota Museum of American Art", base: "https://mmaa.org", lat: 44.9487, lng: -93.0895, addr: "350 Robert St N, St Paul", fallback: "Art" },
   // NE brewery with regular trivia / social nights (confirmed tribe feed)
   { type: "tribe", name: "Wooden Hill Brewing", base: "https://woodenhillbrewing.com", lat: 45.0139, lng: -93.2475, addr: "2415 Central Ave NE, Minneapolis" },
 
@@ -63,10 +67,17 @@ const SOURCES = [
   { type: "squarespace", name: "Norway House", base: "https://www.norwayhouse.org/event-calendar", lat: 44.9624, lng: -93.2606, addr: "913 E Franklin Ave, Minneapolis", fallback: "Art" },
   { type: "squarespace", name: "Alliance Francaise MSP", base: "https://www.afmsp.org/events", lat: 44.9768, lng: -93.2923, addr: "227 Colfax Ave N, Minneapolis", fallback: "Language" },
   { type: "squarespace", name: "Stand With Ukraine MN", base: "https://www.standwithukrainemn.com/events", lat: 44.9880, lng: -93.2569, addr: "301 Main St NE, Minneapolis", fallback: "Social" },
+  { type: "squarespace", name: "Minnesota Center for Book Arts", base: "https://mnbookarts.org/events", lat: 44.9751, lng: -93.2517, addr: "1011 Washington Ave S, Minneapolis", fallback: "Art" },
 
   // --- Small independent/community calendars not indexed well elsewhere ---
   { type: "rss", name: "Twin Cities Maker", url: "https://wa.tcmaker.org/widget/Calendar/RSS", loc: "Twin Cities Maker / Hack Factory", lat: 44.9551, lng: -93.2260, addr: "3119 E 26th St, Minneapolis", fallback: "Art" },
   { type: "opendate", name: "The Hook and Ladder", url: "https://r.jina.ai/http://thehookmpls.com/events/", loc: "The Hook and Ladder", lat: 44.9480, lng: -93.2344, addr: "3010 Minnehaha Ave, Minneapolis", fallback: "Music" },
+
+  // Meditation centers publish their own calendars but rarely reach city roundups.
+  { type: "commonground", name: "Common Ground Meditation", url: "https://commongroundmeditation.org/api/calendar/events?venue=cityCenter&limit=100&offset=0", base: "https://commongroundmeditation.org/calendar?venue=cityCenter", loc: "Common Ground Meditation Center", lat: 44.9558, lng: -93.2329, addr: "2700 E 26th St, Minneapolis", cat: "Zen" },
+  { type: "ics", name: "Clouds in Water Zen Center", url: "https://calendar.google.com/calendar/ical/cloudsinwater.org_jaj9mpkgi0k7mif65vparvgrgc%40group.calendar.google.com/public/basic.ics", base: "https://www.cloudsinwater.org/events-1", loc: "Clouds in Water Zen Center", lat: 44.9547, lng: -93.1136, addr: "445 Farrington St, St Paul", fallback: "Zen" },
+  { type: "ics", name: "Minnesota Zen Meditation Center", url: "https://calendar.google.com/calendar/ical/info.mnzencenter.org%40gmail.com/public/basic.ics", base: "https://www.mnzencenter.org/calendar.html", loc: "Minnesota Zen Meditation Center", lat: 44.9430, lng: -93.3060, addr: "3343 E Bde Maka Ska Blvd, Minneapolis", fallback: "Zen", fmt: "hybrid" },
+  { type: "ics", name: "Dharma Field Zen Center", url: "https://calendar.google.com/calendar/ical/6lduu2s3udjg3qdm31a0ospudk%40group.calendar.google.com/public/basic.ics", base: "https://www.dharmafield.org/google-calendar.html", loc: "Dharma Field Zen Center", lat: 44.9132, lng: -93.3197, addr: "3118 W 49th St, Minneapolis", fallback: "Zen" },
 
   // --- Nightlife / dance / concerts ---
   { type: "cabooze", name: "The Cabooze", url: "https://cabooze.com/events/", lat: 44.9628, lng: -93.2465, addr: "913 Cedar Ave S, Minneapolis", cat: "Music" },
@@ -347,6 +358,7 @@ async function fromTribe(src, startISO, endISO) {
       addr: decode(v.address ? `${v.address}, ${v.city || ""}`.replace(/, $/, "") : src.addr),
       lat: isFinite(lat) ? lat : src.lat,
       lng: isFinite(lng) ? lng : src.lng,
+      approx: !(isFinite(lat) && isFinite(lng)) || undefined,
       types: [e.cost ? decode(e.cost) : "", catNames[0] || ""].filter(Boolean).slice(0, 2),
       free: isFreeCost(decode(e.cost)) || undefined,
       desc: short(e.description || "") || undefined,
@@ -373,18 +385,24 @@ function parseICS(text, src) {
     const dt = get("DTSTART");
     const m = dt.match(/(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2}))?/);
     if (!m) continue;
-    const p = { y: +m[1], mo: +m[2], d: +m[3], h: +(m[4] || 12), mi: +(m[5] || 0) };
+    let p = { y: +m[1], mo: +m[2], d: +m[3], h: +(m[4] || 12), mi: +(m[5] || 0) };
+    // Google mixes local TZID values with UTC values ending in Z. Convert UTC
+    // to Chicago wall time or an evening sit can land on the wrong day.
+    if (m[4] && /Z$/i.test(dt)) p = chicagoParts(Date.UTC(p.y, p.mo - 1, p.d, p.h, p.mi));
     const title = decode(get("SUMMARY"));
-    if (!title || isNoise(title)) continue;
+    if (!title || isNoise(title) || isUnavailableTitle(title) || /CANCELLED/i.test(get("STATUS"))) continue;
+    const desc = decode(get("DESCRIPTION"));
+    const loc = decode(get("LOCATION"));
+    const hasOnline = /zoom|online/i.test(`${desc} ${loc}`);
     out.push({
       cat: src.cat || classify(title, [get("CATEGORIES")]) || src.fallback || "Social",
       name: title,
       day: dayKey(p),
       time: `${String(p.h).padStart(2, "0")}:${String(p.mi).padStart(2, "0")}`,
       dur: 120,
-      fmt: "in-person",
-      loc: decode(get("LOCATION")) || src.name,
-      addr: decode(get("LOCATION")) || src.addr,
+      fmt: hasOnline ? (src.lat ? "hybrid" : "online") : (src.fmt || "in-person"),
+      loc: loc || src.loc || src.name,
+      addr: loc || src.addr,
       lat: src.lat, lng: src.lng,
       types: [],
       url: get("URL") || src.base || undefined,
@@ -394,6 +412,42 @@ function parseICS(text, src) {
       live: true,
       verified: true,
     });
+  }
+  return out;
+}
+
+async function fromCommonGround(src) {
+  const groups = await getJSON(src.url, 12000);
+  const out = [];
+  for (const group of Array.isArray(groups) ? groups : []) {
+    for (const e of group.events || []) {
+      const title = decode(e.title || (e.eventTemplate && e.eventTemplate.title));
+      if (!title || e.cancelled || e.hidden || isNoise(title) || isUnavailableTitle(title)) continue;
+      const p = parseLocal(`${group.date || e.startDate} ${e.startTime || "12:00"}`);
+      if (!p) continue;
+      const realms = e.realm || (e.eventTemplate && e.eventTemplate.realm) || [];
+      const online = realms.includes("online"), inPerson = realms.includes("in-person");
+      const end = String(e.endTime || "").split(":").map(Number);
+      const start = String(e.startTime || "12:00").split(":").map(Number);
+      const dur = end.length === 2 ? Math.max(30, (end[0] * 60 + end[1]) - (start[0] * 60 + start[1])) : 60;
+      out.push({
+        ...eventRow(src, {
+          title,
+          p,
+          time: e.startTime || "12:00",
+          url: src.base,
+          types: ["Meditation", "Donation optional"],
+          cat: "Zen",
+          loc: src.loc,
+          addr: src.addr,
+          lat: src.lat,
+          lng: src.lng,
+        }),
+        dur,
+        fmt: online && inPerson ? "hybrid" : online ? "online" : "in-person",
+        free: true,
+      });
+    }
   }
   return out;
 }
@@ -1142,6 +1196,7 @@ module.exports = async (req, res) => {
     SOURCES.map(async (src) => {
       let list;
       if (src.type === "ics") list = parseICS(await getText(src.url), src);
+      else if (src.type === "commonground") list = await fromCommonGround(src);
       else if (src.type === "biblio") list = await fromBiblio(src);
       else if (src.type === "livewhale") list = await fromLiveWhale(src);
       else if (src.type === "squarespace") list = await fromSquarespace(src);

@@ -26,6 +26,17 @@ async function main() {
   const deepEvents = (e.events || []).filter((event) => deepNames.includes(event.source)).length;
   if (missing.length || unhealthy.length) throw new Error(`deep sources missing/down: ${[...missing, ...unhealthy].join(", ")}`);
   if (deepEvents < 100) throw new Error(`deep events too few: ${deepEvents}`);
+  const expandedNames = [
+    "Common Ground Meditation", "Clouds in Water Zen Center",
+    "Minnesota Zen Meditation Center", "Dharma Field Zen Center",
+    "The Meditation Center", "Northern Clay Center",
+    "Minnesota Museum of American Art", "Minnesota Center for Book Arts",
+  ];
+  const expandedSources = (e.sources || []).filter((s) => expandedNames.includes(s.name));
+  const expandedMissing = expandedNames.filter((name) => !expandedSources.some((s) => s.name === name && s.ok));
+  const expandedEvents = (e.events || []).filter((event) => expandedNames.includes(event.source)).length;
+  if (expandedMissing.length) throw new Error(`new sources missing/down: ${expandedMissing.join(", ")}`);
+  if (expandedEvents < 50) throw new Error(`new-source events too few: ${expandedEvents}`);
   console.log(
     JSON.stringify(
       {
@@ -36,6 +47,8 @@ async function main() {
         eventSourcesFail: failed,
         deepSources: deepSources.length,
         deepEvents,
+        expandedSources: expandedSources.length,
+        expandedEvents,
       },
       null,
       2

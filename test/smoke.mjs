@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Gather smoke tests — drives the SHIPPED production app (or GATHER_URL).
- * Proves: APIs, both modes, filters, Near me + 15 mi (approx Meetup pins NOT wiped),
+ * Proves: APIs, both modes, For You, filters, Near me + 20 mi (approx Meetup pins NOT wiped),
  * real search filtering, automatic no-prompt startup, desktop/mobile map tabs.
  *
  * Usage: node test/smoke.mjs
@@ -108,15 +108,15 @@ async function main() {
   const todayKey = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Chicago",
   }).format(new Date());
-  const approxIn15Today = (events.events || []).filter((e) => {
+  const approxIn20Today = (events.events || []).filter((e) => {
     if (!e.approx || e.lat == null || e.lng == null) return false;
     if (e.date && e.date !== todayKey) return false;
-    return distMi(near[0], near[1], e.lat, e.lng) <= 15;
+    return distMi(near[0], near[1], e.lat, e.lng) <= 20;
   });
   ok(
-    "API has approx events today within 15 mi",
-    approxIn15Today.length > 0,
-    `n=${approxIn15Today.length} sample=${(approxIn15Today[0] && approxIn15Today[0].name) || ""}`.slice(0, 100)
+    "API has approx events today within 20 mi",
+    approxIn20Today.length > 0,
+    `n=${approxIn20Today.length} sample=${(approxIn20Today[0] && approxIn20Today[0].name) || ""}`.slice(0, 100)
   );
 
   // Unique search token that exists only in some rows (from live API, not hard-coded)
@@ -169,6 +169,12 @@ async function main() {
   ok("activity cards after load", cardsBefore >= 1, `cards=${cardsBefore} count=${countBefore.slice(0, 80)}`);
   ok("mPlay on", (await page.locator("#mPlay.on").count()) === 1);
   ok("vibe chips", (await page.locator("#vibebar .vchip").count()) >= 2);
+  ok("For You is selected by default", (await page.locator("#vibebar .vchip.on").innerText()).includes("For You"));
+  const ranking = await page.evaluate(() => ({
+    meditation: socialScore({ cat: "Zen", name: "Free beginner zazen meditation drop-in", types: [], desc: "", loc: "Common Ground" }),
+    kids: socialScore({ cat: "Family", name: "Toddler storytime", types: [], desc: "", loc: "Library" }),
+  }));
+  ok("For You favors known interests", ranking.meditation > ranking.kids, `${ranking.meditation} > ${ranking.kids}`);
   ok("startup has no app dialog", dialogs.length === 0, dialogs.join(","));
   ok("startup tips stay closed", await page.locator("#tips").isHidden());
   ok("location waits for a tap", (await page.locator("#nearme.locating").count()) === 0);
@@ -208,11 +214,18 @@ async function main() {
   await page.fill("#q", "");
   await page.waitForTimeout(400);
 
+  await page.fill("#q", "free meditation");
+  await page.waitForTimeout(500);
+  const freeMeditationCount = parseCount(await page.locator("#count").innerText());
+  ok("free meditation is findable", freeMeditationCount > 0, `count=${freeMeditationCount}`);
+  await page.fill("#q", "");
+  await page.waitForTimeout(400);
+
   if ((await page.locator(".vchip", { hasText: "Everything" }).count()) > 0) {
     await page.locator(".vchip", { hasText: "Everything" }).first().click();
     await page.waitForTimeout(500);
     ok("everything vibe", (await page.locator(".vchip.on", { hasText: "Everything" }).count()) >= 1);
-    await page.locator(".vchip", { hasText: "Your scene" }).first().click();
+    await page.locator(".vchip", { hasText: "For You" }).first().click();
     await page.waitForTimeout(400);
   }
 
@@ -224,12 +237,12 @@ async function main() {
   await waitLoaded(page);
   await page.waitForTimeout(900);
   const chips = await page.locator(".qchip").allInnerTexts();
-  ok("15 mi chip when near known", chips.some((c) => c.includes("15")), chips.join(" | ").slice(0, 160));
+  ok("20 mi chip when near known", chips.some((c) => c.includes("20")), chips.join(" | ").slice(0, 160));
 
-  // Select 15 mi explicitly if not already
-  const chip15 = page.locator(".qchip", { hasText: "15" });
-  if ((await chip15.count()) > 0) {
-    await chip15.first().click();
+  // Select 20 mi explicitly if not already
+  const chip20 = page.locator(".qchip", { hasText: "20" });
+  if ((await chip20.count()) > 0) {
+    await chip20.first().click();
     await page.waitForTimeout(600);
   }
 
@@ -239,7 +252,7 @@ async function main() {
   // Approx regression: inject probe — count how many DATA rows after filter are approx.
   // state is not on window; evaluate by reading list and matching known approx titles from API.
   const approxTitles = new Set(
-    approxIn15Today.slice(0, 40).map((e) => (e.name || "").slice(0, 40).toLowerCase())
+    approxIn20Today.slice(0, 40).map((e) => (e.name || "").slice(0, 40).toLowerCase())
   );
   const listBlob = (await page.locator("#list").innerText()).toLowerCase();
   let approxVisible = 0;
@@ -253,7 +266,7 @@ async function main() {
   for (const vn of visibleNames) {
     const low = vn.toLowerCase();
     if (
-      approxIn15Today.some(
+      approxIn20Today.some(
         (e) => e.name && (low.includes(e.name.slice(0, 20).toLowerCase()) || e.name.toLowerCase().includes(low.slice(0, 20)))
       )
     ) {
@@ -263,7 +276,7 @@ async function main() {
   ok(
     "Near me + radius keeps approx Meetup rows",
     approxCardHits >= 1 || approxVisible >= 1,
-    `approxCardHits=${approxCardHits} approxVisible=${approxVisible} nearCards=${nearCards} pool=${approxIn15Today.length}`
+    `approxCardHits=${approxCardHits} approxVisible=${approxVisible} nearCards=${nearCards} pool=${approxIn20Today.length}`
   );
 
   // Support mode
