@@ -66,7 +66,7 @@ const SOURCES = [
 
   // --- Small independent/community calendars not indexed well elsewhere ---
   { type: "rss", name: "Twin Cities Maker", url: "https://wa.tcmaker.org/widget/Calendar/RSS", loc: "Twin Cities Maker / Hack Factory", lat: 44.9551, lng: -93.2260, addr: "3119 E 26th St, Minneapolis", fallback: "Art" },
-  { type: "opendate", name: "The Hook and Ladder", url: "https://thehookmpls.com/events/", loc: "The Hook and Ladder", lat: 44.9480, lng: -93.2344, addr: "3010 Minnehaha Ave, Minneapolis", fallback: "Music" },
+  { type: "opendate", name: "The Hook and Ladder", url: "https://r.jina.ai/http://thehookmpls.com/events/", loc: "The Hook and Ladder", lat: 44.9480, lng: -93.2344, addr: "3010 Minnehaha Ave, Minneapolis", fallback: "Music" },
 
   // --- Nightlife / dance / concerts ---
   { type: "cabooze", name: "The Cabooze", url: "https://cabooze.com/events/", lat: 44.9628, lng: -93.2465, addr: "913 Cedar Ave S, Minneapolis", cat: "Music" },
@@ -518,6 +518,30 @@ async function fromOpenDate(src) {
         types: [decode(stage)].filter(Boolean),
       }),
       image: decode(image) || undefined,
+    });
+  }
+  if (out.length) return out;
+
+  // Some OpenDate venues put Cloudflare in front of their custom domain.
+  // The reader returns one Markdown line per official event; use the official
+  // URL slug for the date (the rendered label can shift evening shows to UTC).
+  const monthNo = { january: 1, february: 2, march: 3, april: 4, may: 5, june: 6, july: 7, august: 8, september: 9, october: 10, november: 11, december: 12 };
+  for (const line of html.split("\n")) {
+    const link = line.match(/\]\((https:\/\/thehookmpls\.com\/shows\/[^)]+)\)\s*$/i);
+    const titleM = line.match(/!\[Image \d+:\s*([^\]]+)\]/i);
+    const imageM = line.match(/!\[Image \d+:[^\]]+\]\((https:\/\/s3[^)]+)\)/i);
+    const timeM = line.match(/(\d{1,2}(?::\d{2})?\s*(?:am|pm))\s+Details\]/i);
+    if (!link || !titleM || !timeM) continue;
+    const dateM = link[1].match(/-(january|february|march|april|may|june|july|august|september|october|november|december)-(\d{1,2})-(\d{4})-\d+$/i);
+    if (!dateM) continue;
+    const title = decode(titleM[1]);
+    if (!title || /private event/i.test(title) || isUnavailableTitle(title)) continue;
+    const time = parseShowClock(timeM[1]);
+    const [h, mi] = time.split(":").map(Number);
+    const p = { y: +dateM[3], mo: monthNo[dateM[1].toLowerCase()], d: +dateM[2], h, mi };
+    out.push({
+      ...eventRow(src, { title, p, time, url: link[1], types: [] }),
+      image: imageM ? imageM[1] : undefined,
     });
   }
   return out;
