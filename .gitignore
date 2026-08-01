@@ -1,2 +1,4 @@
 *.bak
 .vercel
+node_modules/
+test/out/

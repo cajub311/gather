@@ -84,6 +84,8 @@ function cleanAddr(s) {
 function cleanText(s) {
   return String(s || "")
     .replace(/<[^>]+>/g, " ")
+    // "UptownAFG" / "Grp" style glued words from some feeds
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -100,6 +102,25 @@ function isCityOnlyAddr(addr) {
     return true;
   if (/^[A-Za-z .'-]+, MN$/i.test(a)) return true;
   return false;
+}
+
+// Filterable access/identity attributes. Separate from `types` because that list
+// is trimmed to 4 labels for display — a wheelchair-accessible Spanish meeting
+// could lose the very attribute someone is filtering on. Built from the full
+// code list, never truncated.
+const FLAG_CODES = {
+  X: "Wheelchair", WC: "Wheelchair", HE: "Spanish", SP_LANG: "Spanish",
+  LGBTQ: "LGBTQ", GL: "LGBTQ", POC: "People of Color",
+  W: "Women", M: "Men", B: "Beginners", BEG: "Beginners",
+  Y: "Young People", BV: "Babysitting", ASL: "ASL",
+};
+function flagTypes(codes) {
+  const out = new Set();
+  for (const c of codes || []) {
+    const f = FLAG_CODES[c];
+    if (f) out.add(f);
+  }
+  return [...out];
 }
 
 function labelTypes(codes, map) {
@@ -139,6 +160,7 @@ function normalizeAA(rows, cat = "AA") {
     else if (types.includes("ONL")) fmt = "hybrid";
 
     const labels = labelTypes(types, TSML_TYPES);
+    const flags = flagTypes(types);
     const addr = cleanAddr(m.formatted_address || m.region || "Minneapolis area");
     const approx =
       fmt === "online" ||
@@ -167,6 +189,7 @@ function normalizeAA(rows, cat = "AA") {
       lat: isFinite(lat) ? lat : null,
       lng: isFinite(lng) ? lng : null,
       types: labels,
+      flags: flags.length ? flags : undefined,
       notes: notes || undefined,
       door: door || undefined,
       url: m.conference_url || m.url || undefined,
@@ -194,6 +217,7 @@ function normalizeNA(rows) {
       .filter(Boolean);
     if (codes.includes("TC")) continue;
     const labels = labelTypes(codes, NA_FORMATS);
+    const flags = flagTypes(codes);
 
     const street = [r.location_street, r.location_municipality, r.location_province]
       .filter(Boolean)
@@ -218,6 +242,7 @@ function normalizeNA(rows) {
       lat: isFinite(lat) ? lat : null,
       lng: isFinite(lng) ? lng : null,
       types: labels,
+      flags: flags.length ? flags : undefined,
       notes: notes || undefined,
       url: r.virtual_meeting_link || r.conference_url || undefined,
       live: true,

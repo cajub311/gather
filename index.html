@@ -6,6 +6,7 @@
 <title>Gather — Twin Cities meetings &amp; things to do</title>
 <meta name="description" content="Find support meetings and local activities across Minneapolis–St. Paul on one map. Filter by day, time, and distance." />
 <meta name="theme-color" content="#141820" />
+<meta name="gather-design" content="dayboard-v2" />
 <link rel="manifest" href="/manifest.json" />
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -48,7 +49,7 @@
     --font:"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     --display:"Syne", var(--font);
     --bg:var(--paper);
-    --max-board:720px;
+    --max-board:820px;
   }
   body.mode-activities{
     --accent:var(--ember);
@@ -796,7 +797,7 @@
 </style>
 
 </head>
-<body class="mode-activities">
+<body class="mode-activities" data-design="dayboard-v2">
 <div id="app">
   <header>
     <div class="header-top">
@@ -1424,8 +1425,13 @@ function enrichSort(list){
   list.forEach(m=>{
     m._dayOff=m.date?dateOffset(m.date):(pin?0:dayOffset(m.day,n.day));
     m._minsUntil=minutesUntil(m,n);
-    // approx pins (Meetup city-centroid) get no distance — it would be a lie
-    m._d=useNear&&m.lat!=null&&!m.approx?dist(state.near[0],state.near[1],m.lat,m.lng):null;
+    // Exact pins get distance labels; approx (city-centroid) still sort by dist
+    // when Near me is on but don't show a fake "X.X mi" on the card.
+    if(useNear&&m.lat!=null&&m.lng!=null&&isFinite(m.lat)&&isFinite(m.lng)){
+      const d=dist(state.near[0],state.near[1],m.lat,m.lng);
+      m._d=m.approx?null:d;
+      m._sortD=d;
+    }else{m._d=null;m._sortD=null;}
   });
   return list;
 }
@@ -1451,7 +1457,7 @@ function smartSort(list){
       const ds=(b._social||0)-(a._social||0);
       if(Math.abs(ds)>=2)return ds;
     }
-    if(useNear&&a._d!=null&&b._d!=null&&Math.abs(a._d-b._d)>0.25)return a._d-b._d;
+    if(useNear&&a._sortD!=null&&b._sortD!=null&&Math.abs(a._sortD-b._sortD)>0.25)return a._sortD-b._sortD;
     if(a._dayOff===b._dayOff){
       if(a._minsUntil!==b._minsUntil)return a._minsUntil-b._minsUntil;
       return timeMins(a.time)-timeMins(b.time);
@@ -1635,9 +1641,11 @@ function filtered(opts={}){
     if(state.soonOnly&&!(isNow(m)||(m._minsUntil>=-15&&m._minsUntil<=120)))return false;
     if(state.hideSeries&&m.series)return false;
     if(state.flag&&!(m.flags||[]).includes(state.flag))return false;
-    // radius only bites once we know where the user is, and never on approx pins
+    // Radius filter when Near me is on. Approx pins use city-centroid coords —
+    // still filter them (Shoreview vs far suburbs) but never hard-drop the whole
+    // Meetup feed the way we used to with `if (m.approx) return false`.
     if(state.radius&&state.near){
-      if(m.approx||m.lat==null)return false;
+      if(m.lat==null||m.lng==null||!isFinite(m.lat)||!isFinite(m.lng))return false;
       if(dist(state.near[0],state.near[1],m.lat,m.lng)>state.radius)return false;
     }
     if(hideEnded&&isOver(m))return false;
@@ -1846,20 +1854,34 @@ function renderFeatured(el,list){
   return next._id;
 }
 function renderEmpty(el){
+  // If search has hits outside "today", offer to expand the day window
+  let weekHits=0;
+  if(state.q&&state.day!==null&&!state.daySet){
+    const keepDay=state.day,keepSet=state.daySet,keepHoriz=state.horizon;
+    state.day=null;state.daySet=null;state.horizon=30;
+    weekHits=filtered().length;
+    state.day=keepDay;state.daySet=keepSet;state.horizon=keepHoriz;
+  }
   const tips=state.mode==="support"
     ?"Try Tonight, Open, a different area, or turn on Online only."
     :(state.vibe==="social"
       ?"Nothing in your scene for this day — try Tonight, or switch to Everything."
       :"Try another day, turn off a filter, or search All week.");
+  const weekBtn=weekHits?`<button type="button" class="btn" data-empty="week">Show ${weekHits} match${weekHits===1?"":"es"} this month</button>`:"";
   el.innerHTML=`<div class="empty">
     <div class="empty-title">No matches for ${dayViewLabel()}</div>
-    ${tips}<br>
+    ${esc(tips)}<br>
     <div class="empty-actions">
+      ${weekBtn}
       <button type="button" class="btn" data-empty="today">Today</button>
       <button type="button" class="btn" data-empty="tonight">Tonight</button>
       ${state.mode==="activities"&&state.vibe==="social"?`<button type="button" class="btn" data-empty="all">Everything</button>`:""}
       <button type="button" class="btn" data-empty="clear">Clear filters</button>
     </div></div>`;
+  el.querySelector('[data-empty="week"]')?.addEventListener("click",()=>{
+    state.day=null;state.daySet=null;state.horizon=30;state.preset="";
+    syncDayUI();buildPresets();render();
+  });
   el.querySelector('[data-empty="today"]')?.addEventListener("click",()=>applyPreset("today"));
   el.querySelector('[data-empty="tonight"]')?.addEventListener("click",()=>applyPreset("tonight"));
   el.querySelector('[data-empty="all"]')?.addEventListener("click",()=>setVibe("all"));
@@ -2477,7 +2499,6 @@ function init(){
   document.getElementById("q").value=state.q||"";
   document.getElementById("nowbtn").classList.toggle("on",state.nowOnly);
   syncTodUI();syncDayUI();updateSavedBtn();
-  try{if(!localStorage.getItem("gather-tips-hide"))document.getElementById("tips").hidden=false;}catch(e){}
   document.getElementById("tipsDismiss")?.addEventListener("click",()=>{
     document.getElementById("tips").hidden=true;
     try{localStorage.setItem("gather-tips-hide","1");}catch(e){}

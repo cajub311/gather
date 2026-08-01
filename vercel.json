@@ -1,4 +1,8 @@
 {
+  "framework": null,
+  "installCommand": "echo skip-install",
+  "buildCommand": "node test/design-guard.mjs",
+  "outputDirectory": ".",
   "functions": {
     "api/events.js": { "maxDuration": 60 },
     "api/meetings.js": { "maxDuration": 30 }

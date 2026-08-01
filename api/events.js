@@ -7,6 +7,9 @@
 //   meetup -> Meetup's public city page (no paid API)
 //   eventbrite -> Eventbrite's public city results (no API key)
 //   ics    -> Google Calendar / iCal public feeds (.ics)
+//   cabooze -> Cabooze RHP events HTML (Communion Sundays, shows)
+//   firstave -> First Avenue WP event posts (also Fine Line, Turf Club, Entry)
+//   standing -> fixed recurring community events (Dance Church, etc.)
 //
 // Add a venue/org: drop it in SOURCES with its type. That's the whole job.
 
@@ -35,6 +38,10 @@ const SOURCES = [
   { type: "tribe", name: "White Squirrel Bar", base: "https://whitesquirrelbar.com", lat: 44.9270, lng: -93.1250, addr: "974 W 7th St, St Paul", fallback: "Music" },
   { type: "tribe", name: "Science Museum of MN", base: "https://www.smm.org", lat: 44.9425, lng: -93.0990, addr: "120 W Kellogg Blvd, St Paul", fallback: "Family" },
   { type: "tribe", name: "Malcolm Yards", base: "https://malcolmyards.market", lat: 44.9797, lng: -93.2130, addr: "501 30th Ave SE, Minneapolis" },
+  { type: "tribe", name: "Dakota Jazz Club", base: "https://dakotacooks.com", lat: 44.9727, lng: -93.2760, addr: "1010 Nicollet Mall, Minneapolis", cat: "Music" },
+  { type: "tribe", name: "Bell Museum", base: "https://www.bellmuseum.umn.edu", lat: 45.0000, lng: -93.1876, addr: "2088 Larpenteur Ave W, St Paul", fallback: "Family" },
+  // NE brewery with regular trivia / social nights (confirmed tribe feed)
+  { type: "tribe", name: "Wooden Hill Brewing", base: "https://woodenhillbrewing.com", lat: 45.0139, lng: -93.2475, addr: "2415 Central Ave NE, Minneapolis" },
 
   // --- UMN public calendar (LiveWhale JSON) — lectures, arboretum, concerts ---
   { type: "livewhale", name: "UMN Events", url: "https://events.tc.umn.edu/live/json/events/max/300", lat: 44.9740, lng: -93.2277, addr: "Minneapolis", fallback: "Learn" },
@@ -47,16 +54,63 @@ const SOURCES = [
   { type: "squarespace", name: "The Cedar", base: "https://www.thecedar.org/events", lat: 44.9689, lng: -93.2470, addr: "416 Cedar Ave S, Minneapolis", cat: "Music" },
   { type: "squarespace", name: "Berlin", base: "https://www.berlinmpls.com/calendar", lat: 44.9822, lng: -93.2717, addr: "204 N 1st St, Minneapolis", cat: "Music" },
 
-  // --- Library systems (BiblioCommons JSON) — free events, storytimes, classes ---
+  // --- Nightlife / dance / concerts ---
+  { type: "cabooze", name: "The Cabooze", url: "https://cabooze.com/events/", lat: 44.9628, lng: -93.2465, addr: "913 Cedar Ave S, Minneapolis", cat: "Music" },
+  { type: "firstave", name: "First Avenue + sister venues", listUrl: "https://first-avenue.com/shows/", cat: "Music" },
+
+  // Standing community hangouts (published schedules, no JSON API)
+  {
+    type: "standing",
+    name: "Dance Church Mpls",
+    title: "Dance Church",
+    rule: "sundaysExceptFirst",
+    time: "11:00",
+    dur: 120,
+    loc: "Tapestry Folkdance Center",
+    addr: "3748 Minnehaha Ave, Minneapolis",
+    lat: 44.9347,
+    lng: -93.2246,
+    cat: "Music",
+    types: ["Dance", "All ages", "DJ"],
+    url: "https://www.dancechurch.net/",
+    desc: "DJ dance party every Sunday except the first Sunday of the month. 11am–1pm at Tapestry Folkdance Center.",
+  },
+
+  // --- Library systems (BiblioCommons JSON) ---
   { type: "biblio", name: "St Paul Library", lib: "sppl", addr: "St Paul", fallback: "Learn" },
   { type: "biblio", name: "Hennepin Co. Library", lib: "hclib", addr: "Minneapolis", fallback: "Learn" },
+  { type: "biblio", name: "Ramsey Co. Library", lib: "rclreads", addr: "Ramsey County", fallback: "Learn" },
 
-  // --- Wide public discovery pages ---
+  // --- Discovery: general city scrapes ---
   { type: "meetup", name: "Meetup", url: "https://www.meetup.com/find/us--mn--minneapolis/?eventType=inPerson&source=EVENTS" },
   { type: "meetup", name: "Meetup St Paul", url: "https://www.meetup.com/find/us--mn--saint-paul/?eventType=inPerson&source=EVENTS" },
+  // Keyword Meetup hunts — board games, trivia, dance, social (your scene)
+  { type: "meetup", name: "Meetup Board Games", url: "https://www.meetup.com/find/?keywords=board%20games&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Games" },
+  { type: "meetup", name: "Meetup Trivia", url: "https://www.meetup.com/find/?keywords=trivia&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Games" },
+  { type: "meetup", name: "Meetup Dance", url: "https://www.meetup.com/find/?keywords=dance&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Music" },
+  { type: "meetup", name: "Meetup Social", url: "https://www.meetup.com/find/?keywords=social&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Social" },
+  { type: "meetup", name: "Meetup Language", url: "https://www.meetup.com/find/?keywords=language%20exchange&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Language" },
+  { type: "meetup", name: "Meetup Hiking", url: "https://www.meetup.com/find/?keywords=hiking&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Outdoors" },
+  { type: "meetup", name: "Meetup Comedy", url: "https://www.meetup.com/find/?keywords=comedy&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Music" },
+  { type: "meetup", name: "Meetup D&D", url: "https://www.meetup.com/find/?keywords=dungeons%20dragons&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Games" },
+  { type: "meetup", name: "Meetup Running", url: "https://www.meetup.com/find/?keywords=running&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Fitness" },
+  { type: "meetup", name: "Meetup Book Clubs", url: "https://www.meetup.com/find/?keywords=book%20club&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Books" },
+  // Active board-game groups (weekly brewery / shop nights around the metro)
+  { type: "meetup", name: "MN Board Games group", url: "https://www.meetup.com/minnesota-board-game-get-together/events/", cat: "Games" },
+
   { type: "eventbrite", name: "Eventbrite", url: "https://www.eventbrite.com/d/mn--minneapolis/events--today/" },
   { type: "eventbrite", name: "Eventbrite (page 2)", url: "https://www.eventbrite.com/d/mn--minneapolis/events--today/?page=2" },
   { type: "eventbrite", name: "Eventbrite St Paul", url: "https://www.eventbrite.com/d/mn--saint-paul/events--this-week/" },
+  // Topic pages — more music/nightlife/hobby signal than generic "today"
+  { type: "eventbrite", name: "Eventbrite Music", url: "https://www.eventbrite.com/d/mn--minneapolis/music--events--this-week/", cat: "Music" },
+  { type: "eventbrite", name: "Eventbrite Nightlife", url: "https://www.eventbrite.com/d/mn--minneapolis/nightlife--events--this-week/", cat: "Music" },
+  { type: "eventbrite", name: "Eventbrite Hobbies", url: "https://www.eventbrite.com/d/mn--minneapolis/hobbies--events--this-week/", cat: "Games" },
+  { type: "eventbrite", name: "Eventbrite Food & Drink", url: "https://www.eventbrite.com/d/mn--minneapolis/food-and-drink--events--this-week/", cat: "Food" },
+  { type: "eventbrite", name: "Eventbrite Music St Paul", url: "https://www.eventbrite.com/d/mn--saint-paul/music--events--this-week/", cat: "Music" },
+  { type: "eventbrite", name: "Eventbrite Comedy", url: "https://www.eventbrite.com/d/mn--minneapolis/comedy--events--this-week/", cat: "Music" },
+  { type: "eventbrite", name: "Eventbrite Arts", url: "https://www.eventbrite.com/d/mn--minneapolis/arts--events--this-week/", cat: "Art" },
+  { type: "eventbrite", name: "Eventbrite Film", url: "https://www.eventbrite.com/d/mn--minneapolis/film-and-media--events--this-week/", cat: "Art" },
+  { type: "eventbrite", name: "Eventbrite Fitness", url: "https://www.eventbrite.com/d/mn--minneapolis/sports-and-fitness--events--this-week/", cat: "Fitness" },
 ];
 
 // skip taproom logistics / non-activity filler that some venues publish as "events"
@@ -76,6 +130,8 @@ function isNoise(title) {
   // "2 Days Certified … Training", "1 Day Workshop in Minneapolis"
   if (/\b\d+\s*days?\s+(?:certified|certification|training|workshop|course|bootcamp)\b/i.test(t)) return true;
   if (/\b\d+\s*day\s+(?:workshop|training|bootcamp|course)\b/i.test(t)) return true;
+  // multi-week fundraisers / "July 1–31" campaigns published as midnight events
+  if (/\b(domestic abuse project|fundrais(?:e|ing)\s+month|month[- ]long)\b/i.test(t)) return true;
   return false;
 }
 
@@ -112,7 +168,9 @@ function classify(text, catNames) {
   const t = ((text || "") + " " + cats).toLowerCase();
   const has = (re) => re.test(t);
   if (has(/trivia|quiz night|\bbingo\b|board game|tabletop|chess|d&d|dungeons|magic the|euchre|card game|crokinole|jigsaw|puzzl|pinball|arcade|karaoke|game night|clocktower/)) return "Games";
-  if (has(/music|concert|\bband\b|\bjam\b|\bdj\b|open mic|singer|songwriter|orchestra|jazz|acoustic|hip[- ]?hop|\bpunk\b|\bmetal\b|indie|bluegrass|\bchoir\b|recital|honky tonk|\bfest\b|on stage|\blive at\b|\btrio\b|quartet|quintet|\bduo\b|\bvinyl\b/)) return "Music";
+  if (has(/music|concert|\bband\b|\bjam\b|\bdj\b|open mic|singer|songwriter|orchestra|jazz|acoustic|hip[- ]?hop|\bpunk\b|\bmetal\b|indie|bluegrass|\bchoir\b|recital|honky tonk|\bfest\b|on stage|\blive at\b|\btrio\b|quartet|quintet|\bduo\b|\bvinyl\b|communion|\bedm\b|techno|house music|dance party|dance church|rave|nightclub|live show|comedy|stand[- ]?up/)) return "Music";
+  // board games / trivia often land as "Social" without this
+  if (has(/trivia|quiz night|\bbingo\b|board game|tabletop|game night|mario kart|canasta|euchre|d&d|dungeons/)) return "Games";
   if (has(/meditat|mindful|sound bath|breathwork|yin yoga|restorative|reiki|sangha|zazen|dharma/)) return "Zen";
   if (has(/storytime|story time|toddler|preschool|\bkids?\b|children|\bfamily\b|all ages|\bbabies?\b|\bteens?\b|puppet|face paint|\blego\b|zookeeper|gorilla|polar bear|tiger talk|giraffe|penguin|sea lion|petting|little explorer|sea stories|dinosaur/)) return "Family";
   if (has(/\brun(?:ning|s)?\b|\b(?:5|10)k\b|marathon|fitness|workout|yoga|pilates|volleyball|pickleball|table tennis|ping pong|climb|cycling|bike ride|bike night|\bsports?\b|softball|basketball|\bswim|skate|zumba|\bbarre\b|crossfit/)) return "Fitness";
@@ -271,6 +329,7 @@ async function fromTribe(src, startISO, endISO) {
       lat: isFinite(lat) ? lat : src.lat,
       lng: isFinite(lng) ? lng : src.lng,
       types: [e.cost ? decode(e.cost) : "", catNames[0] || ""].filter(Boolean).slice(0, 2),
+      free: isFreeCost(decode(e.cost)) || undefined,
       desc: short(e.description || "") || undefined,
       url: e.url,
       date: `${p.y}-${String(p.mo).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`,
@@ -427,6 +486,7 @@ async function fromBiblio(src) {
         addr: decode([a.number && a.street ? `${a.number} ${a.street}` : a.street, a.city].filter(Boolean).join(", ")) || src.addr,
         lat: cp.lat, lng: cp.lng,
         types: ["Free", audNames[0] || typeNames[0] || ""].filter(Boolean).slice(0, 2),
+        free: true,
         desc: short(e.description || "") || undefined,
         url: `https://${src.lib}.bibliocommons.com/events/${id}`,
         image: img && img.url,
@@ -467,6 +527,7 @@ async function fromLiveWhale(src) {
       addr: decode(e.location),
       lat: src.lat, lng: src.lng, approx: true,
       types: e.cost ? [decode(e.cost).slice(0, 18)] : [],
+      free: isFreeCost(decode(e.cost)) || undefined,
       desc: short(e.description || "") || undefined,
       url: e.url,
       date: `${p.y}-${String(p.mo).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`,
@@ -485,6 +546,16 @@ function cityPoint(city) {
   if (c.includes("bloomington")) return { lat: 44.8408, lng: -93.2983 };
   if (c.includes("edina")) return { lat: 44.8897, lng: -93.3499 };
   if (c.includes("shoreview")) return { lat: 45.0791, lng: -93.1472 };
+  if (c.includes("roseville")) return { lat: 45.0061, lng: -93.1566 };
+  if (c.includes("richfield")) return { lat: 44.8833, lng: -93.2830 };
+  if (c.includes("minnetonka")) return { lat: 44.9211, lng: -93.4687 };
+  if (c.includes("eagan")) return { lat: 44.8041, lng: -93.1669 };
+  if (c.includes("maplewood")) return { lat: 44.9530, lng: -93.0160 };
+  if (c.includes("new brighton") || c.includes("arden hills")) return { lat: 45.0655, lng: -93.2019 };
+  if (c.includes("hopkins")) return { lat: 44.9264, lng: -93.4055 };
+  if (c.includes("st. louis park") || c.includes("saint louis park")) return { lat: 44.9483, lng: -93.3480 };
+  if (c.includes("crystal") || c.includes("robbinsdale") || c.includes("brooklyn center")) return { lat: 45.0522, lng: -93.3100 };
+  if (c.includes("woodbury")) return { lat: 44.9239, lng: -92.9594 };
   return { lat: 44.9778, lng: -93.2650 };
 }
 
@@ -515,8 +586,10 @@ async function fromMeetup(src) {
     const point = cityPoint(venue.city);
     const address = [venue.address, venue.city, venue.state].filter(Boolean).join(", ");
     const going = e.going && Number(e.going.totalCount);
+    const guessed = classify(`${e.title} ${(e.group && e.group.name) || ""}`);
     return {
-      cat: classify(`${e.title} ${(e.group && e.group.name) || ""}`) || "Social",
+      // Keyword Meetup scrapes pass cat so "board games" doesn't land in Social
+      cat: src.cat || guessed || "Social",
       name: decode(e.title),
       day: dayKey(p),
       time: `${String(p.h).padStart(2, "0")}:${String(p.mi).padStart(2, "0")}`,
@@ -557,7 +630,7 @@ async function fromEventbrite(src) {
     const address = decode(a.localized_address_display || [a.address_1, a.city, a.region].filter(Boolean).join(", "));
     const onlinePlace = /(?:^|\b)(online|virtual|zoom)(?:\b|$)/i.test(`${venueName} ${address}`);
     out.push({
-      cat: classify(e.name, tags) || classify(`${e.name} ${tags.join(" ")}`) || "Social",
+      cat: classify(e.name, tags) || classify(`${e.name} ${tags.join(" ")}`) || src.cat || "Social",
       name: decode(e.name),
       day: dayKey(p),
       time: e.start_time,
@@ -586,6 +659,335 @@ function chicagoDateKey(date) {
   return `${p.y}-${String(p.mo).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`;
 }
 
+const MON3 = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+
+// "Sat, Aug 01" / "Sun, Aug 2" (Cabooze list) → wall-clock parts in Chicago year
+function parseCaboozeDate(s, nowParts) {
+  const m = String(s || "").match(/([A-Za-z]{3}),\s*([A-Za-z]{3})\s+(\d{1,2})/);
+  if (!m) return null;
+  const mo = MON3[m[2].toLowerCase()];
+  if (!mo) return null;
+  const d = +m[3];
+  let y = nowParts.y;
+  // Dec/Jan wrap: if listing month is far behind "now", it's next year
+  if (mo < nowParts.mo - 1) y += 1;
+  return { y, mo, d, h: 12, mi: 0 };
+}
+
+// "5 pm", "9:30 pm", "Doors: 10 pm // Show: 11 pm" → 24h HH:MM (prefer Show time)
+function parseShowClock(s) {
+  const str = String(s || "");
+  const show = str.match(/Show:\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
+  const m = show || str.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
+  if (!m) return "20:00";
+  let h = +m[1];
+  const mi = m[2] ? +m[2] : 0;
+  const ap = m[3].toLowerCase();
+  if (ap === "pm" && h < 12) h += 12;
+  if (ap === "am" && h === 12) h = 0;
+  return `${String(h).padStart(2, "0")}:${String(mi).padStart(2, "0")}`;
+}
+
+function eventRow(src, { title, p, time, url, types, desc, cat, loc, addr, lat, lng }) {
+  const day = dayKey(p);
+  return {
+    cat: cat || src.cat || classify(title) || src.fallback || "Music",
+    name: title,
+    day,
+    time: time || "20:00",
+    dur: src.dur || 180,
+    fmt: "in-person",
+    loc: loc || src.loc || src.name,
+    addr: addr || src.addr,
+    lat: lat != null ? lat : src.lat,
+    lng: lng != null ? lng : src.lng,
+    types: types || [],
+    desc: desc || undefined,
+    url: url || src.url,
+    date: `${p.y}-${String(p.mo).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`,
+    dateLabel: `${DOW[day]}, ${MON[p.mo - 1]} ${p.d}`,
+    source: src.name,
+    live: true,
+    verified: true,
+  };
+}
+
+// Cabooze RHP events grid HTML (Communion Sundays, concerts, patio shows)
+async function fromCabooze(src) {
+  const budget = deadline();
+  const nowP = chicagoParts(Date.now());
+  const pages = [src.url];
+  // page 2 if present
+  pages.push(src.url.replace(/\/?$/, "/page/2/"));
+  const out = [];
+  const seen = new Set();
+  for (const pageUrl of pages) {
+    if (budget.expired()) break;
+    let html;
+    try {
+      html = await getText(pageUrl, 12000, budget);
+    } catch {
+      continue;
+    }
+    const re =
+      /id="eventDate"[^>]*>\s*([^<]+)<\/div>[\s\S]{0,3000}?href="(https:\/\/cabooze\.com\/event\/[^"]+)"[^>]*title="([^"]+)"[\s\S]{0,2500}?(?:Show|Doors):\s*([^<\n]+)/gi;
+    let m;
+    while ((m = re.exec(html))) {
+      const dateStr = m[1].trim();
+      const url = m[2];
+      const title = decode(m[3]);
+      const clockRaw = m[4].replace(/\s+/g, " ").trim();
+      if (!title || isNoise(title)) continue;
+      const p = parseCaboozeDate(dateStr, nowP);
+      if (!p) continue;
+      const time = parseShowClock(clockRaw);
+      const [hh, mm] = time.split(":").map(Number);
+      p.h = hh;
+      p.mi = mm;
+      const k = title.toLowerCase() + "|" + p.y + p.mo + p.d + "|" + time;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      const types = [];
+      if (/communion/i.test(title)) types.push("EDM", "21+");
+      else if (/reggae|massive monday/i.test(title)) types.push("Reggae");
+      else types.push("Live music", "21+");
+      out.push(
+        eventRow(src, {
+          title,
+          p,
+          time,
+          url,
+          types,
+          cat: "Music",
+          loc: "The Cabooze",
+          addr: src.addr,
+          lat: src.lat,
+          lng: src.lng,
+        })
+      );
+    }
+  }
+  return out;
+}
+
+// First Avenue family venues (Mainroom, Entry, Fine Line, Turf Club, Palace, Fitz)
+const FIRSTAVE_VENUE_MAP = {
+  "turf-club": { loc: "Turf Club", addr: "1601 University Ave W, St Paul", lat: 44.9556, lng: -93.1670 },
+  "fine-line": { loc: "Fine Line", addr: "318 1st Ave N, Minneapolis", lat: 44.9836, lng: -93.2725 },
+  "7th-st-entry": { loc: "7th St Entry", addr: "701 1st Ave N, Minneapolis", lat: 44.9784, lng: -93.2760 },
+  "palace-theatre": { loc: "Palace Theatre", addr: "17 W 7th Pl, St Paul", lat: 44.9450, lng: -93.0980 },
+  "the-fitzgerald-theater": { loc: "Fitzgerald Theater", addr: "10 E Exchange St, St Paul", lat: 44.9478, lng: -93.0965 },
+  "first-avenue": { loc: "First Avenue", addr: "701 1st Ave N, Minneapolis", lat: 44.9784, lng: -93.2760 },
+  "mpls-cpac": { loc: "MPLS CPAC", addr: "Minneapolis", lat: 44.9778, lng: -93.2650 },
+};
+
+function parseTitleDate(title) {
+  // "Zoso 10/8/26" / "Michael Che 8/29/26 (late)"
+  const m = String(title || "").match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if (!m) return null;
+  let y = +m[3];
+  if (y < 100) y += 2000;
+  return { y, mo: +m[1], d: +m[2], h: 20, mi: 0 };
+}
+
+// slug "2026-09-sapphic-factory-queer-joy-party" + title date "9/12/26"
+function parseFirstAveDate(slug, title) {
+  const fromTitle = parseTitleDate(title);
+  if (fromTitle) return fromTitle;
+  const m = String(slug || "").match(/^(\d{4})-(\d{2})-/);
+  if (!m) return null;
+  // month from slug only — day unknown; skip (title date is reliable when present)
+  return null;
+}
+
+async function fromFirstAve(src) {
+  const budget = deadline();
+  // /shows/ cards: poster link + month/day + venue-* class + artist name
+  const pageUrl = src.listUrl || "https://first-avenue.com/shows/";
+  const html = await getText(pageUrl, 15000, budget);
+  const out = [];
+  const seen = new Set();
+
+  // Each show card is anchored by /event/{slug}/ then nearby .month / .day / venue class
+  const linkRe = /href="(https:\/\/first-avenue\.com\/event\/([^"\/]+))\/?"/gi;
+  let m;
+  while ((m = linkRe.exec(html))) {
+    const url = m[1].replace(/\/$/, "") + "/";
+    const slug = decodeURIComponent(m[2]);
+    if (seen.has(url)) continue;
+
+    // Card body is after the poster link (venue + date + title live nearby either side)
+    const around = html.slice(Math.max(0, m.index - 200), m.index + 1800);
+
+    const monthM = around.match(/class="month"\s*>\s*([A-Za-z]{3,9})\s*</i);
+    const dayM = around.match(/class="day"\s*>\s*(\d{1,2})\s*</i);
+    const venueM = around.match(/venue-([a-z0-9-]+)/i);
+    const venueKey = venueM && FIRSTAVE_VENUE_MAP[venueM[1].toLowerCase()]
+      ? venueM[1].toLowerCase()
+      : "first-avenue";
+    const venue = FIRSTAVE_VENUE_MAP[venueKey] || FIRSTAVE_VENUE_MAP["first-avenue"];
+
+    // Artist title: prefer visible name link text, not "Buy Tickets"
+    let title = "";
+    const titleCandidates = [...around.matchAll(/href="https:\/\/first-avenue\.com\/event\/[^"]+"[^>]*>\s*([^<]{2,100})\s*</gi)]
+      .map((x) => decode(x[1]).trim())
+      .filter((t) => t && !/buy tickets|view details|read more|^\s*$/i.test(t));
+    title = titleCandidates.sort((a, b) => b.length - a.length)[0] || "";
+    if (!title || title.length < 3) {
+      title = slug
+        .replace(/^\d{4}-\d{2}-/, "")
+        .replace(/-/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+    }
+    if (isNoise(title)) continue;
+
+    const slugY = slug.match(/^(\d{4})-(\d{2})-/);
+    let y = slugY ? +slugY[1] : chicagoParts(Date.now()).y;
+    let mo = slugY ? +slugY[2] : null;
+    let d = dayM ? +dayM[1] : null;
+    if (monthM) {
+      const mo2 = MON3[monthM[1].slice(0, 3).toLowerCase()];
+      if (mo2) mo = mo2;
+    }
+    // title date wins when present (handles multi-night + late/early)
+    const fromTitle = parseTitleDate(title);
+    if (fromTitle) {
+      y = fromTitle.y;
+      mo = fromTitle.mo;
+      d = fromTitle.d;
+    }
+    if (!mo || !d) continue;
+
+    let time = "20:00";
+    if (/\blate\b/i.test(title + " " + slug)) time = "22:00";
+    else if (/\bearly\b/i.test(title + " " + slug)) time = "19:00";
+    const [hh, mm] = time.split(":").map(Number);
+    const p = { y, mo, d, h: hh, mi: mm };
+
+    const cleanName = title
+      .replace(/\s+\d{1,2}\/\d{1,2}\/\d{2,4}\s*/g, " ")
+      .replace(/\s*\((early|late)\)\s*/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const k = cleanName.toLowerCase() + "|" + y + mo + d + "|" + venue.loc + "|" + time;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    seen.add(url);
+
+    out.push(
+      eventRow(src, {
+        title: cleanName || title,
+        p,
+        time,
+        url,
+        types: ["Live music", venue.loc],
+        cat: "Music",
+        loc: venue.loc,
+        addr: venue.addr,
+        lat: venue.lat,
+        lng: venue.lng,
+      })
+    );
+  }
+  return out;
+}
+
+// Fixed recurring community events with a public published schedule (no API)
+function fromStanding(src) {
+  const out = [];
+  const now = new Date();
+  const today = chicagoParts(now.getTime());
+  // generate next ~45 days of occurrences
+  for (let i = 0; i < 50; i++) {
+    const dt = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+    const p = chicagoParts(dt.getTime());
+    // skip past days
+    const dateStr = `${p.y}-${String(p.mo).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`;
+    const todayStr = `${today.y}-${String(today.mo).padStart(2, "0")}-${String(today.d).padStart(2, "0")}`;
+    if (dateStr < todayStr) continue;
+
+    let ok = false;
+    if (src.rule === "sundaysExceptFirst") {
+      // JS: 0 = Sunday. First Sunday of month = day 1–7.
+      const jsDay = new Date(p.y, p.mo - 1, p.d).getDay();
+      ok = jsDay === 0 && p.d > 7;
+    } else if (src.rule === "everySunday") {
+      ok = new Date(p.y, p.mo - 1, p.d).getDay() === 0;
+    }
+    if (!ok) continue;
+
+    const [hh, mm] = (src.time || "11:00").split(":").map(Number);
+    p.h = hh;
+    p.mi = mm;
+    out.push(
+      eventRow(src, {
+        title: src.title || src.name,
+        p,
+        time: src.time || "11:00",
+        url: src.url,
+        types: src.types || [],
+        cat: src.cat || "Music",
+        loc: src.loc,
+        addr: src.addr,
+        lat: src.lat,
+        lng: src.lng,
+        desc: src.desc,
+      })
+    );
+  }
+  return out;
+}
+
+// Weather is the deciding factor for an outdoor plan in Minnesota. api.weather.gov
+// is free and keyless; its hourly forecast runs ~6.5 days, which covers the
+// default views. One fetch for the metro (events here are within ~15 miles, well
+// inside a single NWS grid cell's usefulness) — per-event lookups would be
+// hundreds of requests for no real accuracy gain.
+// Only trust "free" when the source says so. Eventbrite's search payload carries
+// no price at all, so the front-end chip means "stated free by the venue/library",
+// not "we checked" — better a smaller honest set than a chip that lies.
+function isFreeCost(cost) {
+  const c = String(cost || "").trim();
+  if (!c) return false;
+  return /^(free|no charge|no cost|donation|\$?0(\.00)?)$/i.test(c);
+}
+
+const OUTDOOR_CATS = new Set(["Outdoors", "Fitness", "Volunteer", "Family"]);
+
+async function addWeather(events) {
+  let periods;
+  try {
+    const pt = await getJSON("https://api.weather.gov/points/44.9778,-93.2650", 6000);
+    const url = pt.properties && pt.properties.forecastHourly;
+    if (!url) return;
+    const fc = await getJSON(url, 8000);
+    periods = fc.properties && fc.properties.periods;
+    if (!Array.isArray(periods)) return;
+  } catch {
+    return; // forecast is a bonus, never a reason to fail the response
+  }
+
+  // index by local "YYYY-MM-DDTHH" so lookup is a plain string match
+  const byHour = new Map();
+  for (const p of periods) {
+    const m = String(p.startTime || "").match(/^(\d{4}-\d{2}-\d{2})T(\d{2})/);
+    if (m) byHour.set(m[1] + "T" + m[2], p);
+  }
+
+  for (const e of events) {
+    if (!OUTDOOR_CATS.has(e.cat) || e.fmt === "online") continue;
+    const p = byHour.get(e.date + "T" + e.time.slice(0, 2));
+    if (!p) continue;
+    const pop = p.probabilityOfPrecipitation && p.probabilityOfPrecipitation.value;
+    e.wx = {
+      temp: p.temperature,
+      unit: p.temperatureUnit || "F",
+      summary: p.shortForecast || "",
+      pop: Number.isFinite(pop) ? pop : null,
+    };
+  }
+}
+
 module.exports = async (req, res) => {
   const now = new Date();
   const end = new Date(now.getTime() + 45 * 864e5); // next 45 days
@@ -604,6 +1006,9 @@ module.exports = async (req, res) => {
       else if (src.type === "squarespace") list = await fromSquarespace(src);
       else if (src.type === "meetup") list = await fromMeetup(src);
       else if (src.type === "eventbrite") list = await fromEventbrite(src);
+      else if (src.type === "cabooze") list = await fromCabooze(src);
+      else if (src.type === "firstave") list = await fromFirstAve(src);
+      else if (src.type === "standing") list = fromStanding(src);
       else list = await fromTribe(src, startISO, endISO);
       return { src, list };
     })
@@ -626,7 +1031,16 @@ module.exports = async (req, res) => {
   // aggregators (found live: Eventbrite said 6 PM, Malcolm Yards said 10 AM).
   const venueKey = (s) => String(s || "").toLowerCase().replace(/\bmn\b/g, "minnesota")
     .replace(/\b(the|at|market|taproom|co|company|of)\b/g, " ").replace(/[^a-z0-9]+/g, " ").trim();
-  const directKeys = SOURCES.filter((s) => s.base).map((s) => venueKey(s.name)).filter((k) => k.length > 5);
+  const directKeys = SOURCES
+    .filter((s) => s.base || s.type === "cabooze" || s.type === "firstave" || s.type === "standing")
+    .map((s) => venueKey(s.loc || s.name))
+    .filter((k) => k.length > 4);
+  // also protect sister-venue names pulled under First Avenue
+  for (const v of Object.values(FIRSTAVE_VENUE_MAP)) {
+    const k = venueKey(v.loc);
+    if (k.length > 4) directKeys.push(k);
+  }
+  directKeys.push(venueKey("The Cabooze"), venueKey("Tapestry Folkdance Center"));
   events = events.filter((e) => {
     if (!/^(meetup|eventbrite)/i.test(e.source)) return true;
     const k = venueKey(e.loc);
@@ -655,6 +1069,18 @@ module.exports = async (req, res) => {
     perDay.set(k, n);
     return n <= 3;
   });
+
+  // Midnight "all day" fundraisers / multi-week campaigns aren't something to go do at 12:00 AM
+  events = events.filter((e) => e.time !== "00:00" && e.time !== "0:00");
+
+  // Flag standing programs so the front-end can offer "hide daily repeats" —
+  // Como Zoo's 9 recurring animal talks otherwise are most of Kids & family.
+  const runCount = new Map();
+  const seriesKey = (e) => e.source + "|" + e.name.toLowerCase().replace(/\W+/g, " ").trim();
+  for (const e of events) runCount.set(seriesKey(e), (runCount.get(seriesKey(e)) || 0) + 1);
+  for (const e of events) if (runCount.get(seriesKey(e)) >= 8) e.series = true;
+
+  await addWeather(events);
 
   res.setHeader("Cache-Control", "s-maxage=900, stale-while-revalidate=21600");
   res.setHeader("Content-Type", "application/json; charset=utf-8");
