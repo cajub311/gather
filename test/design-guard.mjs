@@ -7,8 +7,8 @@ const sw = readFileSync(new URL("../sw.js", import.meta.url), "utf8");
 const initBody = html.match(/function init\(\)\{([\s\S]*?)\n\}\nfunction setUserMarker/)?.[1] || "";
 
 const checks = [
-  ["dayboard design marker", html.includes('data-design="dayboard-v2"')],
-  ["dayboard metadata", html.includes('name="gather-design" content="dayboard-v2"')],
+  ["dayboard design marker", html.includes('data-design="dayboard-v4"')],
+  ["dayboard metadata", html.includes('name="gather-design" content="dayboard-v4"')],
   [
     "desktop and mobile Map/List stay visible",
     /\.mode-activities \.viewtabs\s*\{[\s\S]{0,180}?display:flex/.test(html),
@@ -31,7 +31,7 @@ const checks = [
   ["soft distance sort for approx", html.includes("_sortD")],
   ["automatic startup does not request location", !initBody.includes("getCurrentPosition") && !initBody.includes("requestMyArea")],
   ["installed app refreshes itself", html.includes('serviceWorker.addEventListener("controllerchange"')],
-  ["current app cache", sw.includes('const CACHE = "gather-v7"')],
+  ["current app cache", sw.includes('const CACHE = "gather-v9"')],
 ];
 
 const failed = checks.filter(([, ok]) => !ok);

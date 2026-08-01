@@ -7,8 +7,10 @@
 //   meetup -> Meetup's public city page (no paid API)
 //   eventbrite -> Eventbrite's public city results (no API key)
 //   ics    -> Google Calendar / iCal public feeds (.ics)
+//   rss    -> Wild Apricot community calendars
 //   cabooze -> Cabooze RHP events HTML (Communion Sundays, shows)
 //   firstave -> First Avenue WP event posts (also Fine Line, Turf Club, Entry)
+//   opendate -> independent venue calendars powered by OpenDate
 //   standing -> fixed recurring community events (Dance Church, etc.)
 //
 // Add a venue/org: drop it in SOURCES with its type. That's the whole job.
@@ -40,6 +42,9 @@ const SOURCES = [
   { type: "tribe", name: "Malcolm Yards", base: "https://malcolmyards.market", lat: 44.9797, lng: -93.2130, addr: "501 30th Ave SE, Minneapolis" },
   { type: "tribe", name: "Dakota Jazz Club", base: "https://dakotacooks.com", lat: 44.9727, lng: -93.2760, addr: "1010 Nicollet Mall, Minneapolis", cat: "Music" },
   { type: "tribe", name: "Bell Museum", base: "https://www.bellmuseum.umn.edu", lat: 45.0000, lng: -93.1876, addr: "2088 Larpenteur Ave W, St Paul", fallback: "Family" },
+  { type: "tribe", name: "American Swedish Institute", base: "https://asimn.org", lat: 44.9552, lng: -93.2659, addr: "2600 Park Ave, Minneapolis", fallback: "Art" },
+  { type: "tribe", name: "DanceMN", base: "https://dancemn.org", lat: 44.9778, lng: -93.2650, addr: "Twin Cities", fallback: "Music" },
+  { type: "tribe", name: "Quatrefoil Library", base: "https://qlibrary.org", lat: 44.9482, lng: -93.2575, addr: "1220 E Lake St, Minneapolis", fallback: "Books" },
   // NE brewery with regular trivia / social nights (confirmed tribe feed)
   { type: "tribe", name: "Wooden Hill Brewing", base: "https://woodenhillbrewing.com", lat: 45.0139, lng: -93.2475, addr: "2415 Central Ave NE, Minneapolis" },
 
@@ -53,10 +58,20 @@ const SOURCES = [
   { type: "squarespace", name: "Pryes Brewing", base: "https://www.pryesbrewing.com/events", lat: 44.9920, lng: -93.2790, addr: "1401 West River Rd N, Minneapolis" },
   { type: "squarespace", name: "The Cedar", base: "https://www.thecedar.org/events", lat: 44.9689, lng: -93.2470, addr: "416 Cedar Ave S, Minneapolis", cat: "Music" },
   { type: "squarespace", name: "Berlin", base: "https://www.berlinmpls.com/calendar", lat: 44.9822, lng: -93.2717, addr: "204 N 1st St, Minneapolis", cat: "Music" },
+  { type: "squarespace", name: "Minneapolis Arts & Culture", base: "https://mplsartsandculture.org/events-2026", lat: 44.9778, lng: -93.2650, addr: "Minneapolis", fallback: "Art" },
+  { type: "squarespace", name: "Germanic-American Institute", base: "https://www.gaimn.org/events", lat: 44.9419, lng: -93.1111, addr: "301 Summit Ave, St Paul", fallback: "Language" },
+  { type: "squarespace", name: "Norway House", base: "https://www.norwayhouse.org/event-calendar", lat: 44.9624, lng: -93.2606, addr: "913 E Franklin Ave, Minneapolis", fallback: "Art" },
+  { type: "squarespace", name: "Alliance Francaise MSP", base: "https://www.afmsp.org/events", lat: 44.9768, lng: -93.2923, addr: "227 Colfax Ave N, Minneapolis", fallback: "Language" },
+  { type: "squarespace", name: "Stand With Ukraine MN", base: "https://www.standwithukrainemn.com/events", lat: 44.9880, lng: -93.2569, addr: "301 Main St NE, Minneapolis", fallback: "Social" },
+
+  // --- Small independent/community calendars not indexed well elsewhere ---
+  { type: "rss", name: "Twin Cities Maker", url: "https://wa.tcmaker.org/widget/Calendar/RSS", loc: "Twin Cities Maker / Hack Factory", lat: 44.9551, lng: -93.2260, addr: "3119 E 26th St, Minneapolis", fallback: "Art" },
+  { type: "opendate", name: "The Hook and Ladder", url: "https://thehookmpls.com/events/", loc: "The Hook and Ladder", lat: 44.9480, lng: -93.2344, addr: "3010 Minnehaha Ave, Minneapolis", fallback: "Music" },
 
   // --- Nightlife / dance / concerts ---
   { type: "cabooze", name: "The Cabooze", url: "https://cabooze.com/events/", lat: 44.9628, lng: -93.2465, addr: "913 Cedar Ave S, Minneapolis", cat: "Music" },
   { type: "firstave", name: "First Avenue + sister venues", listUrl: "https://first-avenue.com/shows/", cat: "Music" },
+  { type: "eventbrite", name: "Can Can Wonderland", url: "https://www.eventbrite.com/d/mn--saint-paul/can-can-wonderland/", venueMatch: "can can wonderland", loc: "Can Can Wonderland", base: "https://www.cancanwonderland.com/entertainment", lat: 44.9538, lng: -93.1839, addr: "755 Prior Ave N, St Paul" },
 
   // Standing community hangouts (published schedules, no JSON API)
   {
@@ -119,7 +134,7 @@ function isNoise(title) {
   // Do NOT treat "Open Mic" / "Open Studio" as hours — only pure open/closed logistics.
   if (/^(closed|now open|patio|taproom|kitchen|we'?re open)\b|^open\s*$|^open\s+at\b|food truck|truck:|curbside|to[- ]go|growler|lean six sigma|project management techniques training|certification training/i.test(t)) return true;
   // civic process, not something to go do
-  if (/\b(open house|board meeting|public hearing|advisory committee|commissioners|city council|budget meeting|listening session)\b/i.test(t)) return true;
+  if (/\b(open house|board meeting|committee meeting|public hearing|advisory committee|commissioners|city council|budget meeting|listening session)\b/i.test(t)) return true;
   // A standing drink special ("A Modist Happy Hour", "Happy Hour: $5 before 6")
   // is a price, not a plan — but a happy hour with a billed act is a real show
   // ("The Current Happy Hour w/ Girl Tones"), so keep anything naming a guest.
@@ -133,6 +148,10 @@ function isNoise(title) {
   // multi-week fundraisers / "July 1–31" campaigns published as midnight events
   if (/\b(domestic abuse project|fundrais(?:e|ing)\s+month|month[- ]long)\b/i.test(t)) return true;
   return false;
+}
+
+function isUnavailableTitle(title) {
+  return /^\s*\(?(?:canceled|cancelled|sold out)\)?\s*[:—-]?/i.test(title || "");
 }
 
 // Venue categories that mean "this row is logistics, not an event". Only drops a
@@ -312,7 +331,7 @@ async function fromTribe(src, startISO, endISO) {
     const p = parseLocal(e.start_date);
     if (!p) continue;
     const title = decode(e.title);
-    if (isNoise(title)) continue;
+    if (isNoise(title) || isUnavailableTitle(title)) continue;
     const v = Array.isArray(e.venue) ? (e.venue[0] || {}) : (e.venue || {});
     const lat = parseFloat(v.geo_lat), lng = parseFloat(v.geo_lng);
     const catNames = (e.categories || []).map((c) => decode(c.name)).filter(Boolean);
@@ -410,7 +429,7 @@ async function fromSquarespace(src) {
     for (const e of items) {
       if (!e.startDate) continue;
       const title = decode(e.title);
-      if (!title || isNoise(title)) continue;
+      if (!title || isNoise(title) || isUnavailableTitle(title)) continue;
       const p = chicagoParts(e.startDate);
       const date = `${p.y}-${String(p.mo).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`;
       const k = title + "|" + date;
@@ -418,13 +437,15 @@ async function fromSquarespace(src) {
       seen.add(k);
       const loc = e.location || {};
       const lat = parseFloat(loc.mapLat), lng = parseFloat(loc.mapLng);
+      const place = `${title} ${loc.addressTitle || ""} ${loc.addressLine1 || ""}`;
+      const online = /(?:^|\b)(online|virtual|zoom)(?:\b|$)/i.test(place);
       out.push({
         cat: src.cat || classify(title, [...(e.tags || []), ...(e.categories || [])]) || src.fallback || "Social",
         name: title,
         day: dayKey(p),
         time: `${String(p.h).padStart(2, "0")}:${String(p.mi).padStart(2, "0")}`,
         dur: 120,
-        fmt: "in-person",
+        fmt: online ? "online" : "in-person",
         loc: decode(loc.addressTitle || src.name),
         addr: decode([loc.addressLine1, loc.addressLine2].filter(Boolean).join(", ")) || src.addr,
         lat: isFinite(lat) && lat ? lat : src.lat,
@@ -439,6 +460,65 @@ async function fromSquarespace(src) {
         verified: true,
       });
     }
+  }
+  return out;
+}
+
+// Wild Apricot exposes small clubs and maker spaces as standard RSS. Its
+// pubDate is the event start (not the post date), including the start time.
+async function fromRSS(src) {
+  const xml = await getText(src.url);
+  const out = [];
+  for (const item of xml.split(/<item>/i).slice(1)) {
+    const field = (name) => {
+      const m = item.match(new RegExp(`<${name}[^>]*>([\\s\\S]*?)<\\/${name}>`, "i"));
+      return m ? m[1].replace(/^<!\[CDATA\[|\]\]>$/g, "").trim() : "";
+    };
+    const ms = Date.parse(field("pubDate"));
+    if (!Number.isFinite(ms)) continue;
+    let title = decode(decode(field("title")))
+      .replace(/\s*\([A-Za-z]{3},?\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}\)\s*$/, "")
+      .trim();
+    if (!title || isUnavailableTitle(title) || /\breserved\b/i.test(title)) continue;
+    const p = chicagoParts(ms);
+    out.push(eventRow(src, {
+      title,
+      p,
+      time: `${String(p.h).padStart(2, "0")}:${String(p.mi).padStart(2, "0")}`,
+      url: decode(field("link")) || src.url,
+      types: [],
+      desc: short(decode(field("description"))),
+      cat: classify(title, [decode(field("description"))]) || src.fallback,
+    }));
+  }
+  return out;
+}
+
+// OpenDate event cards are serialized into the venue's Astro HTML. Reading
+// those cards keeps the link, exact local time, stage and poster without a key.
+async function fromOpenDate(src) {
+  const html = (await getText(src.url)).replace(/&quot;/g, '"');
+  const re = /"venuePermalink":\[0,"([^"]+)"\],"title":\[0,"([^"]+)"\],"date":\[0,"([^"]+)"\],"time":\[0,"([^"]*)"\],"image":\[0,"([^"]*)"\][\s\S]{0,400}?"stage":\[0,"([^"]*)"\]/g;
+  const out = [], seen = new Set();
+  let m;
+  while ((m = re.exec(html))) {
+    const [url, rawTitle, iso, , image, stage] = m.slice(1);
+    const title = decode(rawTitle);
+    if (!title || isNoise(title) || isUnavailableTitle(title) || seen.has(url)) continue;
+    const ms = Date.parse(iso);
+    if (!Number.isFinite(ms)) continue;
+    seen.add(url);
+    const p = chicagoParts(ms);
+    out.push({
+      ...eventRow(src, {
+        title,
+        p,
+        time: `${String(p.h).padStart(2, "0")}:${String(p.mi).padStart(2, "0")}`,
+        url,
+        types: [decode(stage)].filter(Boolean),
+      }),
+      image: decode(image) || undefined,
+    });
   }
   return out;
 }
@@ -628,6 +708,7 @@ async function fromEventbrite(src) {
     const tags = (e.tags || []).map((t) => decode(t.display_name)).filter(Boolean);
     const venueName = decode(e.primary_venue && e.primary_venue.name || a.city || "Twin Cities");
     const address = decode(a.localized_address_display || [a.address_1, a.city, a.region].filter(Boolean).join(", "));
+    if (src.venueMatch && !`${venueName} ${address}`.toLowerCase().includes(src.venueMatch.toLowerCase())) continue;
     const onlinePlace = /(?:^|\b)(online|virtual|zoom)(?:\b|$)/i.test(`${venueName} ${address}`);
     out.push({
       cat: classify(e.name, tags) || classify(`${e.name} ${tags.join(" ")}`) || src.cat || "Social",
@@ -765,6 +846,42 @@ async function fromCabooze(src) {
           lng: src.lng,
         })
       );
+    }
+
+    // RHP collapses weekly series into one card. Expand its own performance
+    // list so Massive Mondays / Taco Tunesday do not disappear after week one.
+    for (const block of html.split(/<div class="rhp-event-series /i).slice(1)) {
+      const head = block.match(/href="(https:\/\/cabooze\.com\/events\/category\/series\/[^"]+)"[^>]*title="([^"]+)"/i);
+      if (!head) continue;
+      const url = head[1];
+      const title = decode(head[2]);
+      const dates = /rhp-event-series-date[^>]*>\s*([A-Za-z]{3})\s+(\d{1,2})\s*<\/div>[\s\S]{0,500}?rhp-event-series-time[^>]*>\s*([^<]+)<\/div>/gi;
+      let d;
+      while ((d = dates.exec(block))) {
+        const p = parseCaboozeDate(`Mon, ${d[1]} ${d[2]}`, nowP);
+        if (!p) continue;
+        const time = parseShowClock(d[3]);
+        const [hh, mm] = time.split(":").map(Number);
+        p.h = hh;
+        p.mi = mm;
+        const k = title.toLowerCase() + "|" + p.y + p.mo + p.d + "|" + time;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        const row = eventRow(src, {
+          title,
+          p,
+          time,
+          url,
+          types: /reggae|massive monday/i.test(title) ? ["Reggae", "Weekly"] : ["Live music", "Weekly"],
+          cat: "Music",
+          loc: "The Cabooze",
+          addr: src.addr,
+          lat: src.lat,
+          lng: src.lng,
+        });
+        if (/taco tunesday/i.test(title)) row.free = true;
+        out.push(row);
+      }
     }
   }
   return out;
@@ -1004,6 +1121,8 @@ module.exports = async (req, res) => {
       else if (src.type === "biblio") list = await fromBiblio(src);
       else if (src.type === "livewhale") list = await fromLiveWhale(src);
       else if (src.type === "squarespace") list = await fromSquarespace(src);
+      else if (src.type === "rss") list = await fromRSS(src);
+      else if (src.type === "opendate") list = await fromOpenDate(src);
       else if (src.type === "meetup") list = await fromMeetup(src);
       else if (src.type === "eventbrite") list = await fromEventbrite(src);
       else if (src.type === "cabooze") list = await fromCabooze(src);

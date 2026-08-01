@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Gather — Twin Cities meetings &amp; things to do</title>
 <meta name="description" content="Find support meetings and local activities across Minneapolis–St. Paul on one map. Filter by day, time, and distance." />
-<meta name="theme-color" content="#141820" />
-<meta name="gather-design" content="dayboard-v2" />
+<meta name="theme-color" content="#0b1e2a" />
+<meta name="gather-design" content="dayboard-v4" />
 <link rel="manifest" href="/manifest.json" />
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -18,36 +18,37 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&amp;family=Syne:wght@600;700;800&amp;display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&amp;family=IBM+Plex+Mono:wght@500;600&amp;family=Syne:wght@600;700;800&amp;display=swap" rel="stylesheet" />
 <style>
-  /* Gather UI — Twin Cities dayboard
-     ink paper + ember (things to do) / lagoon (support meetings)
+  /* Gather UI — Twin Cities night-pass dayboard
+     river night + lake fog + signal coral
      Signature: ticket-stub time rail + sticky filter tray */
   :root{
-    --ink:#141820;
-    --ink-soft:#2a3140;
-    --paper:#f4f2ec;
-    --surface:#ffffff;
-    --surface2:#ebe8e0;
-    --line:#ddd8cd;
-    --line-strong:#c9c2b4;
-    --txt:#141820;
-    --muted:#5f6570;
-    --muted2:#8a909a;
-    --accent:#0f7a6c;
-    --accent-dim:#9bc9c2;
-    --accent2:#1a5f8a;
-    --chip:#efece4;
-    --live:#0d8a5a;
-    --now:#d64520;
-    --ember:#e8472a;
-    --ember-soft:#f7c4b8;
+    --ink:#0b1e2a;
+    --ink-soft:#243d49;
+    --paper:#e8f0f3;
+    --surface:#fbfdfe;
+    --surface2:#dce7eb;
+    --line:#c8d6dc;
+    --line-strong:#a9bcc4;
+    --txt:#10242d;
+    --muted:#526874;
+    --muted2:#7c9099;
+    --accent:#087b75;
+    --accent-dim:#8bcec8;
+    --accent2:#175da8;
+    --chip:#dfe9ed;
+    --live:#18b77a;
+    --now:#e43f25;
+    --ember:#ff4f2e;
+    --ember-soft:#ffcfc4;
     --radius:14px;
     --radius-sm:9px;
     --shadow:0 1px 0 rgba(20,24,32,.04), 0 10px 28px rgba(20,24,32,.06);
     --shadow-sm:0 1px 2px rgba(20,24,32,.05);
     --font:"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     --display:"Syne", var(--font);
+    --utility:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
     --bg:var(--paper);
     --max-board:820px;
   }
@@ -70,7 +71,10 @@
   /* ——— Header ——— */
   header{
     position:relative;z-index:5;flex-shrink:0;
-    background:var(--ink);color:#f4f2ec;
+    background:
+      radial-gradient(420px 180px at 82% -20%, rgba(26,120,145,.34), transparent 72%),
+      linear-gradient(115deg,#08151e 0%,var(--ink) 56%,#123949 100%);
+    color:#f4fbfc;
     border-bottom:1px solid rgba(255,255,255,.08);
   }
   .header-top{
@@ -91,13 +95,13 @@
   body.mode-activities .logo .dot{background:var(--ember)}
   body:not(.mode-activities) .logo .dot{background:#3ecfba}
   .city-tag{
-    font-family:var(--font);font-size:10px;font-weight:700;
+    font-family:var(--utility);font-size:9px;font-weight:600;
     letter-spacing:.08em;text-transform:uppercase;
     color:rgba(244,242,236,.72);border:1px solid rgba(244,242,236,.22);
     border-radius:4px;padding:3px 7px;margin-left:4px;
   }
   .day-kicker{
-    margin-top:10px;font-size:12px;font-weight:600;
+    margin-top:10px;font-family:var(--utility);font-size:10px;font-weight:500;
     letter-spacing:.04em;text-transform:uppercase;color:rgba(244,242,236,.55);
   }
   .brand h1{
@@ -486,7 +490,7 @@
     position:relative;cursor:pointer;transition:background .12s;
   }
   .activity-card::before,.activity-card::after{display:none}
-  .activity-card:hover{background:#faf9f6}
+  .activity-card:hover{background:color-mix(in srgb,var(--paper) 58%,#fff)}
   .activity-card.active{
     background:color-mix(in srgb,var(--ember) 7%, #fff);
     border-left:4px solid var(--ember);padding-left:14px;
@@ -797,7 +801,7 @@
 </style>
 
 </head>
-<body class="mode-activities" data-design="dayboard-v2">
+<body class="mode-activities" data-design="dayboard-v4">
 <div id="app">
   <header>
     <div class="header-top">
