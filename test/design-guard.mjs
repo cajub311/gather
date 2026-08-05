@@ -8,7 +8,9 @@ const initBody = html.match(/function init\(\)\{([\s\S]*?)\n\}\nfunction setUser
 
 const checks = [
   ["dayboard design marker", html.includes('data-design="dayboard-v4"')],
-  ["For You is the default activity view", html.includes('{id:"social",label:"For You"')],
+  // Default is Everything (user asked for a full aggregator); For You stays one tap away.
+  ["For You stays available as an option", html.includes('{id:"social",label:"For You"')],
+  ["Everything is the default activity view", html.includes('let _vibeStored="all"')],
   ["20 mile radius option", html.includes('[20,"\\u226420 mi"]')],
   ["dayboard metadata", html.includes('name="gather-design" content="dayboard-v4"')],
   [

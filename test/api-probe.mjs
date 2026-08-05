@@ -14,6 +14,16 @@ async function main() {
   if (en < 100) throw new Error(`events too few: ${en}`);
   if (mn < 100) throw new Error(`meetings too few: ${mn}`);
   const failed = (e.sources || []).filter((s) => !s.ok).map((s) => s.name);
+
+  // Checked first: we run ~16 pages off one Eventbrite host and 19 off Meetup.
+  // When a host decides we're asking too often it 429s ALL of them at once,
+  // quietly removing a third of the feed. Diagnose that before the per-source
+  // checks below, which would otherwise blame one arbitrary victim.
+  const rateLimited = (e.sources || []).filter((s) => /429/.test(s.error || "")).map((s) => s.name);
+  if (rateLimited.length > 3) {
+    throw new Error(`${rateLimited.length} sources rate-limited (HTTP 429) — back off request volume, do not just retry: ${rateLimited.join(", ")}`);
+  }
+
   const deepNames = [
     "American Swedish Institute", "DanceMN", "Quatrefoil Library",
     "Minneapolis Arts & Culture", "Germanic-American Institute", "Norway House",
@@ -37,12 +47,22 @@ async function main() {
   const expandedEvents = (e.events || []).filter((event) => expandedNames.includes(event.source)).length;
   if (expandedMissing.length) throw new Error(`new sources missing/down: ${expandedMissing.join(", ")}`);
   if (expandedEvents < 50) throw new Error(`new-source events too few: ${expandedEvents}`);
+  // A source that returns nothing is usually a wrong `type:` — the adapter asks
+  // for a feed, gets a web page, and reports success with 0 rows forever. That
+  // is how 11 sources that could never work sat in SOURCES unnoticed. Empty is
+  // legitimate sometimes (a venue with no events booked), so this warns loudly
+  // rather than failing — but a pile of them means someone added a bad batch.
+  const empty = (e.sources || []).filter((s) => s.ok && s.count === 0).map((s) => s.name);
+  if (empty.length) console.warn(`WARN ${empty.length} source(s) returned 0 events: ${empty.join(", ")}`);
+  if (empty.length > 6) throw new Error(`too many empty sources (${empty.length}) — likely a bad batch: ${empty.join(", ")}`);
+
   console.log(
     JSON.stringify(
       {
         ok: true,
         events: en,
         meetings: mn,
+        emptySources: empty,
         eventSourcesOk: (e.sources || []).filter((s) => s.ok).length,
         eventSourcesFail: failed,
         deepSources: deepSources.length,

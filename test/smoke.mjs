@@ -169,7 +169,8 @@ async function main() {
   ok("activity cards after load", cardsBefore >= 1, `cards=${cardsBefore} count=${countBefore.slice(0, 80)}`);
   ok("mPlay on", (await page.locator("#mPlay.on").count()) === 1);
   ok("vibe chips", (await page.locator("#vibebar .vchip").count()) >= 2);
-  ok("For You is selected by default", (await page.locator("#vibebar .vchip.on").innerText()).includes("For You"));
+  // Default is the full city feed; For You is opt-in.
+  ok("Everything is selected by default", (await page.locator("#vibebar .vchip.on").innerText()).includes("Everything"));
   const ranking = await page.evaluate(() => ({
     meditation: socialScore({ cat: "Zen", name: "Free beginner zazen meditation drop-in", types: [], desc: "", loc: "Common Ground" }),
     kids: socialScore({ cat: "Family", name: "Toddler storytime", types: [], desc: "", loc: "Library" }),

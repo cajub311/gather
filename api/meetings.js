@@ -9,6 +9,13 @@ const NA_URL =
   "https://bmlt.naminnesota.org/main_server/client_interface/json/?switcher=GetSearchResults";
 const AA_MN_PAGE = "https://aaminnesota.org/meetings/";
 const ALANON_URL = "https://mnsa-afg.org/wp-admin/admin-ajax.php?action=meetings";
+// Recovery Dharma = meditation-based recovery (national TSML feed, MN rows filtered below)
+const DHARMA_URL = "https://recoverydharma.org/wp-admin/admin-ajax.php?action=meetings";
+// Refuge Recovery + Buddhist Recovery Network: national TSML feeds with no real
+// Twin Cities chapter addresses (online rows geocode to a US-wide placeholder,
+// not MN) — kept via looksCentralTime() on the meeting name instead of geo.
+const REFUGE_URL = "https://refugerecoverymeetings.org/wp-admin/admin-ajax.php?action=meetings";
+const BUDDHIST_URL = "https://buddhistrecovery.org/wp-admin/admin-ajax.php?action=meetings";
 
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Gather/1.0";
@@ -54,6 +61,13 @@ async function fetchAAMinnesota() {
 
 function inMetro(m) {
   return m.lat > 44.6 && m.lat < 45.35 && m.lng > -93.8 && m.lng < -92.75;
+}
+
+// National online-meeting feeds often list several timezone offsets in the
+// title ("4:30am PT- 6:30am CT- 7:30am ET"); Central Time is the closest
+// available signal to "relevant to a Minnesotan" when geo is a placeholder.
+function looksCentralTime(name) {
+  return /central time|america\/chicago|\bCT\b|\bC\.T\.\b/i.test(String(name || ""));
 }
 
 function hhmm(t) {
@@ -338,11 +352,14 @@ module.exports = async (req, res) => {
   const sources = [];
   let meetings = [];
 
-  const [aa, na, aamn, alanon] = await Promise.allSettled([
+  const [aa, na, aamn, alanon, dharma, refuge, buddhist] = await Promise.allSettled([
     getJSON(AA_URL),
     getJSON(NA_URL),
     fetchAAMinnesota(),
     getJSON(ALANON_URL),
+    getJSON(DHARMA_URL),
+    getJSON(REFUGE_URL),
+    getJSON(BUDDHIST_URL),
   ]);
 
   function take(label, result, list) {
@@ -371,10 +388,31 @@ module.exports = async (req, res) => {
     take("Al-Anon MN South Area", alanon, list);
   } else take("Al-Anon MN South Area", alanon, []);
 
+  if (dharma.status === "fulfilled" && Array.isArray(dharma.value)) {
+    const list = normalizeAA(dharma.value, "Dharma").filter(
+      (x) => x.lat && x.lng && inMetro(x)
+    );
+    take("Recovery Dharma (meditation)", dharma, list);
+  } else take("Recovery Dharma (meditation)", dharma, []);
+
   if (na.status === "fulfilled" && Array.isArray(na.value)) {
     const list = normalizeNA(na.value).filter((x) => x.lat && x.lng && inMetro(x));
     take("NA Minnesota (BMLT)", na, list);
   } else take("NA Minnesota (BMLT)", na, []);
+
+  if (refuge.status === "fulfilled" && Array.isArray(refuge.value)) {
+    const list = normalizeAA(refuge.value, "Refuge").filter(
+      (x) => (x.lat && x.lng && inMetro(x)) || (x.approx && looksCentralTime(x.name))
+    );
+    take("Refuge Recovery", refuge, list);
+  } else take("Refuge Recovery", refuge, []);
+
+  if (buddhist.status === "fulfilled" && Array.isArray(buddhist.value)) {
+    const list = normalizeAA(buddhist.value, "Buddhist").filter(
+      (x) => (x.lat && x.lng && inMetro(x)) || (x.approx && looksCentralTime(x.name))
+    );
+    take("Buddhist Recovery Network", buddhist, list);
+  } else take("Buddhist Recovery Network", buddhist, []);
 
   const before = meetings.length;
   meetings = dedupeMeetings(meetings);

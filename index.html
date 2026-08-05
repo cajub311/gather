@@ -215,12 +215,12 @@
   .mode-activities #map{display:none;height:calc(100dvh - 220px);min-height:520px}
   .mode-activities .viewtabs{
     display:flex;gap:6px;width:min(var(--max-board),100%);margin:0 auto;
-    padding:10px 14px 8px;background:var(--surface);
+    padding:8px 14px 0;background:var(--surface);justify-content:flex-end;
     border-left:1px solid var(--line);border-right:1px solid var(--line);
   }
   .mode-activities .viewtabs button{
-    flex:1;padding:10px;border-radius:999px;border:1px solid var(--line);
-    background:var(--surface2);color:var(--muted);font-weight:700;font-size:13px;
+    padding:5px 14px;border-radius:999px;border:1px solid var(--line);
+    background:var(--surface2);color:var(--muted);font-weight:700;font-size:12px;
   }
   .mode-activities .viewtabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
   .mode-activities.mobile-view-map #sidebar{display:none}
@@ -319,18 +319,18 @@
   .tips button:hover{color:var(--txt)}
 
   .vibebar{
-    display:flex;gap:8px;padding:14px 16px 10px;background:var(--surface);
-    border-bottom:1px solid var(--line);flex-wrap:wrap;
+    display:flex;gap:8px;padding:10px 16px 4px;background:var(--surface);
+    flex-wrap:wrap;align-items:center;
   }
   .vibebar[hidden]{display:none!important}
   .vchip{
-    flex:1;min-width:140px;text-align:left;padding:12px 14px;border-radius:var(--radius);
+    padding:7px 14px;border-radius:999px;
     border:1px solid var(--line);background:var(--paper);cursor:pointer;font-family:inherit;
-    color:var(--muted);transition:border-color .12s,background .12s,transform .12s,box-shadow .12s;
+    color:var(--muted);transition:border-color .12s,background .12s;
   }
-  .vchip strong{display:block;font-family:var(--display);font-size:15px;font-weight:700;color:var(--txt);margin-bottom:3px;letter-spacing:-.02em}
-  .vchip span{display:block;font-size:12px;line-height:1.35;color:var(--muted)}
-  .vchip:hover{border-color:var(--line-strong);background:#fff;transform:translateY(-1px);box-shadow:var(--shadow-sm)}
+  .vchip strong{font-size:13px;font-weight:700;color:var(--txt)}
+  .vchip span{display:none}
+  .vchip:hover{border-color:var(--line-strong);background:#fff}
   .vchip.on{
     background:var(--ink);border-color:var(--ink);color:rgba(255,255,255,.72);
     box-shadow:var(--shadow-sm);
@@ -727,12 +727,12 @@
     .searchbar input{min-width:0}
     .searchbar .btn{padding:9px 12px}
     .viewtabs{
-      display:flex;padding:8px 14px;gap:6px;background:var(--surface);
-      border-bottom:1px solid var(--line);position:relative;z-index:4;
+      display:flex;padding:8px 14px 4px;gap:6px;background:var(--surface);
+      position:relative;z-index:4;justify-content:flex-end;
     }
     .viewtabs button{
-      flex:1;padding:10px;border-radius:999px;border:1px solid var(--line);
-      background:var(--paper);color:var(--muted);font-weight:700;font-size:13px;
+      padding:5px 14px;border-radius:999px;border:1px solid var(--line);
+      background:var(--paper);color:var(--muted);font-weight:700;font-size:12px;
     }
     .viewtabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
     main{flex-direction:column;min-height:0}
@@ -857,12 +857,6 @@
           <button type="button" class="btn" id="guideDismiss">Hide guide</button>
         </div>
       </div>
-      <div class="todbar" id="todbar">
-        <button class="tod on" data-tod="">All day</button>
-        <button class="tod" data-tod="morning">Morning</button>
-        <button class="tod" data-tod="afternoon">Afternoon</button>
-        <button class="tod" data-tod="evening">Evening</button>
-      </div>
       <div class="filterbar">
         <button class="fbtn" id="fToggle" type="button">Filters <span id="fCount" hidden></span><span class="chev">▼</span></button>
         <button class="fclear" id="fClear" type="button">Clear</button>
@@ -944,6 +938,7 @@ const FELLOWSHIPS = {
   SMART:{name:"SMART Recovery (non-12-step)",color:"#c084fc"},
   Dharma:{name:"Recovery Dharma (Buddhist)",color:"#94e0c0"},
   Refuge:{name:"Refuge Recovery (Buddhist)",color:"#f0abfc"},
+  Buddhist:{name:"Buddhist Recovery Network",color:"#d8b4fe"},
   LifeRing:{name:"LifeRing Secular Recovery",color:"#7dd3fc"},
   WFS:{name:"Women for Sobriety",color:"#fb7185"},
   Wellbriety:{name:"Wellbriety / White Bison (Native)",color:"#fcd34d"},
@@ -966,6 +961,7 @@ const FINDERS={
   SMART:"https://meetings.smartrecovery.org/meetings/",
   Dharma:"https://recoverydharma.org/find-a-meeting/",
   Refuge:"https://www.refugerecovery.org/meetings",
+  Buddhist:"https://buddhistrecovery.org/meetings/",
   LifeRing:"https://lifering.org/find-a-meeting/",
   WFS:"https://womenforsobriety.org/find-meetings/",
   Wellbriety:"https://wellbriety.com/",
@@ -1100,7 +1096,9 @@ let SAVED=new Set();
 try{SAVED=new Set(JSON.parse(localStorage.getItem("gather-saved")||"[]"));}catch(e){}
 // Internal value stays "social" so old saved links keep working; the visible
 // default is For You, ranked from what he actually likes without onboarding.
-let _vibeStored="social";
+// Default = Everything. He asked for an aggregator that shows the whole city;
+// "For You" is one tap away and sticks once chosen.
+let _vibeStored="all";
 try{const v=localStorage.getItem("gather-vibe");if(v==="all"||v==="social")_vibeStored=v;}catch(e){}
 const state={mode:"activities",cat:new Set(),day:null,daySet:null,fmt:null,tod:"",nowOnly:false,q:"",near:null,nearGps:false,quick:new Set(),savedOnly:false,preset:"",area:"",horizon:6,radius:0,hideSeries:true,soonOnly:false,flag:"",hideEnded:true,vibe:_vibeStored,limit:80};
 let _urlTimer=null;
@@ -1224,7 +1222,7 @@ function buildVibeBar(){
     b.type="button";
     b.className="vchip"+(state.vibe===v.id?" on":"");
     b.title=v.hint;
-    b.innerHTML=`<strong>${v.label}</strong><span>${v.hint}</span>`;
+    b.innerHTML=`<strong>${v.label}</strong>`;
     b.onclick=()=>setVibe(v.id);
     row.appendChild(b);
   });
@@ -1335,10 +1333,9 @@ function supportMeetings(){
   return SUPPORT.map(m=>({...m,verified:false}));
 }
 // Soft evening default: after 4pm Central, "Today" is mostly about tonight
-function defaultSupportTod(){
-  const h=Math.floor(nowInfo().mins/60);
-  return h>=16?"evening":"";
-}
+// Support opens on the whole day. The old "after 4pm = evening only" default
+// silently hid most of today's meetings behind a chip row that's now gone.
+function defaultSupportTod(){return "";}
 // Activities = live venue/calendar events (verified) + curated sample groups (unverified)
 function activityItems(){
   const curated=PLAY.map(m=>({...m,verified:false}));
@@ -1493,10 +1490,10 @@ function smartSort(list){
   return list;
 }
 function sortHint(){
-  const parts=[dayViewLabel()];
-  if(state.mode==="activities"&&state.vibe==="social")parts.push("For You");
+  // Plain and short — the old version stacked day · For You · by time · two
+  // "hidden" notes into one unreadable line.
+  const parts=[state.q?"next 7 days":dayViewLabel()];
   if(state.near)parts.push("closest to you");
-  else parts.push("by time");
   return parts.join(" · ");
 }
 function syncTodUI(){
@@ -1629,6 +1626,13 @@ function syncFmtUI(){
 }
 
 function matchesDayView(m){
+  // Searching looks ahead a week. "free meditation" used to return 0 just
+  // because today's sittings had already ended — the answer was tomorrow 7:30am.
+  if(state.q&&!state.savedOnly){
+    if(!m.date)return true;
+    const o=dateOffset(m.date);
+    return o>=0&&o<=6;
+  }
   if(!m.date){
     if(state.daySet)return state.daySet.has(m.day);
     return state.day===null||m.day===state.day;
@@ -1714,21 +1718,22 @@ function buildQuickFilters(){
   if(!row)return;
   row.innerHTML="";
   if(state.mode==="support"){
-    // where + which program up front — "AA in St Paul" should be two taps
+    // Which program first — it's the question people actually arrive with;
+    // the area chips scroll in right after it.
+    [["AA","AA"],["NA","NA"],["Al-Anon","Al-Anon"],["Dharma","🧘 Meditation"],["Refuge","Refuge"],["Buddhist","Buddhist"]].forEach(([k,lbl])=>{
+      // only show chips for fellowships we actually have rows for
+      if(!DATA.some(m=>m.cat===k)&&!state.cat.has(k))return;
+      const b=document.createElement("button");
+      b.type="button";b.className="qchip"+(state.cat.has(k)?" on":"");
+      b.textContent=lbl;
+      b.onclick=()=>{state.cat.has(k)?state.cat.delete(k):state.cat.add(k);buildQuickFilters();buildFilters();render();};
+      row.appendChild(b);
+    });
     [["","Everywhere"],["stpaul","St Paul"],["mpls","Minneapolis"],["suburbs","Suburbs"]].forEach(([v,lbl])=>{
       const b=document.createElement("button");
       b.type="button";b.className="qchip"+((state.area||"")===v?" on":"");
       b.textContent=lbl;
       b.onclick=()=>{state.area=v;buildQuickFilters();render();};
-      row.appendChild(b);
-    });
-    ["AA","NA","Al-Anon"].forEach(k=>{
-      // only show chips for fellowships we actually have rows for
-      if(!DATA.some(m=>m.cat===k)&&!state.cat.has(k))return;
-      const b=document.createElement("button");
-      b.type="button";b.className="qchip"+(state.cat.has(k)?" on":"");
-      b.textContent=k;
-      b.onclick=()=>{state.cat.has(k)?state.cat.delete(k):state.cat.add(k);buildQuickFilters();buildFilters();render();};
       row.appendChild(b);
     });
     // Access + identity. The feeds carry these as codes and we already parse
@@ -2075,11 +2080,11 @@ function render(){
   const sortNote=sortHint();
   const resultWord=state.mode==="support"?(list.length===1?"meeting":"meetings"):(list.length===1?"thing to do":"things to do");
   const fmt=effectiveFmt();
-  const formatWords=fmt==="in-person"?"walk-in ":fmt==="online"?"online ":fmt==="hybrid"?"hybrid ":"";
+  const formatWords=fmt==="online"?"online ":fmt==="hybrid"?"hybrid ":"";
   const sortPart=sortNote;
   const kidsHidden=state.mode==="activities"&&state.vibe==="social"?DATA.filter(m=>matchesDayView(m)&&isKidsy(m)).length:0;
-  const kidsNote=kidsHidden?` <span aria-hidden="true">·</span> <button type="button" class="dir" style="border:none;background:none;padding:0;font:inherit;color:var(--muted)" id="countShowAll">${kidsHidden} kids/zoo hidden — show everything</button>`:"";
-  const endedNote=endedN?` <span aria-hidden="true">·</span> <button type="button" class="dir" style="border:none;background:none;padding:0;font:inherit;color:var(--muted)" id="countShowEnded">${endedN} earlier hidden</button>`:"";
+  const kidsNote=kidsHidden?` <span aria-hidden="true">·</span> <button type="button" class="dir" style="border:none;background:none;padding:0;font:inherit;color:var(--muted)" id="countShowAll">show everything</button>`:"";
+  const endedNote=endedN?` <span aria-hidden="true">·</span> <button type="button" class="dir" style="border:none;background:none;padding:0;font:inherit;color:var(--muted)" id="countShowEnded">show ${endedN} earlier</button>`:"";
   // While live feed is in flight, don't pretend sample rows are the full result
   const countHtml=loadingNow
     ?`<span class="loading"><span class="spin"></span></span> <b>Loading</b> live ${state.mode==="support"?"meetings":"events"}…`

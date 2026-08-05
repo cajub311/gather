@@ -51,6 +51,8 @@ const SOURCES = [
   { type: "tribe", name: "Minnesota Museum of American Art", base: "https://mmaa.org", lat: 44.9487, lng: -93.0895, addr: "350 Robert St N, St Paul", fallback: "Art" },
   // NE brewery with regular trivia / social nights (confirmed tribe feed)
   { type: "tribe", name: "Wooden Hill Brewing", base: "https://woodenhillbrewing.com", lat: 45.0139, lng: -93.2475, addr: "2415 Central Ave NE, Minneapolis" },
+  { type: "tribe", name: "Friends of St Paul Library", base: "https://www.thefriends.org", lat: 44.9445, lng: -93.0977, addr: "St Paul", fallback: "Books" },
+  { type: "tribe", name: "Loppet Foundation", base: "https://www.loppet.org", lat: 44.9880, lng: -93.3230, addr: "1221 Theodore Wirth Pkwy, Minneapolis", fallback: "Outdoors" },
 
   // --- UMN public calendar (LiveWhale JSON) — lectures, arboretum, concerts ---
   { type: "livewhale", name: "UMN Events", url: "https://events.tc.umn.edu/live/json/events/max/300", lat: 44.9740, lng: -93.2277, addr: "Minneapolis", fallback: "Learn" },
@@ -60,6 +62,7 @@ const SOURCES = [
   { type: "squarespace", name: "Lake Monster Brewing", base: "https://www.lakemonsterbrewing.com/events", lat: 44.9636, lng: -93.1880, addr: "550 Vandalia St, St Paul" },
   { type: "squarespace", name: "Arbeiter Brewing", base: "https://www.arbeiterbrewing.com/events", lat: 44.9487, lng: -93.2310, addr: "3038 Minnehaha Ave, Minneapolis" },
   { type: "squarespace", name: "Pryes Brewing", base: "https://www.pryesbrewing.com/events", lat: 44.9920, lng: -93.2790, addr: "1401 West River Rd N, Minneapolis" },
+  { type: "squarespace", name: "Bryant Lake Bowl Theater", base: "https://www.bryantlakebowl.com/theater", lat: 44.9482, lng: -93.2982, addr: "810 W Lake St, Minneapolis", cat: "Music", fallback: "Music" },
   { type: "squarespace", name: "The Cedar", base: "https://www.thecedar.org/events", lat: 44.9689, lng: -93.2470, addr: "416 Cedar Ave S, Minneapolis", cat: "Music" },
   { type: "squarespace", name: "Berlin", base: "https://www.berlinmpls.com/calendar", lat: 44.9822, lng: -93.2717, addr: "204 N 1st St, Minneapolis", cat: "Music" },
   { type: "squarespace", name: "Minneapolis Arts & Culture", base: "https://mplsartsandculture.org/events-2026", lat: 44.9778, lng: -93.2650, addr: "Minneapolis", fallback: "Art" },
@@ -121,6 +124,15 @@ const SOURCES = [
   { type: "meetup", name: "Meetup D&D", url: "https://www.meetup.com/find/?keywords=dungeons%20dragons&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Games" },
   { type: "meetup", name: "Meetup Running", url: "https://www.meetup.com/find/?keywords=running&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Fitness" },
   { type: "meetup", name: "Meetup Book Clubs", url: "https://www.meetup.com/find/?keywords=book%20club&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Books" },
+  // Keywords picked by measured yield of events the rest of the feed misses —
+  // "tech"/"networking" scored high too but are mostly bootcamps and sales mixers.
+  { type: "meetup", name: "Meetup Meditation", url: "https://www.meetup.com/find/?keywords=meditation&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Zen" },
+  { type: "meetup", name: "Meetup Yoga", url: "https://www.meetup.com/find/?keywords=yoga&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Fitness" },
+  { type: "meetup", name: "Meetup Volunteer", url: "https://www.meetup.com/find/?keywords=volunteer&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Volunteer" },
+  { type: "meetup", name: "Meetup Live Music", url: "https://www.meetup.com/find/?keywords=live%20music&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Music" },
+  { type: "meetup", name: "Meetup Crafts", url: "https://www.meetup.com/find/?keywords=crafts&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Art" },
+  { type: "meetup", name: "Meetup Writing", url: "https://www.meetup.com/find/?keywords=writing&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Books" },
+  { type: "meetup", name: "Meetup Pickleball", url: "https://www.meetup.com/find/?keywords=pickleball&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Fitness" },
   // Active board-game groups (weekly brewery / shop nights around the metro)
   { type: "meetup", name: "MN Board Games group", url: "https://www.meetup.com/minnesota-board-game-get-together/events/", cat: "Games" },
 
@@ -137,6 +149,12 @@ const SOURCES = [
   { type: "eventbrite", name: "Eventbrite Arts", url: "https://www.eventbrite.com/d/mn--minneapolis/arts--events--this-week/", cat: "Art" },
   { type: "eventbrite", name: "Eventbrite Film", url: "https://www.eventbrite.com/d/mn--minneapolis/film-and-media--events--this-week/", cat: "Art" },
   { type: "eventbrite", name: "Eventbrite Fitness", url: "https://www.eventbrite.com/d/mn--minneapolis/sports-and-fitness--events--this-week/", cat: "Fitness" },
+  { type: "eventbrite", name: "Eventbrite Community", url: "https://www.eventbrite.com/d/mn--minneapolis/community--events--this-week/", cat: "Social" },
+  { type: "eventbrite", name: "Eventbrite Charity", url: "https://www.eventbrite.com/d/mn--minneapolis/charity-and-causes--events--this-week/", cat: "Volunteer" },
+  { type: "eventbrite", name: "Eventbrite Health", url: "https://www.eventbrite.com/d/mn--minneapolis/health--events--this-week/", cat: "Fitness" },
+  // No "this-weekend" pages: probed, they return the same rows as the today /
+  // this-week pages above, and every extra request to this host is what pushes
+  // it into rate-limiting the whole batch with 429s.
 ];
 
 // skip taproom logistics / non-activity filler that some venues publish as "events"
@@ -264,6 +282,29 @@ const SOURCE_BUDGET_MS = 21000;
 function deadline() {
   const until = Date.now() + SOURCE_BUDGET_MS;
   return { left: () => until - Date.now(), expired: () => Date.now() >= until };
+}
+
+// Aggregators host many of our sources each (13 Eventbrite pages, 12 Meetup
+// searches). Firing them all at once made that host rate-limit us: 5 of them
+// came back empty in production while every one of them answered fine when
+// requested a few at a time. Different hosts still run fully in parallel — this
+// only queues requests that share an origin. Keep it at 3: Eventbrite starts
+// returning 429 for the whole host when pushed harder, and a 429 fails the
+// entire batch, not just the extra request.
+const HOST_LIMIT = 3;
+const hostQueues = new Map();
+function hostGate(key, task) {
+  const q = hostQueues.get(key) || [];
+  // wait for the request HOST_LIMIT slots back, so at most that many run at once
+  const wait = q.length >= HOST_LIMIT ? q[q.length - HOST_LIMIT] : Promise.resolve();
+  const run = wait.then(task, task);
+  q.push(run.catch(() => {}));
+  hostQueues.set(key, q);
+  return run;
+}
+function hostKeyFor(src) {
+  const u = src.url || src.base;
+  try { return new URL(u).host; } catch { return src.type; }
 }
 
 async function fetchWithRetry(url, accept, ms, budget) {
@@ -581,7 +622,7 @@ async function fromOpenDate(src) {
   // URL slug for the date (the rendered label can shift evening shows to UTC).
   const monthNo = { january: 1, february: 2, march: 3, april: 4, may: 5, june: 6, july: 7, august: 8, september: 9, october: 10, november: 11, december: 12 };
   for (const line of html.split("\n")) {
-    const link = line.match(/\]\((https:\/\/thehookmpls\.com\/shows\/[^)]+)\)\s*$/i);
+    const link = line.match(/\]\((https?:\/\/thehookmpls\.com\/shows\/[^)]+)\)\s*$/i);
     const titleM = line.match(/!\[Image \d+:\s*([^\]]+)\]/i);
     const imageM = line.match(/!\[Image \d+:[^\]]+\]\((https:\/\/s3[^)]+)\)/i);
     const timeM = line.match(/(\d{1,2}(?::\d{2})?\s*(?:am|pm))\s+Details\]/i);
@@ -722,6 +763,16 @@ function duration(start, end) {
   return Number.isFinite(mins) && mins > 0 && mins < 1440 ? Math.round(mins) : 120;
 }
 
+// "Music Trivia at Omni Winery & Tap Room, Roseville" -> "Omni Winery & Tap Room"
+// Only trusts a trailing "at/@ <Proper Name>"; anything lowercase ("at the patio")
+// or sentence-like is left alone so we never invent a venue.
+function placeFromTitle(title) {
+  const m = String(title || "").match(/\s(?:at|@)\s+([A-Z][^,?|]{2,44}?)\s*(?:[,!.]|$)/);
+  const place = (m && m[1] || "").trim();
+  if (!place || /^(the )?(patio|park|bar|home|my place|our place)$/i.test(place)) return "";
+  return place;
+}
+
 async function fromMeetup(src) {
   const html = await getText(src.url);
   const match = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i);
@@ -753,7 +804,11 @@ async function fromMeetup(src) {
       time: `${String(p.h).padStart(2, "0")}:${String(p.mi).padStart(2, "0")}`,
       dur: duration(e.dateTime, e.endTime),
       fmt: e.isOnline || e.eventType === "ONLINE" ? "online" : e.eventType === "HYBRID" ? "hybrid" : "in-person",
-      loc: decode(venue.name || (e.group && e.group.name) || "Meetup"),
+      // Meetup often omits the venue, which left 67 cards reading "📍 Meetup" —
+      // no help to someone deciding whether to go. Organizers usually put the
+      // place in the title ("Music Trivia at Omni Winery"), so read it from there
+      // before falling back to the group name.
+      loc: decode(venue.name || placeFromTitle(e.title) || (e.group && e.group.name) || "Location on Meetup"),
       addr: decode(address || "Twin Cities"),
       lat: point.lat,
       lng: point.lng,
@@ -1192,8 +1247,9 @@ module.exports = async (req, res) => {
   const todayStr = chicagoDateKey(now);
 
   const sources = [];
+  hostQueues.clear(); // serverless containers are reused between requests
   const results = await Promise.allSettled(
-    SOURCES.map(async (src) => {
+    SOURCES.map((src) => hostGate(hostKeyFor(src), async () => {
       let list;
       if (src.type === "ics") list = parseICS(await getText(src.url), src);
       else if (src.type === "commonground") list = await fromCommonGround(src);
@@ -1209,7 +1265,7 @@ module.exports = async (req, res) => {
       else if (src.type === "standing") list = fromStanding(src);
       else list = await fromTribe(src, startISO, endISO);
       return { src, list };
-    })
+    }))
   );
 
   let events = [];
