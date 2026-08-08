@@ -289,7 +289,7 @@
   body:not(.mode-activities) .hero-live{margin-top:4px}
   body:not(.mode-activities) .brand h1{font-size:clamp(20px,3.5vw,26px);margin:2px 0}
   body:not(.mode-activities) .crisis{display:flex!important}
-  body:not(.mode-activities) .daybar{padding:10px 14px 6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  body:not(.mode-activities) .daybar{padding:10px 14px 6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent)}
   body:not(.mode-activities) .daybar::-webkit-scrollbar{display:none}
   body:not(.mode-activities) .daypick{flex-shrink:0}
   body:not(.mode-activities) .presetrow{padding:8px 14px 6px}
@@ -390,7 +390,7 @@
   .chip.on{background:color-mix(in srgb,var(--accent) 12%,#fff);color:var(--txt);border-color:var(--accent-dim);font-weight:700}
   .chip .swatch{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 
-  .quickrow,.presetrow{display:flex;gap:7px;padding:6px 16px;overflow-x:auto;scrollbar-width:none}
+  .quickrow,.presetrow{display:flex;gap:7px;padding:6px 16px;overflow-x:auto;scrollbar-width:none;-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent)}
   .quickrow::-webkit-scrollbar,.presetrow::-webkit-scrollbar{display:none}
   .mode-activities .presetrow{padding-top:14px;padding-bottom:6px}
   .mode-activities .quickrow{padding-top:4px;padding-bottom:14px;border-bottom:1px solid var(--line)}
@@ -635,7 +635,7 @@
   .mode-activities #onlineScout,.mode-activities #programScout{display:none}
   body:not(.mode-activities) .scout-activities-only{display:none!important}
   .source-scout summary{cursor:pointer;color:var(--muted);font-size:12.5px;font-weight:700}
-  .scout-links{display:flex;gap:7px;margin-top:10px;overflow-x:auto;scrollbar-width:none}
+  .scout-links{display:flex;gap:7px;margin-top:10px;overflow-x:auto;scrollbar-width:none;-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent)}
   .scout-links::-webkit-scrollbar{display:none}
   .scout-links a{
     flex-shrink:0;text-decoration:none;font-size:12px;font-weight:700;color:var(--accent2);
@@ -748,7 +748,7 @@
     body.mobile-view-list #sidebar{height:auto;overflow:visible}
     body.mobile-view-list #list{overflow:visible}
     .source-scout{padding:12px 15px}
-    .daybar{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+    .daybar{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent)}
     .daybar::-webkit-scrollbar{display:none}
     .daybar-label{display:none}
     .daypick{flex-shrink:0}
@@ -1221,6 +1221,7 @@ function buildVibeBar(){
     const b=document.createElement("button");
     b.type="button";
     b.className="vchip"+(state.vibe===v.id?" on":"");
+    b.setAttribute("aria-pressed",state.vibe===v.id?"true":"false");
     b.title=v.hint;
     b.innerHTML=`<strong>${v.label}</strong>`;
     b.onclick=()=>setVibe(v.id);
@@ -1512,16 +1513,21 @@ function syncDayUI(){
   const today=todayDay();
   document.querySelectorAll("#daybar .daypick").forEach(btn=>{
     const v=btn.dataset.day;
-    if(v==="all")btn.classList.toggle("on",isAllWeek());
-    else if(state.daySet)btn.classList.toggle("on",false);
-    else btn.classList.toggle("on",!isAllWeek()&&state.day===Number(v));
+    let on;
+    if(v==="all")on=btn.classList.toggle("on",isAllWeek());
+    else if(state.daySet)on=btn.classList.toggle("on",false);
+    else on=btn.classList.toggle("on",!isAllWeek()&&state.day===Number(v));
+    btn.setAttribute("aria-pressed",on?"true":"false");
   });
   const dc=document.getElementById("dayFilters");
   if(!dc)return;
   [...dc.querySelectorAll(".chip")].forEach(chip=>{
     const v=chip.dataset.day;
-    if(v==="all")chip.classList.toggle("on",isAllWeek());
-    else if(v!=null)chip.classList.toggle("on",!isAllWeek()&&!state.daySet&&state.day===Number(v));
+    let on;
+    if(v==="all")on=chip.classList.toggle("on",isAllWeek());
+    else if(v!=null)on=chip.classList.toggle("on",!isAllWeek()&&!state.daySet&&state.day===Number(v));
+    else on=chip.classList.contains("on");
+    chip.setAttribute("aria-pressed",on?"true":"false");
   });
 }
 function buildPresets(){
@@ -1543,6 +1549,7 @@ function buildPresets(){
   items.forEach(pr=>{
     const b=document.createElement("button");
     b.type="button";b.className="pchip"+(state.preset===pr.id?" on":"");
+    b.setAttribute("aria-pressed",state.preset===pr.id?"true":"false");
     b.textContent=pr.label;
     b.onclick=()=>applyPreset(pr.id);
     row.appendChild(b);
@@ -1599,29 +1606,32 @@ function buildFilters(){
   const have=new Set(DATA.map(m=>m.cat));
   Object.entries(META).filter(([k])=>have.has(k)).forEach(([k,v])=>{
     const c=document.createElement("button");
-    c.className="chip"+(state.cat.has(k)?" on":"");c.innerHTML=`<span class="swatch" style="background:${v.color}"></span>${k}`;
-    c.onclick=()=>{state.cat.has(k)?state.cat.delete(k):state.cat.add(k);c.classList.toggle("on");render();};
+    c.className="chip"+(state.cat.has(k)?" on":"");c.setAttribute("aria-pressed",state.cat.has(k)?"true":"false");
+    c.innerHTML=`<span class="swatch" style="background:${v.color}"></span>${k}`;
+    c.onclick=()=>{state.cat.has(k)?state.cat.delete(k):state.cat.add(k);const on=c.classList.toggle("on");c.setAttribute("aria-pressed",on?"true":"false");render();};
     cf.appendChild(c);
   });
   // day + format only once
   const dc=document.getElementById("dayFilters");
   if(dc.querySelectorAll(".chip").length===0){
     const all=document.createElement("button");
-    all.className="chip";all.dataset.day="all";all.textContent="All week";
+    all.className="chip";all.dataset.day="all";all.textContent="All week";all.setAttribute("aria-pressed","false");
     all.onclick=()=>setViewDay(isAllWeek()?todayDay():null);
     dc.appendChild(all);
-    DAYS.forEach((d,i)=>{const c=document.createElement("button");c.className="chip";c.dataset.day=String(i);c.textContent=d;
+    DAYS.forEach((d,i)=>{const c=document.createElement("button");c.className="chip";c.dataset.day=String(i);c.textContent=d;c.setAttribute("aria-pressed","false");
       c.onclick=()=>setViewDay(state.day===i?todayDay():i);dc.appendChild(c);});
     const mc=document.getElementById("fmtFilters");
     [["in-person","In-person"],["online","Online"],["hybrid","Hybrid"]].forEach(([k,lbl])=>{
-      const c=document.createElement("button");c.className="chip";c.dataset.fmt=k;c.textContent=lbl;
+      const c=document.createElement("button");c.className="chip";c.dataset.fmt=k;c.textContent=lbl;c.setAttribute("aria-pressed","false");
       c.onclick=()=>{state.fmt=state.fmt===k?null:k;syncFmtUI();render();};mc.appendChild(c);});
   }
   syncFmtUI();
 }
 function syncFmtUI(){
   document.querySelectorAll("#fmtFilters .chip").forEach(c=>{
-    c.classList.toggle("on",!!state.fmt&&c.dataset.fmt===state.fmt);
+    const on=!!state.fmt&&c.dataset.fmt===state.fmt;
+    c.classList.toggle("on",on);
+    c.setAttribute("aria-pressed",on?"true":"false");
   });
 }
 
@@ -1725,6 +1735,7 @@ function buildQuickFilters(){
       if(!DATA.some(m=>m.cat===k)&&!state.cat.has(k))return;
       const b=document.createElement("button");
       b.type="button";b.className="qchip"+(state.cat.has(k)?" on":"");
+      b.setAttribute("aria-pressed",state.cat.has(k)?"true":"false");
       b.textContent=lbl;
       b.onclick=()=>{state.cat.has(k)?state.cat.delete(k):state.cat.add(k);buildQuickFilters();buildFilters();render();};
       row.appendChild(b);
@@ -1732,6 +1743,7 @@ function buildQuickFilters(){
     [["","Everywhere"],["stpaul","St Paul"],["mpls","Minneapolis"],["suburbs","Suburbs"]].forEach(([v,lbl])=>{
       const b=document.createElement("button");
       b.type="button";b.className="qchip"+((state.area||"")===v?" on":"");
+      b.setAttribute("aria-pressed",(state.area||"")===v?"true":"false");
       b.textContent=lbl;
       b.onclick=()=>{state.area=v;buildQuickFilters();render();};
       row.appendChild(b);
@@ -1790,6 +1802,7 @@ function buildQuickFilters(){
     [[0,"Any distance"],[5,"\u22645 mi"],[10,"\u226410 mi"],[15,"\u226415 mi"],[20,"\u226420 mi"]].forEach(([r,lbl])=>{
       const b=document.createElement("button");
       b.type="button";b.className="qchip"+(state.radius===r?" on":"");
+      b.setAttribute("aria-pressed",state.radius===r?"true":"false");
       b.textContent=lbl;
       b.onclick=()=>{state.radius=r;buildQuickFilters();render();};
       row.appendChild(b);
