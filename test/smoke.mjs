@@ -289,6 +289,8 @@ async function main() {
   await page.screenshot({ path: join(OUT, "desk-support.png") });
   const meets = await page.locator(".meet-card").count();
   ok("support meeting cards", meets >= 1, `count=${meets}`);
+  const supportIds = await page.locator(".meet-card[data-id]").evaluateAll((cards) => cards.map((card) => card.dataset.id));
+  ok("support card ids unique", new Set(supportIds).size === supportIds.length, `cards=${supportIds.length} unique=${new Set(supportIds).size}`);
   ok("support map desktop", await page.locator("#map").isVisible());
   await page.locator(".meet-card").first().click();
   await page.waitForTimeout(500);

@@ -1347,6 +1347,21 @@ let map,markers,userMarker,activeId=null,markerById=new Map(),lastFilteredList=[
 // Stable per-event id (name+date+time) so saved stars and shared links
 // survive reloads — live feeds re-order every fetch, so index ids break.
 function stableId(m,p){return p+(m.name+"|"+(m.date||m.day)+"|"+m.time).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"").slice(0,80);}
+function withStableIds(rows,p){
+  const used=new Set();
+  return rows.map(m=>{
+    const base=stableId(m,p);
+    let id=base;
+    if(used.has(id)){
+      const detail=[m.loc,m.addr,m.source,m.fellowship].filter(Boolean).join("|").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"").slice(0,50)||"alt";
+      id=`${base}-${detail}`;
+      let n=2;
+      while(used.has(id))id=`${base}-${detail}-${n++}`;
+    }
+    used.add(id);
+    return {...m,_id:id};
+  });
+}
 function isOver(m){
   // don't rely on _minsUntil cache — filter() runs before enrichSort
   const mins=m._minsUntil!=null?m._minsUntil:minutesUntil(m,nowInfo());
@@ -2308,8 +2323,8 @@ function setMode(mode,opts={}){
   if(guide&&mode!=="support")guide.hidden=true;
   const ms=document.getElementById("mSupport");ms.classList.toggle("on",mode==="support");ms.classList.toggle("support",mode==="support");ms.setAttribute("aria-selected",mode==="support"?"true":"false");
   const mp=document.getElementById("mPlay");mp.classList.toggle("on",mode==="activities");mp.classList.toggle("play",mode==="activities");mp.setAttribute("aria-selected",mode==="activities"?"true":"false");
-  if(mode==="support"){META=FELLOWSHIPS;DATA=supportMeetings().map(m=>({...m,_id:stableId(m,"s-")}));}
-  else{META=ACTIVITIES;DATA=activityItems().map(m=>({...m,_id:stableId(m,"p-")}));}
+  if(mode==="support"){META=FELLOWSHIPS;DATA=withStableIds(supportMeetings(),"s-");}
+  else{META=ACTIVITIES;DATA=withStableIds(activityItems(),"p-");}
   document.getElementById("q").placeholder=mode==="support"?"Search name, street, neighborhood…":"Search music, games, dance, meetups…";
   document.getElementById("mapHint").textContent=mode==="support"?"Tap a dot — meetings at that place":"Tap a dot — events at that spot";
   // Mode-specific tip copy
@@ -2386,8 +2401,8 @@ function updateFooter(){
 
 function refreshAfterLive(mode){
   if(state.mode!==mode)return;
-  if(mode==="support")DATA=supportMeetings().map(m=>({...m,_id:stableId(m,"s-")}));
-  else DATA=activityItems().map(m=>({...m,_id:stableId(m,"p-")}));
+  if(mode==="support")DATA=withStableIds(supportMeetings(),"s-");
+  else DATA=withStableIds(activityItems(),"p-");
   // live data lands after first paint — rebuild chips so empty categories and
   // Al-Anon/etc. appear, instead of staying stuck on the sample set
   buildQuickFilters();buildFilters();updateFooter();render();
