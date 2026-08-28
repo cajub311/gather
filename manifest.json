@@ -1,0 +1,13 @@
+{
+  "name": "Gather — Twin Cities meetings & things to do",
+  "short_name": "Gather",
+  "description": "Find support meetings and things to do around Minneapolis–St. Paul.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f2ec",
+  "theme_color": "#141820",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

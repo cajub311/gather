@@ -5,218 +5,737 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Gather — Twin Cities meetings &amp; things to do</title>
 <meta name="description" content="Find support meetings and local activities across Minneapolis–St. Paul on one map. Filter by day, time, and distance." />
-<meta name="theme-color" content="#131a24" />
+<meta name="theme-color" content="#0b1e2a" />
+<meta name="gather-design" content="dayboard-v4" />
+<link rel="manifest" href="/manifest.json" />
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Gather" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23141820'/%3E%3Ccircle cx='18' cy='18' r='6' fill='%23e8472a'/%3E%3Cpath d='M45 22c-4-4-16-5-21 2-6 8-1 20 10 20 5 0 9-2 12-5V31H34v6h5v1c-5 2-11 0-12-6-1-7 7-11 13-6z' fill='%23f8fbf8'/%3E%3C/svg%3E" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&amp;family=IBM+Plex+Mono:wght@500;600&amp;family=Syne:wght@600;700;800&amp;display=swap" rel="stylesheet" />
 <style>
+  /* Gather UI — Twin Cities night-pass dayboard
+     river night + lake fog + signal coral
+     Signature: ticket-stub time rail + sticky filter tray */
   :root{
-    --bg:#0c1017; --surface:#131a24; --surface2:#1a2330; --line:#263041;
-    --txt:#eef2f6; --muted:#8b9cb3; --accent:#4fd1c5; --accent-dim:#2a6b64;
-    --accent2:#60a5fa; --chip:#1e2836; --live:#4ade80; --now:#fbbf24;
-    --radius:12px; --shadow:0 1px 0 rgba(255,255,255,.04) inset;
+    --ink:#0b1e2a;
+    --ink-soft:#243d49;
+    --paper:#e8f0f3;
+    --surface:#fbfdfe;
+    --surface2:#dce7eb;
+    --line:#c8d6dc;
+    --line-strong:#a9bcc4;
+    --txt:#10242d;
+    --muted:#526874;
+    --muted2:#7c9099;
+    --accent:#087b75;
+    --accent-dim:#8bcec8;
+    --accent2:#175da8;
+    --chip:#dfe9ed;
+    --live:#18b77a;
+    --now:#e43f25;
+    --ember:#ff4f2e;
+    --ember-soft:#ffcfc4;
+    --radius:14px;
+    --radius-sm:9px;
+    --shadow:0 1px 0 rgba(20,24,32,.04), 0 10px 28px rgba(20,24,32,.06);
+    --shadow-sm:0 1px 2px rgba(20,24,32,.05);
+    --font:"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --display:"Syne", var(--font);
+    --utility:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --bg:var(--paper);
+    --max-board:820px;
   }
-  body.mode-activities{--accent:#a78bfa;--accent-dim:#6d56b3;--accent2:#c4b5fd}
+  body.mode-activities{
+    --accent:var(--ember);
+    --accent-dim:var(--ember-soft);
+    --accent2:#1f4f9c;
+  }
   *{box-sizing:border-box}
-  html,body{margin:0;height:100%;font-family:"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--txt);-webkit-font-smoothing:antialiased}
-  #app{display:flex;flex-direction:column;height:100vh}
-  header{border-bottom:1px solid var(--line);background:linear-gradient(180deg,#17212e,var(--surface));box-shadow:var(--shadow)}
-  .header-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px 10px;flex-wrap:wrap}
-  .brand{display:flex;flex-direction:column;gap:2px}
-  .logo{font-weight:700;font-size:20px;letter-spacing:-.3px;display:flex;align-items:center;gap:9px}
-  .logo .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px rgba(79,209,197,.2)}
-  .tagline{font-size:12.5px;color:var(--muted);font-weight:500;max-width:320px;line-height:1.4}
-  .header-controls{display:flex;align-items:center;gap:10px;padding:0 20px 14px;flex-wrap:wrap}
-  .modes{display:flex;padding:3px;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);gap:2px}
-  .modes button{background:transparent;border:none;color:var(--muted);padding:8px 14px;font-size:13px;font-weight:600;border-radius:9px;transition:color .15s,background .15s}
-  .modes button:hover{color:var(--txt)}
-  .modes button.on{background:var(--surface2);color:var(--txt);box-shadow:0 1px 2px rgba(0,0,0,.25)}
-  .modes button.on.support{color:var(--accent)}
-  .modes button.on.play{color:#c4b5fd}
-  .searchbar{flex:1;min-width:200px;display:flex;gap:8px;align-items:center}
-  .searchbar input{flex:1;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);color:var(--txt);padding:10px 14px;font-size:14px;outline:none;transition:border-color .15s,box-shadow .15s}
-  .searchbar input::placeholder{color:#5c6b82}
-  .searchbar input:focus{border-color:var(--accent-dim);box-shadow:0 0 0 3px rgba(79,209,197,.12)}
+  html,body{
+    margin:0;height:100%;
+    font-family:var(--font);
+    background:var(--bg);color:var(--txt);
+    -webkit-font-smoothing:antialiased;
+    letter-spacing:0;word-spacing:normal;line-height:1.45;
+  }
   button{cursor:pointer;font-family:inherit}
-  .btn{background:var(--bg);border:1px solid var(--line);color:var(--muted);padding:9px 12px;border-radius:var(--radius);font-size:13px;font-weight:600;white-space:nowrap;transition:border-color .15s,color .15s,background .15s}
-  .btn:hover{color:var(--txt);border-color:#3d4f66}
-  .btn.on{background:color-mix(in srgb,var(--accent) 14%,transparent);border-color:var(--accent-dim);color:var(--accent)}
-  .btn:focus-visible,.chip:focus-visible,.daypick:focus-visible,.tod:focus-visible,.fbtn:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
-  .insight{display:flex;flex-wrap:wrap;gap:8px;padding:10px 14px;background:var(--bg);border-bottom:1px solid var(--line)}
-  .insight-pill{font-size:11.5px;color:var(--muted);background:var(--surface2);border:1px solid var(--line);padding:5px 10px;border-radius:999px}
-  .insight-pill strong{color:var(--txt);font-weight:600}
-  .insight-pill.live{border-color:rgba(74,222,128,.3);color:var(--live)}
-  .tips{display:flex;gap:10px;align-items:flex-start;padding:10px 14px;background:rgba(96,165,250,.08);border-bottom:1px solid var(--line);font-size:12.5px;line-height:1.45;color:var(--muted)}
+  #app{display:flex;flex-direction:column;height:100dvh;background:var(--bg)}
+
+  /* ——— Header ——— */
+  header{
+    position:relative;z-index:5;flex-shrink:0;
+    background:
+      radial-gradient(420px 180px at 82% -20%, rgba(26,120,145,.34), transparent 72%),
+      linear-gradient(115deg,#08151e 0%,var(--ink) 56%,#123949 100%);
+    color:#f4fbfc;
+    border-bottom:1px solid rgba(255,255,255,.08);
+  }
+  .header-top{
+    display:flex;align-items:flex-start;justify-content:space-between;
+    gap:14px;padding:16px 22px 8px;flex-wrap:wrap;
+  }
+  .brand{display:flex;flex-direction:column;gap:0;max-width:640px}
+  .logo{
+    font-family:var(--display);font-weight:800;font-size:18px;
+    letter-spacing:-.02em;display:flex;align-items:center;gap:9px;
+    color:#f4f2ec;line-height:1.2;
+  }
+  .logo .dot{
+    width:10px;height:10px;border-radius:50%;
+    background:var(--accent);
+    box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 28%,transparent);
+  }
+  body.mode-activities .logo .dot{background:var(--ember)}
+  body:not(.mode-activities) .logo .dot{background:#3ecfba}
+  .city-tag{
+    font-family:var(--utility);font-size:9px;font-weight:600;
+    letter-spacing:.08em;text-transform:uppercase;
+    color:rgba(244,242,236,.72);border:1px solid rgba(244,242,236,.22);
+    border-radius:4px;padding:3px 7px;margin-left:4px;
+  }
+  .day-kicker{
+    margin-top:10px;font-family:var(--utility);font-size:10px;font-weight:500;
+    letter-spacing:.04em;text-transform:uppercase;color:rgba(244,242,236,.55);
+  }
+  .brand h1{
+    margin:6px 0 4px;font-family:var(--display);
+    font-size:clamp(22px,3.2vw,32px);line-height:1.12;letter-spacing:-.03em;
+    font-weight:800;color:#fff;
+  }
+  .tagline{
+    max-width:540px;font-size:14px;color:rgba(244,242,236,.68);
+    line-height:1.45;font-weight:450;
+  }
+  .hero-live{
+    display:flex;align-items:center;gap:8px;margin-top:10px;
+    font-size:13px;font-weight:600;color:rgba(244,242,236,.72);flex-wrap:wrap;
+  }
+  .hero-live span{
+    width:7px;height:7px;border-radius:50%;background:var(--live);
+    box-shadow:0 0 0 4px rgba(13,138,90,.25);flex-shrink:0;
+  }
+  .hdr-actions{display:flex;gap:6px;margin-left:auto}
+  /* Default buttons = light UI; header overrides below */
+  .btn{
+    background:var(--surface);border:1px solid var(--line);color:var(--muted);
+    padding:9px 12px;border-radius:var(--radius-sm);font-size:13px;font-weight:700;
+    white-space:nowrap;transition:background .15s,border-color .15s,color .15s;
+  }
+  .btn:hover{color:var(--txt);border-color:var(--line-strong);background:#fff}
+  .btn.on{
+    background:color-mix(in srgb,var(--accent) 12%,#fff);
+    border-color:var(--accent-dim);color:var(--txt);
+  }
+  .iconbtn{
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);
+    color:rgba(244,242,236,.85);padding:8px 12px;border-radius:var(--radius-sm);
+    font-size:12.5px;font-weight:600;white-space:nowrap;
+    transition:background .15s,border-color .15s,color .15s;
+  }
+  .iconbtn:hover{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.28)}
+  .iconbtn.on{
+    background:color-mix(in srgb,var(--accent) 22%,transparent);
+    border-color:color-mix(in srgb,var(--accent) 55%,transparent);
+    color:#fff;
+  }
+  header .btn{
+    background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14);
+    color:rgba(244,242,236,.85);border-radius:999px;padding:10px 14px;font-size:12.5px;
+  }
+  header .btn:hover{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.28)}
+  header .btn.on{
+    background:color-mix(in srgb,var(--accent) 22%,transparent);
+    border-color:color-mix(in srgb,var(--accent) 55%,transparent);color:#fff;
+  }
+  .btn:focus-visible,.chip:focus-visible,.daypick:focus-visible,
+  .tod:focus-visible,.fbtn:focus-visible,.iconbtn:focus-visible,
+  .qchip:focus-visible,.pchip:focus-visible,.vchip:focus-visible{
+    outline:2px solid #7dd3fc;outline-offset:2px;
+  }
+  .crisis a{
+    color:#ffb4a8;font-size:12px;font-weight:600;text-decoration:none;
+    border:1px solid rgba(255,180,168,.28);padding:6px 12px;border-radius:var(--radius-sm);
+    white-space:nowrap;background:rgba(255,80,60,.08);
+  }
+  .crisis a:hover{background:rgba(255,80,60,.14);border-color:rgba(255,180,168,.45)}
+
+  .header-controls{
+    display:flex;align-items:center;gap:10px;padding:4px 22px 16px;flex-wrap:wrap;
+  }
+  .modes{
+    display:flex;padding:3px;background:rgba(0,0,0,.28);
+    border:1px solid rgba(255,255,255,.1);border-radius:999px;gap:2px;
+  }
+  .modes button{
+    background:transparent;border:none;color:rgba(244,242,236,.6);
+    padding:9px 16px;font-size:13px;font-weight:700;border-radius:999px;
+    transition:color .15s,background .15s;
+  }
+  .modes button:hover{color:#fff}
+  .modes button.on{background:#fff;color:var(--ink);box-shadow:var(--shadow-sm)}
+  .modes button.on.support,.modes button.on.play{color:var(--ink)}
+  .searchbar{flex:1;min-width:200px;display:flex;gap:8px;align-items:center}
+  .searchbar input{
+    flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);
+    border-radius:999px;color:#fff;padding:11px 16px;font-size:14px;outline:none;
+    transition:border-color .15s,background .15s,box-shadow .15s;
+  }
+  .searchbar input::placeholder{color:rgba(244,242,236,.42)}
+  .searchbar input:focus{
+    background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.35);
+    box-shadow:0 0 0 3px rgba(255,255,255,.08);
+  }
+
+  /* ——— Main shell ——— */
+  main{flex:1;display:flex;min-height:0;background:var(--paper)}
+  #sidebar{
+    width:400px;max-width:44vw;display:flex;flex-direction:column;
+    border-right:1px solid var(--line);min-height:0;background:var(--surface);
+  }
+  #map{flex:1;min-height:0;background:#d5dce6;position:relative}
+
+  /* Activities = single-column dayboard */
+  .mode-activities main{display:block;overflow:auto;background:
+    radial-gradient(1200px 400px at 50% -40px, color-mix(in srgb,var(--ember) 10%, transparent), transparent 70%),
+    var(--paper);
+  }
+  .mode-activities #sidebar{
+    width:min(var(--max-board),100%);max-width:none;min-height:100%;margin:0 auto;
+    border-left:1px solid var(--line);border-right:1px solid var(--line);
+    box-shadow:var(--shadow);background:var(--surface);
+  }
+  .mode-activities #list{overflow:visible}
+  .mode-activities #map{display:none;height:calc(100dvh - 220px);min-height:520px}
+  .mode-activities .viewtabs{
+    display:flex;gap:6px;width:min(var(--max-board),100%);margin:0 auto;
+    padding:8px 14px 0;background:var(--surface);justify-content:flex-end;
+    border-left:1px solid var(--line);border-right:1px solid var(--line);
+  }
+  .mode-activities .viewtabs button{
+    padding:5px 14px;border-radius:999px;border:1px solid var(--line);
+    background:var(--surface2);color:var(--muted);font-weight:700;font-size:12px;
+  }
+  .mode-activities .viewtabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .mode-activities.mobile-view-map #sidebar{display:none}
+  .mode-activities.mobile-view-map #map{display:block}
+  .mode-activities .tips,
+  .mode-activities .daybar,
+  .mode-activities .todbar,
+  .mode-activities .filterbar,
+  .mode-activities .filters,
+  .mode-activities .insight{display:none!important}
+  .mode-activities #nowbtn{display:none}
+  .mode-activities .footer{display:none}
+  .mode-activities .brand h1{font-size:clamp(20px,2.6vw,26px);margin:2px 0}
+  .mode-activities .tagline{font-size:13px;max-width:520px}
+  .mode-activities .day-kicker{margin-top:4px}
+  .mode-activities .hero-live{margin-top:4px}
+  .mode-activities .header-top{padding:12px 22px 4px}
+  .mode-activities .header-controls{padding:0 22px 12px}
+  /* Sticky scene + day filters while you scroll the list */
+  .mode-activities .vibebar{
+    position:sticky;top:0;z-index:6;background:rgba(255,255,255,.96);
+    backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding-top:12px;
+  }
+  @media(min-width:761px){
+    .mode-activities .presetrow{
+      position:sticky;top:72px;z-index:5;background:rgba(255,255,255,.96);
+      backdrop-filter:blur(10px);margin:0;padding-top:10px;
+    }
+    .mode-activities .quickrow{
+      position:sticky;top:118px;z-index:5;background:rgba(255,255,255,.96);
+      backdrop-filter:blur(10px);margin:0;
+    }
+  }
+  .load-banner{
+    margin:12px 16px 4px;padding:12px 14px;border-radius:var(--radius);
+    background:var(--paper);border:1px dashed var(--line-strong);
+    color:var(--muted);font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;
+  }
+  .load-banner .spin{
+    display:inline-block;width:12px;height:12px;border:2px solid var(--line);
+    border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite;flex-shrink:0;
+  }
+
+  /* Support = list + map product */
+  body:not(.mode-activities) main{
+    display:flex!important;flex-direction:row;min-height:0;overflow:hidden;flex:1;
+  }
+  body:not(.mode-activities) #sidebar{
+    width:520px;max-width:46vw;height:100%;max-height:100%;overflow:hidden;
+    display:flex;flex-direction:column;background:var(--surface);
+  }
+  body:not(.mode-activities) #map{
+    display:block!important;flex:1 1 auto;min-width:280px;min-height:0;height:auto!important;position:relative;
+  }
+  body:not(.mode-activities) .results-scroll{flex:1;min-height:0;overflow:auto;background:var(--paper)}
+  body:not(.mode-activities) #list{min-height:0;overflow:visible;padding:8px 0 24px;background:var(--paper)}
+  body:not(.mode-activities) .filterbar{display:none}
+  body:not(.mode-activities) .filters{display:none!important}
+  body:not(.mode-activities) .insight{display:none}
+  body:not(.mode-activities) .tips{display:none!important}
+  body:not(.mode-activities) .vibebar{display:none!important}
+  body:not(.mode-activities) .header-top{align-items:center;padding:12px 20px 6px}
+  body:not(.mode-activities) .header-controls{padding:0 20px 12px}
+  body:not(.mode-activities) .day-kicker,
+  body:not(.mode-activities) .tagline{display:none}
+  body:not(.mode-activities) .hero-live{margin-top:4px}
+  body:not(.mode-activities) .brand h1{font-size:clamp(20px,3.5vw,26px);margin:2px 0}
+  body:not(.mode-activities) .crisis{display:flex!important}
+  body:not(.mode-activities) .daybar{padding:10px 14px 6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent)}
+  body:not(.mode-activities) .daybar::-webkit-scrollbar{display:none}
+  body:not(.mode-activities) .daypick{flex-shrink:0}
+  body:not(.mode-activities) .presetrow{padding:8px 14px 6px}
+  body:not(.mode-activities) .quickrow{padding:6px 14px 8px}
+  body:not(.mode-activities) .todbar{padding:6px 14px 12px;border-bottom:1px solid var(--line)}
+  body:not(.mode-activities) .count{font-size:14px;line-height:1.5;padding:12px 16px}
+
+  /* ——— Filter chrome ——— */
+  .insight{display:flex;flex-wrap:wrap;gap:8px;padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--line)}
+  .insight-pill{
+    font-size:11.5px;color:var(--muted);background:var(--surface);
+    border:1px solid var(--line);padding:5px 10px;border-radius:999px;
+  }
+  .insight-pill strong{color:var(--txt);font-weight:700}
+  .insight-pill.live{border-color:color-mix(in srgb,var(--live) 35%,var(--line));color:var(--live)}
+  .tips{
+    display:flex;gap:10px;align-items:flex-start;padding:12px 14px;
+    background:color-mix(in srgb,var(--accent) 8%,var(--surface));
+    border-bottom:1px solid var(--line);font-size:12.5px;line-height:1.45;color:var(--muted);
+  }
   .tips[hidden]{display:none!important}
   .tips p{margin:0;flex:1}
-  .tips button{flex-shrink:0;background:transparent;border:1px solid var(--line);color:var(--muted);padding:4px 10px;border-radius:8px;font-size:11px;font-weight:600}
+  .tips button{
+    flex-shrink:0;background:var(--surface);border:1px solid var(--line);
+    color:var(--muted);padding:5px 11px;border-radius:999px;font-size:11px;font-weight:700;
+  }
   .tips button:hover{color:var(--txt)}
-  .chiprow{display:flex;align-items:center;gap:6px;padding:8px 14px 6px;overflow-x:auto;scrollbar-width:none}
-  .chiprow::-webkit-scrollbar{display:none}
-  .chipgroup{display:flex;gap:6px;flex-shrink:0}
-  .chipsep{width:1px;height:18px;background:var(--line);flex-shrink:0;margin:0 2px}
-  .qchip{flex-shrink:0;background:var(--bg);border:1px solid var(--line);color:var(--muted);padding:6px 12px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
-  .qchip:hover{color:var(--txt)}
-  .qchip.on{background:color-mix(in srgb,var(--accent) 16%,transparent);border-color:var(--accent-dim);color:var(--accent)}
-  .featured{margin:10px 14px 4px;padding:14px;border-radius:var(--radius);border:1px solid var(--accent-dim);background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 12%,var(--bg)),var(--bg));cursor:pointer;transition:border-color .15s,transform .12s}
-  .featured:hover{border-color:var(--accent);transform:translateY(-1px)}
-  .featured .eyebrow{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:6px}
-  .featured .fname{font-size:15px;font-weight:700;line-height:1.3}
-  .featured .fmeta{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.4}
-  .featured .fcta{margin-top:10px;font-size:12px;font-weight:600;color:var(--accent2)}
-  main{flex:1;display:flex;min-height:0}
-  #sidebar{width:400px;max-width:44vw;display:flex;flex-direction:column;border-right:1px solid var(--line);min-height:0;background:var(--surface)}
-  .daybar{display:flex;flex-wrap:wrap;gap:5px;padding:10px 14px 6px;background:var(--surface);align-items:center;border-bottom:1px solid var(--line)}
-  .daybar-label{margin-right:4px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
-  .daypick{background:var(--bg);border:1px solid var(--line);color:var(--muted);padding:6px 11px;font-size:12px;font-weight:600;border-radius:8px;transition:all .12s}
-  .daypick:hover{color:var(--txt);border-color:#3d4f66}
-  .daypick.on{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent);border-color:var(--accent-dim)}
-  .daypick.today-hint{font-weight:700}
+
+  .vibebar{
+    display:flex;gap:8px;padding:10px 16px 4px;background:var(--surface);
+    flex-wrap:wrap;align-items:center;
+  }
+  .vibebar[hidden]{display:none!important}
+  .vchip{
+    padding:7px 14px;border-radius:999px;
+    border:1px solid var(--line);background:var(--paper);cursor:pointer;font-family:inherit;
+    color:var(--muted);transition:border-color .12s,background .12s;
+  }
+  .vchip strong{font-size:13px;font-weight:700;color:var(--txt)}
+  .vchip span{display:none}
+  .vchip:hover{border-color:var(--line-strong);background:#fff}
+  .vchip.on{
+    background:var(--ink);border-color:var(--ink);color:rgba(255,255,255,.72);
+    box-shadow:var(--shadow-sm);
+  }
+  .vchip.on strong,.vchip.on span{color:#fff}
+  .vchip.on span{opacity:.78}
+
+  .daybar{display:flex;flex-wrap:wrap;gap:5px;padding:12px 16px 8px;background:var(--surface);align-items:center;border-bottom:1px solid var(--line)}
+  .daybar-label,.flabel,.list-section,.map-legend .lg-title{
+    font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted2);font-weight:700;
+  }
+  .daybar-label{margin-right:4px}
+  .daypick{
+    background:var(--paper);border:1px solid var(--line);color:var(--muted);
+    padding:7px 12px;font-size:12.5px;font-weight:700;border-radius:999px;transition:all .12s;
+  }
+  .daypick:hover{color:var(--txt);border-color:var(--line-strong);background:#fff}
+  .daypick.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .daypick.today-hint{font-weight:800}
   .daypick.all-week{margin-left:auto}
-  .todbar{display:flex;gap:4px;padding:6px 14px 0;background:var(--surface)}
-  .todbar .tod{flex:1;background:var(--bg);border:1px solid var(--line);color:var(--muted);padding:7px 6px;font-size:12px;font-weight:600;border-radius:8px;transition:all .15s}
-  .todbar .tod:hover{color:var(--txt);border-color:#3d4f66}
-  .todbar .tod.on{background:var(--surface2);color:var(--txt);border-color:var(--accent-dim)}
-  .filterbar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
-  .fbtn{flex:1;display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--line);color:var(--txt);padding:8px 12px;border-radius:9px;font-size:13px;font-weight:600;text-align:left}
-  .fbtn:hover{border-color:#3d4f66}
+
+  .todbar{display:flex;gap:5px;padding:8px 16px 0;background:var(--surface)}
+  .todbar .tod{
+    flex:1;background:var(--paper);border:1px solid var(--line);color:var(--muted);
+    padding:8px 6px;font-size:12px;font-weight:700;border-radius:var(--radius-sm);transition:all .12s;
+  }
+  .todbar .tod:hover{color:var(--txt);border-color:var(--line-strong)}
+  .todbar .tod.on{background:color-mix(in srgb,var(--accent) 12%,#fff);color:var(--txt);border-color:var(--accent-dim)}
+
+  .filterbar{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--line)}
+  .fbtn{
+    flex:1;display:flex;align-items:center;gap:8px;background:var(--paper);
+    border:1px solid var(--line);color:var(--txt);padding:9px 12px;border-radius:var(--radius-sm);
+    font-size:13px;font-weight:700;text-align:left;
+  }
+  .fbtn:hover{border-color:var(--line-strong)}
   .fbtn .chev{margin-left:auto;color:var(--muted);font-size:10px;transition:transform .15s}
   .fbtn.open .chev{transform:rotate(180deg)}
-  #fCount{background:var(--accent);color:#0a1f1c;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;margin-left:2px}
-  .fclear{background:transparent;border:none;color:var(--muted);font-size:12px;font-weight:600;padding:8px;visibility:hidden}
+  #fCount{background:var(--accent);color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;margin-left:2px}
+  .fclear{background:transparent;border:none;color:var(--muted);font-size:12px;font-weight:700;padding:8px;visibility:hidden}
   .fclear.show{visibility:visible}
   .fclear:hover{color:var(--txt)}
-  .filters{padding:12px 14px 14px;border-bottom:1px solid var(--line)}
+  .filters{padding:12px 16px 14px;border-bottom:1px solid var(--line);background:var(--paper)}
   .filters.collapsed{display:none}
   .frow{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
   .frow:last-child{margin-bottom:0}
-  .frow.cats{max-height:88px;overflow-y:auto;padding-right:4px}
-  .frow.cats::-webkit-scrollbar{width:5px}.frow.cats::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
-  .flabel{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);width:100%;margin-bottom:4px;font-weight:600}
-  .chip{background:var(--chip);border:1px solid var(--line);color:var(--muted);padding:5px 10px;border-radius:999px;font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:5px;transition:all .12s}
-  .chip:hover{color:var(--txt);border-color:#3d4f66}
-  .chip.on{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent);border-color:var(--accent-dim)}
+  .frow.cats{max-height:96px;overflow-y:auto;padding-right:4px}
+  .frow.cats::-webkit-scrollbar{width:5px}
+  .frow.cats::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+  .flabel{width:100%;margin-bottom:4px}
+  .chip{
+    background:var(--surface);border:1px solid var(--line);color:var(--muted);
+    padding:6px 11px;border-radius:999px;font-size:12px;font-weight:600;
+    display:inline-flex;align-items:center;gap:5px;transition:all .12s;
+  }
+  .chip:hover{color:var(--txt);border-color:var(--line-strong)}
+  .chip.on{background:color-mix(in srgb,var(--accent) 12%,#fff);color:var(--txt);border-color:var(--accent-dim);font-weight:700}
   .chip .swatch{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-  .count{padding:10px 14px;font-size:12.5px;color:var(--muted);border-bottom:1px solid var(--line);line-height:1.45}
-  .count b{color:var(--txt);font-weight:600}
-  .list-section{position:sticky;top:0;z-index:2;padding:8px 16px 6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);background:var(--surface);border-bottom:1px solid var(--line)}
+
+  .quickrow,.presetrow{display:flex;gap:7px;padding:6px 16px;overflow-x:auto;scrollbar-width:none;-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent)}
+  .quickrow::-webkit-scrollbar,.presetrow::-webkit-scrollbar{display:none}
+  .mode-activities .presetrow{padding-top:14px;padding-bottom:6px}
+  .mode-activities .quickrow{padding-top:4px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+  .qchip,.pchip{
+    flex-shrink:0;background:var(--paper);border:1px solid var(--line);color:var(--muted);
+    padding:8px 13px;border-radius:999px;font-size:12.5px;font-weight:700;white-space:nowrap;
+    transition:all .12s;
+  }
+  .pchip{border-style:solid;background:var(--surface)}
+  .qchip:hover,.pchip:hover{color:var(--txt);border-color:var(--line-strong);background:#fff}
+  .qchip.on,.pchip.on{
+    background:var(--ink);border-color:var(--ink);color:#fff;
+  }
+  .mode-activities .pchip.on{background:var(--ink);color:#fff}
+
+  /* ——— Results ——— */
+  .count{
+    padding:14px 18px;font-size:14px;color:var(--muted);border-bottom:1px solid var(--line);
+    line-height:1.5;background:var(--surface);font-weight:500;
+  }
+  .count b{color:var(--txt);font-weight:800;font-family:var(--display);font-size:16px;letter-spacing:-.02em}
+  .mode-activities .count{
+    position:sticky;z-index:4;backdrop-filter:blur(10px);
+    background:rgba(255,255,255,.96);border-bottom:1px solid var(--line);
+    top:0; /* mobile: under vibe only if vibe sticks; desktop overridden below */
+  }
+  @media(min-width:761px){
+    .mode-activities .count{top:168px}
+  }
+  @media(max-width:760px){
+    .mode-activities .count{top:0}
+    .mode-activities .vibebar{top:0}
+  }
+  .list-section{
+    position:sticky;top:0;z-index:2;padding:10px 18px 8px;background:rgba(244,242,236,.94);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line);color:var(--muted);
+  }
   .list-section.today{color:var(--accent)}
   #list{overflow:auto;flex:1;min-height:0}
-  .btn.locating{opacity:.7;pointer-events:none}
-  .card{display:grid;grid-template-columns:56px 1fr;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line);cursor:pointer;transition:background .12s}
-  .card:hover{background:var(--surface2)}
-  .card:focus-visible{outline:2px solid var(--accent2);outline-offset:-2px}
-  .card.active{background:var(--bg);border-left:3px solid var(--accent);padding-left:13px}
+  .mode-activities #list{padding-bottom:48px}
+
+  /* Featured next-up */
+  .featured{
+    display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:14px;
+    margin:16px 16px 8px;padding:16px 18px;border-radius:var(--radius);
+    background:linear-gradient(135deg, color-mix(in srgb,var(--accent) 10%, #fff), #fff 55%);
+    border:1px solid color-mix(in srgb,var(--accent) 32%, var(--line));
+    box-shadow:var(--shadow-sm);cursor:pointer;transition:transform .12s,border-color .12s,box-shadow .12s;
+    color:inherit;text-decoration:none;
+  }
+  .mode-activities .featured{grid-template-columns:auto minmax(0,1fr) auto}
+  .featured:hover{transform:translateY(-2px);border-color:var(--accent);box-shadow:var(--shadow)}
+  .featured .eyebrow{
+    font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;
+    color:var(--accent);margin-bottom:6px;
+  }
+  .featured .fname{
+    font-family:var(--display);font-size:18px;font-weight:800;line-height:1.25;
+    letter-spacing:-.02em;color:var(--txt);
+  }
+  .featured .fmeta{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.4}
+  .featured .fcta{margin-top:10px;font-size:12.5px;font-weight:700;color:var(--accent2)}
+  .feature-stamp{
+    display:grid;place-items:center;width:60px;height:60px;border-radius:16px;
+    background:var(--paper);font-size:28px;border:1px solid var(--line);overflow:hidden;
+  }
+  .feature-art{width:86px;height:86px;object-fit:cover;border-radius:12px;border:1px solid var(--line)}
+  body:not(.mode-activities) .featured{margin:10px 10px 12px;padding:16px}
+  body:not(.mode-activities) .featured .fname{font-size:17px}
+
+  /* Cards — ticket time rail */
+  .card{
+    position:relative;display:grid;grid-template-columns:64px 1fr;gap:12px;
+    padding:14px 16px;border-bottom:1px solid var(--line);cursor:pointer;
+    transition:background .12s;
+  }
+  .card:hover{background:var(--paper)}
+  .card.active{background:color-mix(in srgb,var(--accent) 8%, #fff);border-left:3px solid var(--accent);padding-left:13px}
   .card .timecol{text-align:center}
-  .card .timepill{display:block;font-size:13px;font-weight:700;color:var(--txt);line-height:1.2}
-  .card .timeap{font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase}
+  .card .timepill{display:block;font-family:var(--display);font-size:14px;font-weight:800;color:var(--txt);line-height:1.2;letter-spacing:-.02em}
+  .card .timeap{display:block;font-size:10px;color:var(--muted2);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
   .card .body{min-width:0}
-  .card .top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap}
+  .card .top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}
   .card .savebtn{order:2;margin-left:auto}
-  .card .fell{order:3}
-  .card .name{font-weight:600;font-size:14px;line-height:1.35;color:var(--txt);flex:1}
-  .card .fell{font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;color:#0a1218;white-space:nowrap;letter-spacing:.02em}
-  .card .when{font-size:12.5px;color:var(--accent);margin-top:5px;font-weight:500}
-  .card .where{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4}
-  .badges{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap}
-  .b{font-size:10px;font-weight:600;padding:3px 7px;border-radius:6px;background:var(--chip);color:var(--muted);letter-spacing:.02em}
-  .b.online{background:rgba(96,165,250,.12);color:#93c5fd}
-  .b.hybrid{background:rgba(251,191,36,.1);color:#fcd34d}
-  .b.now{background:rgba(251,191,36,.2);color:#fde68a}
-  .b.ok{background:rgba(74,222,128,.1);color:var(--live)}
-  .b.warn{background:rgba(251,191,36,.08);color:#fbbf24}
-  .linkrow{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
-  .verify{display:inline-block;font-size:12px;color:var(--accent2);font-weight:500;text-decoration:none}
+  .card .fell{order:3;font-size:11px;font-weight:700;padding:4px 8px;border-radius:6px;color:#fff;white-space:nowrap}
+  .card .name{font-weight:700;font-size:15px;line-height:1.35;color:var(--txt);flex:1;min-width:0;word-break:break-word}
+  .card .when{font-size:13px;color:var(--accent);margin-top:6px;font-weight:700;line-height:1.4}
+  .card .where{font-size:13px;color:var(--muted);margin-top:5px;line-height:1.45}
+  .card .where .addr{display:block;margin-top:2px;font-size:12px;color:var(--muted2);line-height:1.35}
+  .card .where .hood{color:var(--ink-soft);font-weight:700}
+  .card.saved .body{border-left:2px solid var(--accent2);padding-left:8px;margin-left:-10px}
+
+  /* Activity event cards */
+  .activity-card{
+    display:grid;grid-template-columns:62px minmax(0,1fr);gap:14px;margin:0;
+    padding:18px 48px 18px 18px;border-bottom:1px solid var(--line);background:#fff;
+    position:relative;cursor:pointer;transition:background .12s;
+  }
+  .activity-card::before,.activity-card::after{display:none}
+  .activity-card:hover{background:color-mix(in srgb,var(--paper) 58%,#fff)}
+  .activity-card.active{
+    background:color-mix(in srgb,var(--ember) 7%, #fff);
+    border-left:4px solid var(--ember);padding-left:14px;
+  }
+  .activity-stamp{
+    display:grid;place-items:center;width:58px;height:58px;border-radius:16px;
+    background:var(--paper);font-size:28px;border:1px solid var(--line);overflow:hidden;
+  }
+  .stamp-img{width:100%;height:100%;object-fit:cover;border-radius:inherit}
+  .event-topline{display:flex;align-items:center;gap:7px;margin-bottom:6px;flex-wrap:wrap}
+  .event-format{
+    display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:4px 9px;
+    background:#e5f4ec;color:#0d6b45;font-size:11px;font-weight:800;
+  }
+  .event-format.online{background:#e8eefc;color:#2a4f8f}
+  .event-category{font-size:12px;font-weight:700;color:var(--muted2);letter-spacing:.02em}
+  .event-title{
+    font-family:var(--display);font-size:17px;font-weight:800;line-height:1.28;
+    color:var(--txt);letter-spacing:-.02em;word-break:break-word;text-decoration:none;
+  }
+  a.event-title:hover{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+  .event-time{margin-top:7px;color:var(--ember);font-size:14px;font-weight:700;line-height:1.4}
+  .event-place{margin-top:6px;color:var(--muted);font-size:14px;line-height:1.45}
+  .event-place span{display:block;color:var(--muted2);font-size:13px;margin-top:3px}
+  .event-desc{
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+    margin-top:7px;font-size:13px;line-height:1.45;color:var(--muted);
+  }
+  .event-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .event-tags .b{font-size:12px;border-radius:999px}
+  .event-actions{display:flex;align-items:center;gap:14px;margin-top:12px;flex-wrap:wrap}
+  .event-details{font-size:13px;font-weight:700;color:var(--accent2);text-decoration:none}
+  .event-details:hover{text-decoration:underline}
+  .activity-card .savebtn{position:absolute;right:14px;top:14px;font-size:20px}
+
+  /* Support meeting cards */
+  .meet-card{
+    display:grid!important;grid-template-columns:76px minmax(0,1fr)!important;gap:12px!important;
+    margin:0 12px 10px!important;padding:0!important;overflow:hidden;
+    background:#fff!important;border:1px solid var(--line)!important;border-radius:var(--radius)!important;
+    box-shadow:var(--shadow-sm);transition:border-color .12s,box-shadow .12s,transform .12s;
+  }
+  .meet-card::before,.meet-card::after{display:none!important}
+  .meet-card:hover{border-color:var(--line-strong)!important;box-shadow:var(--shadow);transform:translateY(-1px)}
+  .meet-card.active{
+    border-color:var(--accent-dim)!important;
+    box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 25%,transparent), var(--shadow);
+  }
+  .meet-card .timecol{
+    text-align:center;background:var(--ink)!important;color:#fff;
+    padding:16px 8px!important;align-self:stretch;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;border-radius:0!important;
+  }
+  .meet-card .timepill{font-family:var(--display)!important;font-size:16px!important;font-weight:800;color:#fff!important;letter-spacing:-.02em}
+  .meet-card .timeap{font-size:10px!important;font-weight:700;letter-spacing:.08em;color:rgba(255,255,255,.6)!important;margin-top:4px}
+  .meet-card .body{padding:14px 16px 14px 8px;min-width:0}
+  .meet-card .name{
+    font-family:var(--display);font-size:16px!important;font-weight:800;line-height:1.3!important;
+    letter-spacing:-.02em!important;padding-right:8px;
+  }
+  .meet-card .when{font-size:13px!important;line-height:1.45;margin-top:6px;color:var(--accent)!important}
+  .meet-card .where{font-size:13px!important;line-height:1.5;margin-top:6px}
+  .meet-card .where .hood{display:inline;font-weight:700;color:var(--ink-soft)}
+  .meet-card .where strong{font-weight:700}
+  .meet-card .where .addr{display:block;margin-top:3px;font-size:12.5px;line-height:1.45;color:var(--muted2)}
+  .meet-card .door{
+    margin-top:8px;padding:8px 10px;border-radius:var(--radius-sm);background:var(--paper);
+    border:1px solid var(--line);font-size:13px;line-height:1.45;color:var(--ink-soft);
+  }
+  .meet-card .door b{color:var(--txt);font-weight:800;margin-right:4px}
+  .meet-card .badges{margin-top:10px;gap:6px}
+  .meet-card .meet-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .meet-card .act{
+    display:inline-flex;align-items:center;gap:5px;padding:8px 12px;border-radius:999px;
+    font-size:12.5px;font-weight:700;text-decoration:none;border:1px solid var(--line);
+    background:#fff;color:var(--accent2);cursor:pointer;font-family:inherit;line-height:1.2;
+  }
+  .meet-card .act.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .meet-card .act.primary:hover{opacity:.92}
+  .meet-card .b{font-size:12px;padding:4px 9px}
+  .meet-card .b.open-b{background:#dcefe4;color:#0d6b45;font-weight:800}
+  .meet-card .b.closed-b{background:#f5e8e4;color:#9a4a38}
+  .meet-card .top{align-items:flex-start;gap:8px}
+  .meet-card .fell{font-size:11px;padding:4px 8px;flex-shrink:0}
+  .meet-card .savebtn{flex-shrink:0;font-size:18px;opacity:.5;line-height:1}
+
+  .badges{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;align-items:center}
+  .b{
+    font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;
+    background:var(--chip);color:var(--muted);margin:0;
+  }
+  .b.online{background:#e8eefc;color:#2a4f8f}
+  .b.hybrid{background:#f8ecd8;color:#9a5b13}
+  .b.now{background:#fbdcc9;color:#b3400f;font-weight:800}
+  .b.ok{background:#dcefe4;color:#0d6b45}
+  .b.warn{background:#f8e9ce;color:#9a5b13}
+  .b.source{background:#e4eef0;color:#2d5a66}
+  .b.wx{background:#e6f0f7;color:#2c5875}
+  .b.wx.wet{background:#dde7f5;color:#274b86}
+  .linkrow{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px}
+  .verify{display:inline-block;font-size:12px;color:var(--accent2);font-weight:600;text-decoration:none}
   .verify:hover{text-decoration:underline}
-  .verify.vbtn{color:var(--live);border:1px solid rgba(74,222,128,.25);background:rgba(74,222,128,.06);padding:4px 10px;border-radius:8px}
-  .verify.vbtn:hover{border-color:rgba(74,222,128,.45);text-decoration:none}
-  #map{flex:1;min-height:0;background:#0a0e14;position:relative}
-  .map-legend{position:absolute;bottom:14px;left:14px;z-index:800;max-width:200px;padding:10px 12px;background:rgba(19,26,36,.92);border:1px solid var(--line);border-radius:var(--radius);backdrop-filter:blur(8px);font-size:11px;color:var(--muted);pointer-events:none}
-  .map-legend .lg-title{font-weight:700;color:var(--txt);margin-bottom:6px;font-size:10px;text-transform:uppercase;letter-spacing:.06em}
+  .verify.vbtn{
+    color:var(--live);border:1px solid color-mix(in srgb,var(--live) 30%,transparent);
+    background:color-mix(in srgb,var(--live) 8%,transparent);padding:4px 10px;border-radius:999px;
+  }
+  .verify.vbtn:hover{border-color:color-mix(in srgb,var(--live) 50%,transparent);text-decoration:none}
+  .dir{color:var(--accent2);font-size:12px;font-weight:600;text-decoration:none}
+  .dir:hover{text-decoration:underline}
+  .savebtn{background:transparent;border:none;padding:4px;font-size:16px;line-height:1;cursor:pointer;opacity:.4}
+  .savebtn.on{opacity:1}
+
+  .showmore{
+    margin:14px 16px 20px;padding:12px;text-align:center;background:var(--paper);
+    border:1px solid var(--line);border-radius:var(--radius);color:var(--accent2);
+    font-size:13px;font-weight:700;cursor:pointer;
+  }
+  .showmore:hover{background:#fff;border-color:var(--line-strong)}
+  .show-ended{
+    margin:10px 14px 16px;padding:11px 12px;text-align:center;background:var(--paper);
+    border:1px dashed var(--line-strong);border-radius:var(--radius);color:var(--muted);
+    font-size:12.5px;font-weight:700;cursor:pointer;width:calc(100% - 28px);
+  }
+  .show-ended:hover{color:var(--txt);border-color:var(--accent-dim);background:#fff}
+  .empty{padding:40px 24px;text-align:center;color:var(--muted);font-size:14px;line-height:1.55}
+  .empty .empty-title{font-family:var(--display);font-size:18px;font-weight:800;color:var(--txt);margin-bottom:8px;letter-spacing:-.02em}
+  .empty-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:16px}
+  .empty-actions .btn{color:var(--txt);background:var(--surface);border-color:var(--line)}
+  .loading{display:inline-block;color:var(--muted)}
+  .loading .spin{
+    display:inline-block;width:8px;height:8px;border:2px solid var(--line);
+    border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite;
+    vertical-align:-1px;margin-right:6px;
+  }
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .btn.locating{opacity:.7;pointer-events:none}
+
+  /* Source scouts */
+  .source-scout{display:none;padding:12px 16px;background:var(--paper);border-top:1px solid var(--line)}
+  .mode-activities .source-scout{display:block}
+  #onlineScout,#programScout{display:block}
+  .mode-activities #onlineScout,.mode-activities #programScout{display:none}
+  body:not(.mode-activities) .scout-activities-only{display:none!important}
+  .source-scout summary{cursor:pointer;color:var(--muted);font-size:12.5px;font-weight:700}
+  .scout-links{display:flex;gap:7px;margin-top:10px;overflow-x:auto;scrollbar-width:none;-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent)}
+  .scout-links::-webkit-scrollbar{display:none}
+  .scout-links a{
+    flex-shrink:0;text-decoration:none;font-size:12px;font-weight:700;color:var(--accent2);
+    background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 12px;
+  }
+  .scout-links a:hover{border-color:var(--accent);color:var(--accent)}
+
+  .footer{padding:12px 16px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);line-height:1.5;background:var(--paper)}
+  .footer code{font-size:10px;background:#fff;padding:1px 5px;border-radius:4px;border:1px solid var(--line)}
+
+  /* Map chrome */
+  .map-legend{
+    position:absolute;bottom:14px;left:14px;z-index:800;max-width:200px;padding:11px 12px;
+    background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:var(--radius);
+    backdrop-filter:blur(8px);font-size:11px;color:var(--muted);pointer-events:none;box-shadow:var(--shadow-sm);
+  }
+  .map-legend .lg-title{font-weight:800;color:var(--txt);margin-bottom:6px}
   .map-legend .lg-row{display:flex;align-items:center;gap:7px;margin-top:4px}
   .map-legend .lg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-  .map-hint{position:absolute;top:12px;right:12px;z-index:800;padding:8px 11px;background:rgba(19,26,36,.9);border:1px solid var(--line);border-radius:9px;font-size:11px;color:var(--muted);pointer-events:none;max-width:160px;line-height:1.35}
-  .leaflet-popup-content-wrapper{border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.35)}
+  .map-hint{
+    position:absolute;top:12px;right:12px;z-index:800;padding:8px 12px;
+    background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:999px;
+    font-size:11px;color:var(--muted);pointer-events:none;max-width:170px;line-height:1.35;box-shadow:var(--shadow-sm);
+  }
+  .leaflet-popup-content-wrapper{border-radius:var(--radius);box-shadow:var(--shadow)}
   .leaflet-popup-content{font-family:inherit;margin:12px 14px;line-height:1.4}
-  .pop .pn{font-weight:600;font-size:14px;color:#0f1419}
-  .pop .pf{font-size:11px;font-weight:600;color:#64748b;margin:2px 0}
+  .pop .pn{font-family:var(--display);font-weight:800;font-size:15px;color:var(--ink);letter-spacing:-.02em}
+  .pop .pf{font-size:11px;font-weight:700;color:#64748b;margin:2px 0}
   .pop .pw{font-size:12px;color:#334155;margin-top:4px}
-  .pop a{color:#0d9488;font-weight:600;font-size:12px}
+  .pop a{color:var(--accent2);font-weight:700;font-size:12px}
   .pop.spot-pop .pn{margin-bottom:8px}
   .pop-list{margin:0;padding:0;list-style:none;max-height:220px;overflow-y:auto}
   .pop-list li{margin:0;padding:0;border-top:1px solid #e2e8f0}
+  .pop-list li:first-child{border-top:none}
   .pop-pick{display:block;width:100%;text-align:left;padding:9px 4px;border:none;background:transparent;font:inherit;font-size:13px;color:#0f172a;cursor:pointer;line-height:1.35}
   .pop-pick:hover{background:#f1f5f9}
-  .pop-pick strong{display:block;font-weight:600}
+  .pop-pick strong{display:block;font-weight:700}
   .pop-pick span{font-size:11.5px;color:#64748b}
-  .gather-cluster{background:rgba(79,209,197,.22)!important;border:2px solid rgba(79,209,197,.65)!important;border-radius:50%!important;box-shadow:0 2px 10px rgba(0,0,0,.35)}
-  .gather-cluster span{display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-weight:700;font-size:14px;color:#0a1f1c}
-  .gather-marker-active{filter:drop-shadow(0 0 6px rgba(79,209,197,.9))}
+  .gather-cluster{
+    background:color-mix(in srgb,var(--accent) 22%,transparent)!important;
+    border:2px solid color-mix(in srgb,var(--accent) 70%,transparent)!important;
+    border-radius:50%!important;box-shadow:0 2px 10px rgba(0,0,0,.2);
+  }
+  .gather-cluster span{display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-weight:800;font-size:13px;color:var(--ink)}
+  .gather-marker-active{filter:drop-shadow(0 0 6px color-mix(in srgb,var(--accent) 80%,transparent))}
   .leaflet-interactive{cursor:pointer!important}
-  .footer{padding:10px 14px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);line-height:1.5}
-  .footer code{font-size:10px;background:var(--bg);padding:1px 5px;border-radius:4px;border:1px solid var(--line)}
-  .empty{padding:32px 20px;text-align:center;color:var(--muted);font-size:13px;line-height:1.55}
-  .empty .empty-title{font-size:15px;font-weight:600;color:var(--txt);margin-bottom:8px}
-  .empty-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:14px}
-  .empty-actions .btn{color:var(--txt)}
-  .dir{color:var(--accent2);font-size:12px;font-weight:500;text-decoration:none}
-  .dir:hover{text-decoration:underline}
-  .showmore{margin:12px 14px 18px;padding:11px;text-align:center;background:transparent;border:1px solid var(--line);border-radius:var(--radius);color:var(--accent2);font-size:13px;font-weight:600}
-  .showmore:hover{background:var(--bg);border-color:#3d4f66}
-  .loading{display:inline-block;color:var(--muted)}
-  .loading .spin{display:inline-block;width:8px;height:8px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-1px;margin-right:6px}
-  @keyframes sp{to{transform:rotate(360deg)}}
-  .crisis a{color:#fca5a5;font-size:12px;font-weight:600;text-decoration:none;border:1px solid rgba(252,165,165,.2);padding:6px 12px;border-radius:var(--radius);white-space:nowrap;transition:background .15s,border-color .15s}
-  .crisis a:hover{background:rgba(252,165,165,.06);border-color:rgba(252,165,165,.35)}
-  .crisis button{color:#fca5a5;background:transparent;font-size:12px;font-weight:600;border:1px solid rgba(252,165,165,.2);padding:6px 12px;border-radius:var(--radius);white-space:nowrap;transition:background .15s,border-color .15s}
-  .crisis button:hover{background:rgba(252,165,165,.06);border-color:rgba(252,165,165,.35)}
-  .modal-scrim{position:fixed;inset:0;z-index:2000;background:rgba(5,8,12,.66);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:18px}
-  .modal-scrim[hidden]{display:none!important}
-  .modal{width:100%;max-width:520px;max-height:86vh;overflow-y:auto;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.5);padding:20px}
-  .modal h2{margin:0 0 4px;font-size:17px}
-  .modal .modal-sub{font-size:12.5px;color:var(--muted);margin:0 0 14px;line-height:1.45}
-  .modal-close{float:right;background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:4px 10px;font-size:12px;font-weight:600}
-  .modal-close:hover{color:var(--txt)}
-  .res-group{margin-bottom:14px}
-  .res-group h3{margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
-  .res-item{display:block;padding:10px 12px;margin-bottom:6px;background:var(--bg);border:1px solid var(--line);border-radius:10px;text-decoration:none;color:var(--txt);transition:border-color .15s}
-  .res-item:hover{border-color:var(--accent-dim)}
-  .res-item .rn{font-size:13.5px;font-weight:600}
-  .res-item .rd{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.4}
-  .res-item .rc{font-size:12px;color:var(--accent);font-weight:600;margin-top:3px}
-  .res-item.urgent{border-color:rgba(252,165,165,.35)}
-  .res-item.urgent .rc{color:#fca5a5}
   .marker-cluster-small,.marker-cluster-medium,.marker-cluster-large{width:44px!important;height:44px!important}
-  .pchip{flex-shrink:0;background:transparent;border:1px dashed var(--line);color:var(--muted);padding:5px 11px;border-radius:999px;font-size:11.5px;font-weight:600}
-  .pchip:hover{color:var(--txt);border-style:solid}
-  .pchip.on{border-style:solid;border-color:var(--accent-dim);color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
-  .guide{padding:12px 14px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--accent) 6%,var(--bg));font-size:12.5px;line-height:1.5;color:var(--muted)}
+
+  .guide{
+    padding:14px 16px;border-bottom:1px solid var(--line);
+    background:color-mix(in srgb,var(--accent) 8%,var(--surface));
+    font-size:13px;line-height:1.5;color:var(--muted);
+  }
   .guide[hidden]{display:none!important}
-  .guide h3{margin:0 0 8px;font-size:13px;color:var(--txt)}
+  .guide h3{margin:0 0 8px;font-family:var(--display);font-size:15px;font-weight:800;color:var(--txt);letter-spacing:-.02em}
   .guide ul{margin:0;padding-left:18px}
   .guide li{margin-bottom:4px}
-  .guide-actions{display:flex;gap:8px;margin-top:10px}
-  .savebtn{background:transparent;border:none;padding:4px;font-size:16px;line-height:1;cursor:pointer;opacity:.45}
-  .savebtn.on{opacity:1}
-  .card.saved .body{border-left:2px solid var(--accent2);padding-left:8px;margin-left:-10px}
-  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);z-index:9999;padding:10px 18px;background:var(--surface2);border:1px solid var(--line);border-radius:var(--radius);font-size:13px;font-weight:600;color:var(--txt);box-shadow:0 8px 30px rgba(0,0,0,.4);opacity:0;transition:transform .25s,opacity .25s;pointer-events:none}
+  .guide-actions{display:flex;gap:8px;margin-top:12px}
+
+  .toast{
+    position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);z-index:9999;
+    padding:11px 18px;background:var(--ink);border:1px solid var(--ink);border-radius:999px;
+    font-size:13px;font-weight:700;color:#fff;box-shadow:var(--shadow);
+    opacity:0;transition:transform .25s,opacity .25s;pointer-events:none;
+  }
   .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
   .viewtabs{display:none}
-  .hdr-actions{display:flex;gap:6px;margin-left:auto}
-  .iconbtn{background:var(--bg);border:1px solid var(--line);color:var(--muted);padding:7px 10px;border-radius:9px;font-size:12px;font-weight:600}
-  .iconbtn:hover{color:var(--txt)}
-  .iconbtn.on{color:var(--accent);border-color:var(--accent-dim)}
-  @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+  @media(prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+  }
+
   @media(max-width:760px){
-    .header-top{padding:12px 14px 8px}
-    .header-controls{padding:0 14px 12px}
-    .viewtabs{display:flex;padding:8px 14px 0;gap:6px;background:var(--surface);border-bottom:1px solid var(--line)}
-    .viewtabs button{flex:1;padding:10px;border-radius:9px;border:1px solid var(--line);background:var(--bg);color:var(--muted);font-weight:600;font-size:13px}
-    .viewtabs button.on{background:var(--surface2);color:var(--accent);border-color:var(--accent-dim)}
-    main{flex-direction:column}
+    #app{height:100dvh}
+    header{flex-shrink:0}
+    .header-top{padding:13px 14px 8px}
+    .brand{width:100%;padding-right:80px}
+    .brand h1{font-size:24px;margin-top:2px}
+    .day-kicker{margin-top:8px}
+    .tagline{display:none}
+    .hero-live{margin-top:6px;font-size:12px}
+    .hdr-actions{position:absolute;right:14px;top:12px}
+    #btnShare{display:none}
+    .crisis{display:none}
+    .header-controls{padding:0 14px 12px;align-items:stretch}
+    .modes{width:100%}
+    .modes button{flex:1;padding:10px 10px;font-size:12.5px}
+    .searchbar{min-width:100%;gap:6px}
+    .searchbar input{min-width:0}
+    .searchbar .btn{padding:9px 12px}
+    .viewtabs{
+      display:flex;padding:8px 14px 4px;gap:6px;background:var(--surface);
+      position:relative;z-index:4;justify-content:flex-end;
+    }
+    .viewtabs button{
+      padding:5px 14px;border-radius:999px;border:1px solid var(--line);
+      background:var(--paper);color:var(--muted);font-weight:700;font-size:12px;
+    }
+    .viewtabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+    main{flex-direction:column;min-height:0}
     #sidebar{width:100%;max-width:100%;order:2;flex:1;min-height:0}
     #map{order:1;flex:1;min-height:0}
     body.mobile-view-list #map{display:none}
@@ -224,47 +743,107 @@
     body.mobile-view-map #sidebar{display:none}
     body.mobile-view-map #map{display:block;flex:1}
     .daypick.all-week{margin-left:0}
+    body.mobile-view-list #app{height:auto;min-height:100dvh}
+    body.mobile-view-list main{display:block}
+    body.mobile-view-list #sidebar{height:auto;overflow:visible}
+    body.mobile-view-list #list{overflow:visible}
+    .source-scout{padding:12px 15px}
+    .daybar{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent)}
+    .daybar::-webkit-scrollbar{display:none}
+    .daybar-label{display:none}
+    .daypick{flex-shrink:0}
+    .card{margin:0;padding:14px}
+    .activity-card{margin:0;padding:16px 44px 16px 14px;grid-template-columns:52px minmax(0,1fr);gap:12px}
+    .card.activity-card.active,.activity-card.active{padding:16px 44px 16px 10px}
+    .activity-stamp{width:50px;height:50px;font-size:24px;border-radius:14px}
+    .event-title{font-size:16px}
+    .featured{margin:12px 12px}
+    .mode-activities .featured{grid-template-columns:auto minmax(0,1fr)}
+    .featured .feature-art{display:none}
+    .feature-stamp{width:48px;height:48px;font-size:24px}
+    .map-legend{max-height:130px;overflow:hidden}
+
+    body:not(.mode-activities) .crisis{display:flex!important;position:absolute;right:14px;top:48px}
+    body:not(.mode-activities) .crisis a{font-size:11px;padding:5px 9px}
+    body:not(.mode-activities) .brand{padding-right:90px}
+    body:not(.mode-activities) .header-top{padding:10px 14px 4px}
+    body:not(.mode-activities) .header-controls{padding:0 14px 10px}
+    body:not(.mode-activities) .brand h1{font-size:21px;margin:2px 0}
+    body:not(.mode-activities) .hero-live{font-size:12px;margin-top:3px}
+    body:not(.mode-activities) .crisis{top:44px}
+    body:not(.mode-activities) main{
+      display:flex!important;flex-direction:column!important;min-height:0;overflow:hidden!important;
+    }
+    body:not(.mode-activities) .viewtabs{order:0;flex:0 0 auto;width:100%;margin:0}
+    body:not(.mode-activities) #sidebar{
+      order:1;width:100%;max-width:none;height:auto;max-height:none;min-height:0;
+    }
+    body:not(.mode-activities).mobile-view-list #app{height:auto;min-height:100dvh}
+    body:not(.mode-activities).mobile-view-list main{overflow:visible!important}
+    body:not(.mode-activities).mobile-view-list #sidebar{display:flex;height:auto;overflow:visible}
+    body:not(.mode-activities).mobile-view-list #map{display:none!important}
+    body:not(.mode-activities).mobile-view-list .results-scroll{overflow:visible}
+    body:not(.mode-activities).mobile-view-map #app{height:100dvh}
+    body:not(.mode-activities).mobile-view-map #sidebar{display:none!important}
+    body:not(.mode-activities).mobile-view-map #map{
+      display:block!important;order:1;flex:1 1 auto;width:100%;min-width:0;min-height:320px;height:auto!important;
+    }
+    body:not(.mode-activities) .daybar{padding-top:8px}
+    body:not(.mode-activities) .presetrow{padding-top:5px}
+    body:not(.mode-activities) .quickrow{padding-top:4px}
+    body:not(.mode-activities) .todbar{padding-top:4px;padding-bottom:8px}
+    .meet-card{grid-template-columns:64px minmax(0,1fr)!important;margin:0 8px 8px!important}
+    .meet-card .timecol{padding:12px 6px!important}
+    .meet-card .body{padding:12px 12px 12px 4px}
+    .meet-card .meet-actions{gap:6px;margin-top:10px}
+    .meet-card .act{padding:7px 10px;font-size:12px}
   }
 </style>
+
 </head>
-<body>
+<body class="mode-activities" data-design="dayboard-v4">
 <div id="app">
   <header>
     <div class="header-top">
       <div class="brand">
-        <div class="logo"><span class="dot"></span>Gather</div>
-        <div class="tagline">Support groups &amp; things to do — Minneapolis, St. Paul &amp; suburbs</div>
+        <div class="logo"><span class="dot" aria-hidden="true"></span>Gather <span class="city-tag">MSP</span></div>
+        <div class="day-kicker" id="dayKicker">Twin Cities · Today</div>
+        <h1 id="heroTitle">Find something to do.</h1>
+        <div class="tagline">Live in-person events around Minneapolis and St. Paul — music, games, dance, meetups.</div>
+        <div class="hero-live" id="heroLive"><span></span>Checking live sources…</div>
       </div>
       <div class="hdr-actions">
         <button type="button" class="iconbtn" id="btnSaved" title="Show saved">Saved</button>
         <button type="button" class="iconbtn" id="btnShare" title="Copy link to this view">Share</button>
       </div>
-      <div class="crisis" title="Free, confidential, 24/7"><a href="tel:988">Crisis support: 988</a> <button type="button" id="btnHelp">Get help now</button></div>
+      <div class="crisis" title="Free, confidential, 24/7"><a href="tel:988">Crisis · 988</a></div>
     </div>
     <div class="header-controls">
-      <div class="modes">
-        <button id="mSupport" class="on support" data-mode="support">Support</button>
-        <button id="mPlay" data-mode="activities">Activities</button>
+      <div class="modes" role="tablist" aria-label="App mode">
+        <button id="mPlay" class="on play" data-mode="activities" role="tab" aria-selected="true">Things to do</button>
+        <button id="mSupport" data-mode="support" role="tab" aria-selected="false">Support meetings</button>
       </div>
       <div class="searchbar">
-        <input id="q" type="search" placeholder="Search name, place, or topic…" autocomplete="off" />
-        <button class="btn" id="nearme" type="button" title="Use your location to sort by distance">My area</button>
-        <button class="btn" id="nowbtn" type="button">Happening now</button>
+        <input id="q" type="search" placeholder="Search music, games, dance, AA…" autocomplete="off" aria-label="Search events and meetings" />
+        <button class="btn" id="nearme" type="button" title="Use your location to sort by distance">Near me</button>
+        <button class="btn" id="nowbtn" type="button">Right now</button>
       </div>
     </div>
   </header>
   <main>
     <div class="viewtabs" id="viewtabs" role="tablist" aria-label="Map or list">
-      <button type="button" role="tab" class="on" data-view="map" aria-selected="true">Map</button>
-      <button type="button" role="tab" data-view="list">List</button>
+      <button type="button" role="tab" data-view="map" aria-selected="false">Map</button>
+      <button type="button" role="tab" class="on" data-view="list" aria-selected="true">List</button>
     </div>
     <div id="sidebar">
       <div class="tips" id="tips" hidden>
-        <p><strong style="color:var(--txt)">How Gather works:</strong> Pick a day, tap a map dot, or use quick filters. Verified listings come from official feeds — always confirm before you go.</p>
+        <p><strong style="color:var(--txt)">How Gather works:</strong> Pick a day, open a listing, or use quick filters. Live listings come from public event pages and official feeds — confirm before you go.</p>
         <button type="button" id="tipsDismiss">Got it</button>
       </div>
+      <div class="vibebar" id="vibebar" hidden></div>
       <div class="daybar" id="daybar"></div>
-      <div class="chiprow"><span class="chipgroup" id="presetrow"></span><span class="chipsep"></span><span class="chipgroup" id="quickrow"></span></div>
+      <div class="presetrow" id="presetrow"></div>
+      <div class="quickrow" id="quickrow"></div>
       <div class="guide" id="guide" hidden>
         <h3>First time at a support meeting?</h3>
         <ul>
@@ -278,12 +857,6 @@
           <button type="button" class="btn" id="guideDismiss">Hide guide</button>
         </div>
       </div>
-      <div class="todbar" id="todbar">
-        <button class="tod on" data-tod="">All day</button>
-        <button class="tod" data-tod="morning">Morning</button>
-        <button class="tod" data-tod="afternoon">Afternoon</button>
-        <button class="tod" data-tod="evening">Evening</button>
-      </div>
       <div class="filterbar">
         <button class="fbtn" id="fToggle" type="button">Filters <span id="fCount" hidden></span><span class="chev">▼</span></button>
         <button class="fclear" id="fClear" type="button">Clear</button>
@@ -294,9 +867,50 @@
         <div class="frow" id="fmtFilters"><span class="flabel">Format</span></div>
       </div>
       <div class="insight" id="insight"></div>
-      <div class="count" id="count"></div>
-      <div id="list"></div>
-      <div class="footer" id="src"></div>
+      <div class="results-scroll">
+        <div class="count" id="count" aria-live="polite"></div>
+        <div id="list"></div>
+        <details class="source-scout" id="programScout">
+        <summary>Other programs — official meeting finders</summary>
+        <div class="scout-links" id="programLinks"></div>
+      </details>
+      <details class="source-scout" id="onlineScout">
+        <summary>Can't get out? Online meetings run day and night</summary>
+        <div class="scout-links">
+          <a href="https://aa-intergroup.org/meetings/" target="_blank" rel="noopener">AA Online</a>
+          <a href="https://virtual.na.org/meetings/" target="_blank" rel="noopener">NA Virtual</a>
+          <a href="https://www.intherooms.com/home/" target="_blank" rel="noopener">In The Rooms</a>
+          <a href="https://meetings.smartrecovery.org/meetings/" target="_blank" rel="noopener">SMART</a>
+          <a href="https://al-anon.org/al-anon-meetings/electronic-meetings/" target="_blank" rel="noopener">Al-Anon</a>
+        </div>
+      </details>
+      <details class="source-scout scout-activities-only" id="venueScout">
+        <summary>Big rooms we can&#39;t list — no public feed, check them direct</summary>
+        <div class="scout-links">
+          <a href="https://first-avenue.com/calendar/" target="_blank" rel="noopener">First Ave / Entry / Turf Club</a>
+          <a href="https://www.icehousempls.com/events" target="_blank" rel="noopener">Icehouse</a>
+          <a href="https://finelinemusic.com/events/" target="_blank" rel="noopener">Fine Line</a>
+          <a href="https://www.thehookmpls.com/events" target="_blank" rel="noopener">Hook &amp; Ladder</a>
+          <a href="https://www.guthrietheater.org/shows-and-tickets/" target="_blank" rel="noopener">Guthrie</a>
+          <a href="https://walkerart.org/calendar/" target="_blank" rel="noopener">Walker</a>
+          <a href="https://new.artsmia.org/events" target="_blank" rel="noopener">Mia</a>
+          <a href="https://www.ordway.org/events/" target="_blank" rel="noopener">Ordway</a>
+          <a href="https://trylon.org/" target="_blank" rel="noopener">Trylon</a>
+          <a href="https://theparkwaytheater.com/" target="_blank" rel="noopener">Parkway</a>
+        </div>
+      </details>
+      <details class="source-scout scout-activities-only">
+        <summary>Still looking? Check social posts and flyers</summary>
+        <div class="scout-links">
+          <a href="https://www.facebook.com/events/explore/minneapolis-minnesota/" target="_blank" rel="noopener">Facebook</a>
+          <a href="https://www.instagram.com/explore/tags/mplsevents/" target="_blank" rel="noopener">Instagram</a>
+          <a href="https://www.tiktok.com/search?q=minneapolis%20events%20today" target="_blank" rel="noopener">TikTok</a>
+          <a href="https://www.reddit.com/r/Minneapolis/search/?q=weekend%20roundup&amp;sort=new" target="_blank" rel="noopener">Reddit</a>
+          <a href="https://www.google.com/search?tbm=isch&amp;q=Minneapolis+events+today+flyer" target="_blank" rel="noopener">Flyers</a>
+        </div>
+      </details>
+        <div class="footer" id="src"></div>
+      </div>
     </div>
     <div id="map">
       <div class="map-hint" id="mapHint">Tap a dot to see details</div>
@@ -305,85 +919,6 @@
   </main>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
-<div class="modal-scrim" id="helpModal" hidden role="dialog" aria-modal="true" aria-labelledby="helpTitle">
-  <div class="modal">
-    <button type="button" class="modal-close" id="helpClose">Close ✕</button>
-    <h2 id="helpTitle">Get help now</h2>
-    <p class="modal-sub">Free, confidential resources. If someone is in immediate danger, call 911.</p>
-    <div class="res-group">
-      <h3>Right now — 24/7</h3>
-      <a class="res-item urgent" href="tel:988">
-        <div class="rn">988 Suicide &amp; Crisis Lifeline</div>
-        <div class="rd">Mental health or substance use crisis. Call or text 988, or chat at 988lifeline.org.</div>
-        <div class="rc">Call 988</div>
-      </a>
-      <a class="res-item urgent" href="tel:18006624357">
-        <div class="rn">SAMHSA National Helpline</div>
-        <div class="rd">Free treatment referral &amp; information for substance use and mental health, in English and Spanish.</div>
-        <div class="rc">1-800-662-HELP (4357)</div>
-      </a>
-      <a class="res-item" href="tel:211">
-        <div class="rn">211 — United Way</div>
-        <div class="rd">Connects you to local help: housing, food, treatment, support programs.</div>
-        <div class="rc">Call 211</div>
-      </a>
-    </div>
-    <div class="res-group" id="resTreatment">
-      <h3>Find treatment</h3>
-      <a class="res-item" href="https://fasttrackermn.org/" target="_blank" rel="noopener">
-        <div class="rn">Fast-Tracker Minnesota</div>
-        <div class="rd">Minnesota's real-time locator for substance use &amp; mental health treatment openings.</div>
-        <div class="rc">fasttrackermn.org ↗</div>
-      </a>
-      <a class="res-item" href="https://findtreatment.gov/" target="_blank" rel="noopener">
-        <div class="rn">FindTreatment.gov</div>
-        <div class="rd">Official national locator for licensed treatment — filter by payment, telehealth, and distance.</div>
-        <div class="rc">findtreatment.gov ↗</div>
-      </a>
-    </div>
-    <div class="res-group" id="resCommunity">
-      <h3>Sober community &amp; support</h3>
-      <a class="res-item" href="https://thephoenix.org/find-a-class/" target="_blank" rel="noopener">
-        <div class="rn">The Phoenix</div>
-        <div class="rd">Free sober active community — workouts, climbing, yoga &amp; socials. St Paul gym at 470 Cleveland Ave N.</div>
-        <div class="rc">thephoenix.org ↗</div>
-      </a>
-      <a class="res-item" href="https://www.minnesotarecovery.org/" target="_blank" rel="noopener">
-        <div class="rn">Minnesota Recovery Connection</div>
-        <div class="rd">Peer support, All Recovery meetings, and recovery community events across the metro.</div>
-        <div class="rc">minnesotarecovery.org ↗</div>
-      </a>
-      <a class="res-item" href="https://mnwitw.org/mnwarmline" target="_blank" rel="noopener">
-        <div class="rn">Minnesota Warmline</div>
-        <div class="rd">Peer-run support line when it's not a crisis but you need to talk to someone who gets it.</div>
-        <div class="rc">mnwitw.org/mnwarmline ↗</div>
-      </a>
-    </div>
-    <div class="res-group" id="resOnline">
-      <h3>Can't make it in person?</h3>
-      <a class="res-item" href="https://aa-intergroup.org/meetings/" target="_blank" rel="noopener">
-        <div class="rn">Online Intergroup of AA</div>
-        <div class="rd">Hundreds of online AA meetings around the clock, every day.</div>
-        <div class="rc">aa-intergroup.org ↗</div>
-      </a>
-      <a class="res-item" href="https://virtual-na.org/meetings/" target="_blank" rel="noopener">
-        <div class="rn">Virtual NA</div>
-        <div class="rd">Online and phone NA meetings worldwide, searchable by time and language.</div>
-        <div class="rc">virtual-na.org ↗</div>
-      </a>
-      <a class="res-item" href="https://www.intherooms.com/" target="_blank" rel="noopener">
-        <div class="rn">In The Rooms</div>
-        <div class="rd">Free online recovery community — live video meetings across many fellowships.</div>
-        <div class="rc">intherooms.com ↗</div>
-      </a>
-      <a class="res-item" href="https://meetings.smartrecovery.org/meetings/" target="_blank" rel="noopener">
-        <div class="rn">SMART Recovery Online</div>
-        <div class="rd">Science-based, non-12-step meetings online every day.</div>
-        <div class="rc">meetings.smartrecovery.org ↗</div>
-      </a>
-    </div>
-  </div>
-</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
@@ -403,6 +938,7 @@ const FELLOWSHIPS = {
   SMART:{name:"SMART Recovery (non-12-step)",color:"#c084fc"},
   Dharma:{name:"Recovery Dharma (Buddhist)",color:"#94e0c0"},
   Refuge:{name:"Refuge Recovery (Buddhist)",color:"#f0abfc"},
+  Buddhist:{name:"Buddhist Recovery Network",color:"#d8b4fe"},
   LifeRing:{name:"LifeRing Secular Recovery",color:"#7dd3fc"},
   WFS:{name:"Women for Sobriety",color:"#fb7185"},
   Wellbriety:{name:"Wellbriety / White Bison (Native)",color:"#fcd34d"},
@@ -415,24 +951,25 @@ const FELLOWSHIPS = {
 // Official meeting finders per program — powers the "verify" button.
 const FINDERS={
   AA:"https://aaminneapolis.org/meetings/",
-  NA:"https://naminnesota.org/find-a-meeting/",
-  "Al-Anon":"https://al-anon.org/al-anon-meetings/find-an-al-anon-meeting/",
+  NA:"https://naminnesota.org/meetings/",
+  "Al-Anon":"https://al-anon.org/al-anon-meetings/",
   ACA:"https://adultchildren.org/meeting-search/",
-  EA:"https://emotionsanonymous.org/find-an-ea-meeting/",
-  CoDA:"https://coda.org/find-a-meeting/",
+  EA:"https://emotionsanonymous.org/find-a-meeting/",
+  CoDA:"https://coda.org/coda-meetings/",
   OA:"https://oa.org/find-a-meeting/",
-  GA:"https://www.gamblersanonymous.org/find-a-meeting/",
+  GA:"https://www.gamblersanonymous.org/ga/locations",
   SMART:"https://meetings.smartrecovery.org/meetings/",
-  Dharma:"https://recoverydharma.org/meetings/",
-  Refuge:"https://refugerecoverymeetings.org/",
-  LifeRing:"https://lifering.org/meeting-menu/",
-  WFS:"https://meetings.womenforsobriety.org/meetings/",
-  Wellbriety:"https://whitebison.org/circle-meetings/",
-  CR:"https://crlocator.com/",
-  SOS:"https://www.sossobriety.org/on-line-groups",
+  Dharma:"https://recoverydharma.org/find-a-meeting/",
+  Refuge:"https://www.refugerecovery.org/meetings",
+  Buddhist:"https://buddhistrecovery.org/meetings/",
+  LifeRing:"https://lifering.org/find-a-meeting/",
+  WFS:"https://womenforsobriety.org/find-meetings/",
+  Wellbriety:"https://wellbriety.com/",
+  CR:"https://locator.crgroups.info/",
+  SOS:"https://www.sossobriety.org/meetings/",
   CA:"https://ca.org/meetings/",
   MA:"https://www.marijuana-anonymous.org/meetings/",
-  DDA:"https://draonline.org/meetings/",
+  DDA:"https://draonline.org/",
 };
 function finderFor(m){return (m.url)||FINDERS[m.cat]||"https://www.211.org/";}
 const SUPPORT = [
@@ -442,9 +979,9 @@ const SUPPORT = [
   {cat:"AA",name:"Sunrise Sobriety",day:3,time:"07:00",dur:60,fmt:"hybrid",loc:"Mortimer's",addr:"352 Snelling Ave S, St Paul",lat:44.9356,lng:-93.1668,types:["Open"]},
   {cat:"AA",name:"Lake Street Group",day:4,time:"12:00",dur:60,fmt:"in-person",loc:"Walker Community Church",addr:"3104 16th Ave S, Minneapolis",lat:44.9486,lng:-93.2480,types:["Open","Discussion"]},
   {cat:"AA",name:"Women's Courage",day:6,time:"10:00",dur:90,fmt:"in-person",loc:"Unity Church Unitarian",addr:"733 Portland Ave, St Paul",lat:44.9462,lng:-93.1213,types:["Closed","Women"]},
-  {cat:"AA",name:"Young People's Online",day:0,time:"20:00",dur:60,fmt:"online",loc:"Online Intergroup of AA",addr:"Online · aa-intergroup.org",lat:44.95,lng:-93.09,types:["Open","Young People"],url:"https://aa-intergroup.org/meetings/"},
+  {cat:"AA",name:"Young People's Online",day:0,time:"20:00",dur:60,fmt:"online",loc:"Zoom",addr:"Online",lat:44.95,lng:-93.09,types:["Open","Young People"],url:"https://zoom.us"},
   {cat:"NA",name:"Just For Today",day:1,time:"19:00",dur:90,fmt:"in-person",loc:"Central Presbyterian",addr:"500 Cedar St, St Paul",lat:44.9469,lng:-93.0962,types:["Open"]},
-  {cat:"NA",name:"Clean & Serene",day:4,time:"20:00",dur:60,fmt:"hybrid",loc:"Mercy Seat Lutheran",addr:"1500 6th St NE, Minneapolis",lat:44.9993,lng:-93.2566,types:["Open","Speaker"]},
+  {cat:"NA",name:"Clean & Serene",day:4,time:"20:00",dur:60,fmt:"hybrid",loc:"Mercy Seat",addr:"2422 18th Ave S, Minneapolis",lat:44.9560,lng:-93.2466,types:["Open","Speaker"]},
   {cat:"NA",name:"Midday Recovery",day:2,time:"12:00",dur:60,fmt:"in-person",loc:"First Lutheran",addr:"463 Maria Ave, St Paul",lat:44.9559,lng:-93.0710,types:["Open"]},
   {cat:"Al-Anon",name:"Hope for Today",day:3,time:"18:00",dur:60,fmt:"in-person",loc:"Gloria Dei Lutheran",addr:"700 Snelling Ave S, St Paul",lat:44.9301,lng:-93.1669,types:["Open"]},
   {cat:"Al-Anon",name:"Courage to Change",day:5,time:"12:00",dur:60,fmt:"hybrid",loc:"Edina Morningside",addr:"4201 Morningside Rd, Edina",lat:44.9180,lng:-93.3380,types:["Open"]},
@@ -459,43 +996,49 @@ const SUPPORT = [
   {cat:"GA",name:"New Beginnings GA",day:1,time:"19:30",dur:90,fmt:"in-person",loc:"Mount Olivet Lutheran",addr:"5025 Knox Ave S, Minneapolis",lat:44.8995,lng:-93.3000,types:["Closed"]},
   {cat:"GA",name:"Turnaround Thursday",day:4,time:"19:00",dur:90,fmt:"in-person",loc:"St Stephen Lutheran",addr:"8400 France Ave S, Bloomington",lat:44.8610,lng:-93.3290,types:["Closed"]},
   {cat:"SMART",name:"SMART Recovery St Paul",day:2,time:"18:00",dur:90,fmt:"hybrid",loc:"Hazelden Betty Ford",addr:"680 Stewart Ave, St Paul",lat:44.9290,lng:-93.1390,types:["Open","Secular"]},
-  {cat:"SMART",name:"SMART Online MN",day:0,time:"19:00",dur:90,fmt:"online",loc:"SMART Recovery (online)",addr:"Online · meetings.smartrecovery.org",lat:44.95,lng:-93.09,types:["Open","Secular"],url:"https://meetings.smartrecovery.org/meetings/"},
+  {cat:"SMART",name:"SMART Online MN",day:0,time:"19:00",dur:90,fmt:"online",loc:"Zoom",addr:"Online",lat:44.95,lng:-93.09,types:["Open","Secular"],url:"https://smartrecovery.org"},
   {cat:"Dharma",name:"Recovery Dharma TC",day:3,time:"18:30",dur:75,fmt:"in-person",loc:"Lake Harriet Spiritual",addr:"4401 Upton Ave S, Minneapolis",lat:44.9210,lng:-93.3170,types:["Open","Secular"]},
-  {cat:"Dharma",name:"Mindful Recovery",day:0,time:"10:00",dur:60,fmt:"hybrid",loc:"MN Zen Meditation Center",addr:"3343 E Bde Maka Ska Pkwy, Minneapolis",lat:44.9430,lng:-93.3060,types:["Open"]},
+  {cat:"Dharma",name:"Mindful Recovery",day:0,time:"10:00",dur:60,fmt:"hybrid",loc:"MN Zen Meditation Center",addr:"3343 E Calhoun Pkwy, Minneapolis",lat:44.9430,lng:-93.3060,types:["Open"]},
   {cat:"Refuge",name:"Refuge Recovery Sit",day:1,time:"18:00",dur:75,fmt:"in-person",loc:"Common Ground Meditation",addr:"2700 E 26th St, Minneapolis",lat:44.9560,lng:-93.2300,types:["Open","Secular"]},
   {cat:"DDA",name:"Dual Diagnosis Anonymous",day:4,time:"17:30",dur:60,fmt:"hybrid",loc:"Guild Recovery",addr:"130 S Wabasha St, St Paul",lat:44.9430,lng:-93.0890,types:["Open","Mental Health"]},
   // ----- Non-12-step programs: official online meetings (verify on source) -----
   {cat:"SMART",name:"SMART Recovery Daily Online",day:0,time:"19:00",dur:90,fmt:"online",loc:"SMART Recovery (online)",addr:"Online · meetings.smartrecovery.org",lat:44.95,lng:-93.09,types:["Open","Secular","Science-based"],url:"https://meetings.smartrecovery.org/meetings/"},
   {cat:"Dharma",name:"Recovery Dharma Online Sit",day:2,time:"20:00",dur:60,fmt:"online",loc:"Recovery Dharma (online)",addr:"Online · recoverydharma.online",lat:44.95,lng:-93.09,types:["Open","Buddhist","Meditation"],url:"https://recoverydharma.online/"},
-  {cat:"LifeRing",name:"LifeRing Online Meeting",day:3,time:"18:00",dur:60,fmt:"online",loc:"LifeRing Secular Recovery",addr:"Online · lifering.org",lat:44.95,lng:-93.09,types:["Open","Secular","Abstinence"],url:"https://lifering.org/meeting-menu/"},
-  {cat:"WFS",name:"Women for Sobriety Online",day:1,time:"19:00",dur:60,fmt:"online",loc:"Women for Sobriety",addr:"Online · womenforsobriety.org",lat:44.95,lng:-93.09,types:["Closed","Women","New Life"],url:"https://meetings.womenforsobriety.org/meetings/"},
-  {cat:"Wellbriety",name:"Wellbriety Talking Circle",day:4,time:"18:30",dur:90,fmt:"online",loc:"White Bison Wellbriety",addr:"Online · whitebison.org",lat:44.95,lng:-93.09,types:["Open","Native American","Medicine Wheel"],url:"https://whitebison.org/circle-meetings/"},
-  {cat:"SOS",name:"SOS Secular Sobriety (online)",day:6,time:"10:00",dur:60,fmt:"online",loc:"Secular Organizations for Sobriety",addr:"Online · sossobriety.org",lat:44.95,lng:-93.09,types:["Open","Secular"] ,url:"https://www.sossobriety.org/on-line-groups"},
-  {cat:"CR",name:"Celebrate Recovery — Twin Cities",day:5,time:"19:00",dur:120,fmt:"hybrid",loc:"Find a local CR group",addr:"Multiple Twin Cities churches · crlocator.com",lat:null,lng:null,types:["Open","Christian"],url:"https://crlocator.com/"},
+  {cat:"LifeRing",name:"LifeRing Online Meeting",day:3,time:"18:00",dur:60,fmt:"online",loc:"LifeRing Secular Recovery",addr:"Online · lifering.org",lat:44.95,lng:-93.09,types:["Open","Secular","Abstinence"],url:"https://lifering.org/find-a-meeting/"},
+  {cat:"WFS",name:"Women for Sobriety Online",day:1,time:"19:00",dur:60,fmt:"online",loc:"Women for Sobriety",addr:"Online · womenforsobriety.org",lat:44.95,lng:-93.09,types:["Closed","Women","New Life"],url:"https://womenforsobriety.org/find-meetings/"},
+  {cat:"Wellbriety",name:"Wellbriety Talking Circle",day:4,time:"18:30",dur:90,fmt:"online",loc:"White Bison Wellbriety",addr:"Online · wellbriety.com",lat:44.95,lng:-93.09,types:["Open","Native American","Medicine Wheel"],url:"https://wellbriety.com/"},
+  {cat:"SOS",name:"SOS Secular Sobriety (online)",day:6,time:"10:00",dur:60,fmt:"online",loc:"Secular Organizations for Sobriety",addr:"Online · sossobriety.org",lat:44.95,lng:-93.09,types:["Open","Secular"],url:"https://www.sossobriety.org/meetings/"},
+  {cat:"CR",name:"Celebrate Recovery — St Paul",day:5,time:"19:00",dur:120,fmt:"hybrid",loc:"Substance Church",addr:"1390 Arcade St, St Paul",lat:44.9810,lng:-93.0640,types:["Open","Christian"],url:"https://locator.crgroups.info/"},
   {cat:"CA",name:"Cocaine Anonymous MN",day:2,time:"19:30",dur:60,fmt:"hybrid",loc:"CA Minnesota",addr:"Online + Twin Cities · ca-mn.org",lat:44.95,lng:-93.09,types:["Open"],url:"https://ca.org/meetings/"},
   {cat:"MA",name:"Marijuana Anonymous Online",day:0,time:"18:00",dur:60,fmt:"online",loc:"Marijuana Anonymous",addr:"Online · marijuana-anonymous.org",lat:44.95,lng:-93.09,types:["Open"],url:"https://www.marijuana-anonymous.org/meetings/"},
 ];
 
 /* ===== ACTIVITIES & GROUPS ===== */
 const ACTIVITIES = {
-  Recovery:{name:"Sober & Recovery Community",color:"#4fd1c5"},
   Games:{name:"Board Games & Tabletop",color:"#c084fc"},
   Zen:{name:"Meditation & Zen",color:"#5eead4"},
   Outdoors:{name:"Hiking & Outdoors",color:"#84cc16"},
-  Books:{name:"Book Clubs",color:"#fbbf24"},
-  Art:{name:"Art & Craft",color:"#f472b6"},
+  Books:{name:"Book Clubs & Authors",color:"#fbbf24"},
+  Art:{name:"Art, Craft & Film",color:"#f472b6"},
   Music:{name:"Music & Jam",color:"#38bdf8"},
   Social:{name:"Social & Meetup",color:"#fb923c"},
   Volunteer:{name:"Volunteering",color:"#34d399"},
   Fitness:{name:"Fitness & Sports",color:"#f87171"},
+  Family:{name:"Kids & Family",color:"#facc15"},
+  Learn:{name:"Classes & Talks",color:"#22d3ee"},
+  Food:{name:"Food & Drink",color:"#fb7185"},
   Language:{name:"Language Exchange",color:"#a78bfa"},
 };
+// Unknown categories used to crash search and the map legend on META[cat].name.
+// A new feed category should degrade to a plain label, not a blank page.
+const FALLBACK_META={name:"Other",color:"#94a3b8"};
+function meta(cat){return META[cat]||FALLBACK_META;}
 const PLAY = [
-  {cat:"Games",name:"Twin Cities Board Game Night",day:1,time:"18:00",dur:180,fmt:"in-person",loc:"Gamezenter",addr:"1975 County Rd B2 W, Roseville",lat:45.0119,lng:-93.1760,types:["All ages","Free"]},
+  {cat:"Games",name:"Twin Cities Board Game Night",day:1,time:"18:00",dur:180,fmt:"in-person",loc:"Fantasy Flight Games Center",addr:"1995 W County Rd B2, Roseville",lat:45.0119,lng:-93.1760,types:["All ages","Free"]},
   {cat:"Games",name:"D&D Adventurers League",day:3,time:"18:30",dur:180,fmt:"in-person",loc:"The Source Comics & Games",addr:"2057 Snelling Ave N, Roseville",lat:45.0150,lng:-93.1670,types:["Beginners welcome"]},
   {cat:"Games",name:"Saturday Strategy Games",day:6,time:"13:00",dur:240,fmt:"in-person",loc:"Hennepin County Library",addr:"300 Nicollet Mall, Minneapolis",lat:44.9788,lng:-93.2700,types:["Free","Drop-in"]},
-  {cat:"Games",name:"Magic: The Gathering Commander",day:5,time:"18:00",dur:180,fmt:"in-person",loc:"The Source Comics & Games",addr:"2057 Snelling Ave N, Roseville",lat:45.0150,lng:-93.1670,types:["All levels"]},
-  {cat:"Zen",name:"Sunday Zazen Sitting",day:0,time:"09:00",dur:90,fmt:"in-person",loc:"MN Zen Meditation Center",addr:"3343 E Bde Maka Ska Pkwy, Minneapolis",lat:44.9430,lng:-93.3060,types:["Beginners welcome"]},
+  {cat:"Games",name:"Magic: The Gathering Commander",day:5,time:"18:00",dur:180,fmt:"in-person",loc:"Misty Mountain Games",addr:"2024 S Robert St, West St Paul",lat:44.9000,lng:-93.0790,types:["All levels"]},
+  {cat:"Zen",name:"Sunday Zazen Sitting",day:0,time:"09:00",dur:90,fmt:"in-person",loc:"MN Zen Meditation Center",addr:"3343 E Calhoun Pkwy, Minneapolis",lat:44.9430,lng:-93.3060,types:["Beginners welcome"]},
   {cat:"Zen",name:"Weekly Zazen & Talk",day:2,time:"19:00",dur:75,fmt:"hybrid",loc:"Clouds in Water Zen Center",addr:"445 Farrington St, St Paul",lat:44.9560,lng:-93.1090,types:["All levels"],url:"https://cloudsinwater.org"},
   {cat:"Zen",name:"Mindfulness Drop-in",day:4,time:"12:00",dur:45,fmt:"in-person",loc:"Common Ground Meditation",addr:"2700 E 26th St, Minneapolis",lat:44.9560,lng:-93.2300,types:["Free","Lunch hour"]},
   {cat:"Outdoors",name:"Saturday Morning Hike",day:6,time:"09:00",dur:120,fmt:"in-person",loc:"Como Park",addr:"1199 Midway Pkwy, St Paul",lat:44.9803,lng:-93.1466,types:["All levels","Dog friendly"]},
@@ -503,59 +1046,196 @@ const PLAY = [
   {cat:"Outdoors",name:"Weeknight Bike Ride",day:3,time:"18:00",dur:90,fmt:"in-person",loc:"Lake Harriet Bandshell",addr:"4135 W Lake Harriet Pkwy, Minneapolis",lat:44.9220,lng:-93.3070,types:["Casual pace"]},
   {cat:"Books",name:"Fiction Book Club",day:3,time:"18:30",dur:90,fmt:"in-person",loc:"Next Chapter Booksellers",addr:"38 S Snelling Ave, St Paul",lat:44.9400,lng:-93.1670,types:["Monthly"]},
   {cat:"Books",name:"Sci-Fi & Fantasy Readers",day:4,time:"19:00",dur:90,fmt:"hybrid",loc:"Moon Palace Books",addr:"3032 Minnehaha Ave, Minneapolis",lat:44.9490,lng:-93.2310,types:["All welcome"]},
-  {cat:"Art",name:"Knit & Stitch Night",day:2,time:"18:00",dur:120,fmt:"in-person",loc:"The Yarnery",addr:"2040 St Clair Ave, St Paul",lat:44.9342,lng:-93.1850,types:["All skill levels"]},
-  {cat:"Art",name:"Open Studio Pottery",day:5,time:"18:00",dur:150,fmt:"in-person",loc:"Northern Clay Center",addr:"2424 E Franklin Ave, Minneapolis",lat:44.9627,lng:-93.2330,types:["Drop-in","Fee"]},
+  {cat:"Art",name:"Knit & Stitch Night",day:2,time:"18:00",dur:120,fmt:"in-person",loc:"The Yarnery",addr:"840 Grand Ave, St Paul",lat:44.9400,lng:-93.1370,types:["All skill levels"]},
+  {cat:"Art",name:"Open Studio Pottery",day:5,time:"18:00",dur:150,fmt:"in-person",loc:"Northern Clay Center",addr:"2424 Franklin Ave E, Minneapolis",lat:44.9627,lng:-93.2330,types:["Drop-in","Fee"]},
   {cat:"Music",name:"Old-Time Jam Session",day:0,time:"16:00",dur:120,fmt:"in-person",loc:"The Driftwood",addr:"4415 Nicollet Ave, Minneapolis",lat:44.9200,lng:-93.2780,types:["Acoustic","All levels"]},
   {cat:"Music",name:"Open Mic Night",day:4,time:"20:00",dur:120,fmt:"in-person",loc:"Caffetto Coffee",addr:"708 W 22nd St, Minneapolis",lat:44.9640,lng:-93.2880,types:["Sign up","Free"]},
   {cat:"Social",name:"New in Town Social",day:5,time:"19:00",dur:120,fmt:"in-person",loc:"Surly Brewing",addr:"520 Malcolm Ave SE, Minneapolis",lat:44.9700,lng:-93.2090,types:["21+","Newcomers"]},
   {cat:"Social",name:"Twin Cities 20s & 30s Meetup",day:3,time:"19:00",dur:120,fmt:"in-person",loc:"Can Can Wonderland",addr:"755 Prior Ave N, St Paul",lat:44.9650,lng:-93.1790,types:["Casual","Newcomers"]},
-  {cat:"Volunteer",name:"Community Garden Volunteers",day:6,time:"10:00",dur:120,fmt:"in-person",loc:"Frogtown Park & Farm",addr:"946 Minnehaha Ave W, St Paul",lat:44.9620,lng:-93.1300,types:["Family","Outdoors"]},
+  {cat:"Volunteer",name:"Community Garden Volunteers",day:6,time:"10:00",dur:120,fmt:"in-person",loc:"Frogtown Farm",addr:"940 Lafond Ave, St Paul",lat:44.9620,lng:-93.1300,types:["Family","Outdoors"]},
   {cat:"Volunteer",name:"Food Shelf Sorting",day:4,time:"17:00",dur:120,fmt:"in-person",loc:"Second Harvest Heartland",addr:"7101 Winnetka Ave N, Brooklyn Park",lat:45.0610,lng:-93.3760,types:["All ages 8+"]},
   {cat:"Fitness",name:"Lake Run Club",day:2,time:"18:00",dur:60,fmt:"in-person",loc:"Lake Harriet",addr:"4135 W Lake Harriet Pkwy, Minneapolis",lat:44.9220,lng:-93.3070,types:["All paces","Free"]},
   {cat:"Fitness",name:"Pickup Volleyball",day:1,time:"19:00",dur:90,fmt:"in-person",loc:"Phalen Rec Center",addr:"1000 Wheelock Pkwy E, St Paul",lat:44.9870,lng:-93.0530,types:["Drop-in","All levels"]},
   {cat:"Fitness",name:"Saturday Yoga in the Park",day:6,time:"09:30",dur:60,fmt:"in-person",loc:"Boom Island Park",addr:"724 Sibley St NE, Minneapolis",lat:44.9930,lng:-93.2680,types:["Free","All levels"]},
-  {cat:"Language",name:"Spanish Conversation Table",day:3,time:"18:30",dur:90,fmt:"hybrid",loc:"Hennepin County Library — Central",addr:"300 Nicollet Mall, Minneapolis",lat:44.9788,lng:-93.2700,types:["All levels","Free"]},
-  {cat:"Language",name:"French Meetup",day:1,time:"18:00",dur:90,fmt:"in-person",loc:"Alliance Française",addr:"227 Colfax Ave N, Minneapolis",lat:44.9803,lng:-93.2968,types:["Intermediate+"]},
+  {cat:"Language",name:"Spanish Conversation Table",day:3,time:"18:30",dur:90,fmt:"hybrid",loc:"Black Dog Cafe",addr:"308 Prince St, St Paul",lat:44.9490,lng:-93.0840,types:["All levels"]},
+  {cat:"Language",name:"French Meetup",day:1,time:"18:00",dur:90,fmt:"in-person",loc:"Alliance Française",addr:"113 N 1st St, Minneapolis",lat:44.9850,lng:-93.2680,types:["Intermediate+"]},
 ];
 
 /* ===== engine ===== */
 let DATA=[], META=FELLOWSHIPS;
 let LIVE=[], LIVE_CATS=new Set(), LAST_UPDATED=null, SOURCE_INFO=[], LIVE_LOADING=true;
 let LIVE_EVENTS=[], EVENTS_UPDATED=null, EVENT_SOURCES=[], EVENTS_LOADING=true;
-const RENDER_STEP=150;
+const RENDER_STEP_ACT=80;
+const RENDER_STEP_SUP=40;
+function renderStep(){return state.mode==="support"?RENDER_STEP_SUP:RENDER_STEP_ACT;}
 const QUICK={
   support:[
     {id:"open",label:"Open",match:m=>(m.types||[]).some(t=>/^open$/i.test(t))},
-    {id:"new",label:"Newcomers",match:m=>/beginner|young|newcomer/i.test(((m.types||[]).join(" "))+" "+m.name)},
-    {id:"online",label:"Online",match:m=>m.fmt==="online"||m.fmt==="hybrid"},
-    {id:"women",label:"Women",match:m=>/women/i.test((m.types||[]).join(" "))},
+    {id:"new",label:"Newcomers",match:m=>(m.flags||[]).includes("Beginners")||(m.flags||[]).includes("Young People")||/beginner|young|newcomer/i.test(((m.types||[]).join(" "))+" "+m.name)},
+    {id:"online",label:"Online only",match:m=>m.fmt==="online"},
+    {id:"hybrid",label:"Hybrid",match:m=>m.fmt==="hybrid"},
   ],
+  // Order = what he actually wants first (games games / dance / meet people / music)
   activities:[
-    {id:"sober",label:"Sober-friendly",match:m=>m.cat==="Recovery"||/sober|recovery|alcohol[- ]free/i.test(m.name+" "+(m.types||[]).join(" ")+" "+(m.source||""))},
-    {id:"free",label:"Free",match:m=>(m.types||[]).some(t=>/free/i.test(t))},
-    {id:"new",label:"Welcoming",match:m=>/beginner|newcomer|welcome|all levels|drop-?in/i.test(((m.types||[]).join(" "))+" "+m.name)},
-    {id:"outdoor",label:"Outdoors",match:m=>m.cat==="Outdoors"||/hike|park|trail|garden/i.test(m.name+" "+m.loc)},
-    {id:"social",label:"Social",match:m=>m.cat==="Social"},
+    {id:"games",label:"🎲 Board games",match:m=>m.cat==="Games"||/trivia|bingo|board game|tabletop|d&d|dungeons|game night|card game/i.test(m.name||"")},
+    {id:"dance",label:"💃 Dance",match:m=>/dance|dj\b|communion|edm|techno|rave|dance church|zouk|salsa|swing dance/i.test((m.name||"")+" "+(m.desc||"")+" "+(m.types||[]).join(" "))},
+    {id:"music",label:"🎵 Music & shows",match:m=>m.cat==="Music"},
+    {id:"social",label:"🤝 Meet people",match:m=>m.cat==="Social"||m.cat==="Language"||/mixer|meetup|social|networking|20s|30s|singles|open mic|new in town/i.test(m.name||"")},
+    {id:"food",label:"🍽️ Food & drink",match:m=>m.cat==="Food"},
+    {id:"wellness",label:"🧘 Meditation / wellness",match:m=>m.cat==="Zen"||m.cat==="Fitness"},
+    {id:"art",label:"🎨 Art & film",match:m=>m.cat==="Art"},
+    {id:"outdoor",label:"🌿 Outdoors",match:m=>m.cat==="Outdoors"},
+    {id:"learn",label:"🎓 Classes",match:m=>m.cat==="Learn"},
+    {id:"books",label:"📚 Books",match:m=>m.cat==="Books"},
+    {id:"volunteer",label:"🤲 Volunteer",match:m=>m.cat==="Volunteer"},
+    {id:"family",label:"🧒 Kids (if you want)",match:m=>m.cat==="Family"||isKidsy(m)},
+    {id:"free",label:"🆓 Free",match:m=>m.free===true||(m.types||[]).some(t=>/^free$/i.test(t))},
   ],
 };
 let SAVED=new Set();
 try{SAVED=new Set(JSON.parse(localStorage.getItem("gather-saved")||"[]"));}catch(e){}
-const state={mode:"support",cat:new Set(),day:null,daySet:null,fmt:null,tod:"",nowOnly:false,q:"",near:null,nearGps:false,quick:new Set(),savedOnly:false,preset:"",limit:RENDER_STEP};
+// Internal value stays "social" so old saved links keep working; the visible
+// default is For You, ranked from what he actually likes without onboarding.
+// Default = Everything. He asked for an aggregator that shows the whole city;
+// "For You" is one tap away and sticks once chosen.
+let _vibeStored="all";
+try{const v=localStorage.getItem("gather-vibe");if(v==="all"||v==="social")_vibeStored=v;}catch(e){}
+const state={mode:"activities",cat:new Set(),day:null,daySet:null,fmt:null,tod:"",nowOnly:false,q:"",near:null,nearGps:false,quick:new Set(),savedOnly:false,preset:"",area:"",horizon:6,radius:0,hideSeries:true,soonOnly:false,flag:"",hideEnded:true,vibe:_vibeStored,limit:80};
 let _urlTimer=null;
 function todayDay(){return nowInfo().day;}
 function dayViewLabel(){
+  if(state.savedOnly)return "saved";
   if(state.daySet)return "Fri–Sun";
-  if(isAllWeek())return "all week";
+  if(isAllWeek())return state.horizon>6?`the next ${state.horizon+1} days`:"all week";
   const t=todayDay();
   return state.day===t?`today (${DAYS[t]})`:DAYS[state.day];
 }
 function isWeekendView(){return !!state.daySet;}
 function isAllWeek(){return state.day===null&&!state.daySet;}
 function hasMapPin(m){
-  if(m.fmt==="online"&&/online|zoom/i.test((m.addr||"").toLowerCase()))return false;
+  // Online never gets a pin — city-center geocodes were dumping Zoom meetings downtown.
+  if(m.fmt==="online")return false;
+  if(m.approx)return false; // city-only address = pin at a place the meeting isn't
   if(!m.lat||!m.lng)return false;
-  if(Math.abs(m.lat-44.95)<0.015&&Math.abs(m.lng+93.09)<0.015&&(m.fmt==="online"||/online/i.test(m.loc||"")))return false;
+  // leftover city-centroid dumps (St Paul / Mpls downtown) for unflagged rows
+  if(Math.abs(m.lat-44.9778)<0.008&&Math.abs(m.lng+93.265)<0.008)return false;
+  if(Math.abs(m.lat-44.9537)<0.008&&Math.abs(m.lng+93.09)<0.008)return false;
   return true;
+}
+// "In-person" filter should include hybrid (you can still walk in)
+function matchesFmt(m,fmt){
+  if(!fmt)return true;
+  if(fmt==="in-person")return m.fmt==="in-person"||m.fmt==="hybrid";
+  return m.fmt===fmt;
+}
+// "Online only" quick chip used to fight the default in-person format filter
+// and return zero rows. When those chips are on, they own format.
+function effectiveFmt(){
+  if(state.quick.has("online"))return "online";
+  if(state.quick.has("hybrid"))return "hybrid";
+  return state.fmt;
+}
+function placeBlob(m){
+  return [m.loc,m.addr,m.region,m.name].filter(Boolean).join(" ").toLowerCase();
+}
+function isStPaul(m){return /st\.?\s*paul|saint\s*paul/.test(placeBlob(m));}
+function isMpls(m){return /minneapolis/.test(placeBlob(m));}
+// Kids / zoo / preschool noise — fine for "Everything", not the default open
+function isKidsy(m){
+  if(!m)return false;
+  if(m.cat==="Family")return true;
+  const t=((m.name||"")+" "+(m.types||[]).join(" ")+" "+(m.desc||"")+" "+(m.source||"")+" "+(m.loc||"")).toLowerCase();
+  return /storytime|story time|toddler|preschool|\bkids?\b|\bchildren\b|\bbabies?\b|zookeeper|gorilla|polar bear|giraffe|penguin|sea lion|petting|little explorer|face paint|puppet show|como zoo|school[- ]age|elementary|for kids|children'?s|family day|all ages 0|ages 0|ages 2|ages 3|ages 4|ages 5|baby time|lapsit|stroller|youth only/.test(t);
+}
+// Score the default For You feed from his known interests. This changes order;
+// Everything remains one tap away and no profile/account is required.
+function socialScore(m){
+  if(!m)return 0;
+  let s=0;
+  const cat=m.cat||"";
+  if(cat==="Games")s+=8;
+  else if(cat==="Zen")s+=7;
+  else if(cat==="Art"||cat==="Learn")s+=6;
+  else if(cat==="Music")s+=5;
+  else if(cat==="Social"||cat==="Language")s+=5;
+  else if(cat==="Fitness"||cat==="Books"||cat==="Volunteer")s+=3;
+  else if(cat==="Food"||cat==="Outdoors")s+=2;
+  else if(cat==="Family")s-=12;
+  const t=((m.name||"")+" "+(m.types||[]).join(" ")+" "+(m.desc||"")+" "+(m.loc||"")+" "+(m.source||"")).toLowerCase();
+  if(/trivia|bingo|board game|tabletop|d&d|dungeons|game night|card game|crokinole|magic the|pinball|arcade|can can wonderland/.test(t))s+=7;
+  if(/meditat|mindful|zazen|zen center|sangha|dharma|sound bath|breathwork|qigong/.test(t))s+=8;
+  if(/maker|hack factory|creative coding|game dev|digital art|animation|robot|artificial intelligence|\bai\b|technology/.test(t))s+=7;
+  if(/dance church|dance party|\bdj\b|communion|\bedm\b|techno|rave|open mic|karaoke|jam session|live music|concert|show\b/.test(t))s+=6;
+  if(/mixer|meetup|networking|singles|20s|30s|new in town|social|friends|hangout|pub quiz|quiz night/.test(t))s+=4;
+  if(/ukrain|swedish|german|norway|french|cultural|community center|international/.test(t))s+=4;
+  if(/free|donation|drop[- ]?in|beginner|newcomer|all levels|no one turned away/.test(t))s+=3;
+  if(/cabooze|hook and ladder|twin cities maker|clouds in water|common ground|minnesota zen|dharma field/.test(t))s+=3;
+  const liked=DATA.filter(x=>SAVED.has(x._id));
+  if(liked.some(x=>x.cat===cat))s+=4;
+  if(m.source&&liked.some(x=>x.source===m.source))s+=6;
+  if(/21\+|18\+|after dark|nightlife/.test(t))s+=2;
+  if(isKidsy(m))s-=15;
+  if(/board meeting|city council|public hearing|certification|salesforce|bootcamp/.test(t))s-=8;
+  return s;
+}
+function forYouReasons(m){
+  const t=((m.name||"")+" "+(m.types||[]).join(" ")+" "+(m.source||"")).toLowerCase();
+  const reasons=[];
+  if(m.free||/free|donation/.test(t))reasons.push("Free / donation");
+  if(m.cat==="Zen"||/meditat|mindful|zazen|sangha|dharma/.test(t))reasons.push("Meditation");
+  else if(m.cat==="Games"||/game|trivia|pinball|arcade/.test(t))reasons.push("Games");
+  else if(/maker|creative coding|digital art|animation|robot|technology/.test(t))reasons.push("Creative tech");
+  else if(m.cat==="Art")reasons.push("Art");
+  else if(/dance|\bdj\b|communion/.test(t))reasons.push("Dance");
+  else if(/ukrain|swedish|german|norway|french|cultural/.test(t))reasons.push("Culture");
+  if(DATA.some(x=>SAVED.has(x._id)&&(x.cat===m.cat||x.source===m.source)))reasons.push("Like your saves");
+  return reasons.slice(0,2);
+}
+function matchesVibe(m){
+  if(state.mode!=="activities")return true;
+  if(state.vibe==="all")return true;
+  // For You only strips kids/zoo/preschool noise — not half the city calendar.
+  // Social stuff is sorted first; adult art/hikes/classes still show.
+  return !isKidsy(m);
+}
+function persistVibe(){
+  try{localStorage.setItem("gather-vibe",state.vibe);}catch(e){}
+}
+function setVibe(v){
+  state.vibe=v==="all"?"all":"social";
+  persistVibe();
+  // Turning on For You clears a stuck Kids chip so the feed actually changes.
+  if(state.vibe==="social")state.quick.delete("family");
+  buildQuickFilters();buildVibeBar();render();
+}
+function buildVibeBar(){
+  const row=document.getElementById("vibebar");
+  if(!row)return;
+  if(state.mode!=="activities"){row.hidden=true;row.innerHTML="";return;}
+  row.hidden=false;
+  row.innerHTML="";
+  [
+    {id:"social",label:"For You",hint:"Games · creative tech · meditation · dance · community"},
+    {id:"all",label:"Everything",hint:"Including kids, zoo, libraries"},
+  ].forEach(v=>{
+    const b=document.createElement("button");
+    b.type="button";
+    b.className="vchip"+(state.vibe===v.id?" on":"");
+    b.setAttribute("aria-pressed",state.vibe===v.id?"true":"false");
+    b.title=v.hint;
+    b.innerHTML=`<strong>${v.label}</strong>`;
+    b.onclick=()=>setVibe(v.id);
+    row.appendChild(b);
+  });
+}
+function hoodLabel(m){
+  if(m.fmt==="online")return "";
+  const r=(m.region||"").replace(/,?\s*MN\s*$/i,"").trim();
+  if(r&&!/^(minneapolis|st\.?\s*paul|saint\s*paul)$/i.test(r))return r;
+  // pull city from "123 Main, Minneapolis, MN"
+  const a=m.addr||"";
+  const city=(a.match(/,\s*([^,]+),\s*MN\b/i)||[])[1];
+  return city&&!/united states/i.test(city)?city.trim():"";
 }
 function toast(msg){
   const t=document.getElementById("toast");
@@ -584,7 +1264,11 @@ function updateSavedBtn(){
 }
 function meetingBlurb(m){
   const when=m.dateLabel?m.dateLabel:(m.day===todayDay()?"Today":DAYS[m.day]);
-  return `${m.name}\n${when} · ${fmtTime(m.time)} · ${fmtLabel(m.fmt)}\n${m.loc}\n${m.addr}${m.url?"\n"+m.url:""}`;
+  const bits=[m.name,`${when} · ${fmtTime(m.time)} · ${fmtLabel(m.fmt)}`,m.loc,m.addr];
+  if(m.door)bits.push("Entrance: "+m.door);
+  if(m.notes)bits.push(m.notes);
+  if(m.url)bits.push(m.url);
+  return bits.filter(Boolean).join("\n");
 }
 function pushUrl(){
   clearTimeout(_urlTimer);
@@ -599,6 +1283,9 @@ function pushUrl(){
     if(state.fmt)p.set("fmt",state.fmt);
     if(state.nowOnly)p.set("now","1");
     if(state.savedOnly)p.set("saved","1");
+    if(state.area)p.set("area",state.area);
+    if(state.horizon!==6)p.set("days",state.horizon+1);
+    if(state.mode==="activities"&&state.vibe!=="social")p.set("vibe","all");
     if([...state.quick].length)p.set("quick",[...state.quick].join(","));
     if(activeId)p.set("id",activeId);
     history.replaceState(null,"",location.pathname+"?"+p);
@@ -606,7 +1293,10 @@ function pushUrl(){
 }
 function readUrl(){
   const p=new URLSearchParams(location.search);
-  if(p.get("mode")==="activities")state.mode="activities";
+  if(p.get("mode")==="activities"||p.get("mode")==="support")state.mode=p.get("mode");
+  // Track whether the URL actually asked for a day scope. Bare ?mode=support used
+  // to leave day=null → "all week" (1500+ rows) and a broken map.
+  const hasDayScope=p.get("weekend")==="1"||p.get("week")==="1"||p.has("day");
   if(p.get("weekend")==="1")state.daySet=new Set([5,6,0]);
   else if(p.get("week")==="1"){state.day=null;state.daySet=null;}
   else if(p.has("day")){state.day=+p.get("day");state.daySet=null;}
@@ -615,55 +1305,142 @@ function readUrl(){
   if(p.get("fmt"))state.fmt=p.get("fmt");
   if(p.get("now")==="1")state.nowOnly=true;
   if(p.get("saved")==="1")state.savedOnly=true;
+  if(/^(stpaul|mpls|suburbs)$/.test(p.get("area")||""))state.area=p.get("area");
+  const days=+(p.get("days")||0);
+  if(days>=1&&days<=45)state.horizon=days-1;
   if(p.get("quick"))state.quick=new Set(p.get("quick").split(",").filter(Boolean));
-  return p.get("id");
+  if(p.get("vibe")==="all"||p.get("vibe")==="social"){state.vibe=p.get("vibe");persistVibe();}
+  return {id:p.get("id"),hasDayScope};
+}
+// Search terms, deduped. Quoted phrases are kept intact so "open mic" can still
+// be searched as a phrase when someone wants that.
+function qTokens(q){
+  const raw=String(q||"").toLowerCase();
+  const phrases=[...raw.matchAll(/"([^"]+)"/g)].map(m=>m[1].trim()).filter(Boolean);
+  const rest=raw.replace(/"[^"]*"/g," ").split(/\s+/).filter(Boolean);
+  return [...new Set([...phrases,...rest])];
 }
 function inTod(time,tod){if(!tod)return true;const h=parseInt(time.split(":")[0],10);
   if(tod==="morning")return h>=5&&h<12;
   if(tod==="afternoon")return h>=12&&h<17;
   if(tod==="evening")return h>=17||h<5;return true;}
 
-// Support listings = live feeds (verified) + curated samples for fellowships
-// that don't have a live feed yet (clearly marked unverified).
+// Support listings = live feeds only. The old curated "sample" rows had
+// made-up times we can't verify — worse than none for a real meeting-seeker.
+// Programs without feeds get official-finder links (#programScout) instead.
+// Curated rows remain solely as an offline/dev fallback.
 function supportMeetings(){
-  const curated=SUPPORT.map(m=>({...m,verified:false}));
-  const keep=curated.filter(m=>!LIVE_CATS.has(m.cat));
-  return [...LIVE,...keep];
+  if(LIVE.length)return [...LIVE];
+  return SUPPORT.map(m=>({...m,verified:false}));
 }
+// Soft evening default: after 4pm Central, "Today" is mostly about tonight
+// Support opens on the whole day. The old "after 4pm = evening only" default
+// silently hid most of today's meetings behind a chip row that's now gone.
+function defaultSupportTod(){return "";}
 // Activities = live venue/calendar events (verified) + curated sample groups (unverified)
 function activityItems(){
   const curated=PLAY.map(m=>({...m,verified:false}));
-  return [...LIVE_EVENTS,...curated];
+  return LIVE_EVENTS.length?LIVE_EVENTS:curated;
 }
 let map,markers,userMarker,activeId=null,markerById=new Map(),lastFilteredList=[];
 
-const TC_CENTER=[44.9537,-93.0900];
+// Stable per-event id (name+date+time) so saved stars and shared links
+// survive reloads — live feeds re-order every fetch, so index ids break.
+function stableId(m,p){return p+(m.name+"|"+(m.date||m.day)+"|"+m.time).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"").slice(0,80);}
+function withStableIds(rows,p){
+  const used=new Set();
+  return rows.map(m=>{
+    const base=stableId(m,p);
+    let id=base;
+    if(used.has(id)){
+      const detail=[m.loc,m.addr,m.source,m.fellowship].filter(Boolean).join("|").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"").slice(0,50)||"alt";
+      id=`${base}-${detail}`;
+      let n=2;
+      while(used.has(id))id=`${base}-${detail}-${n++}`;
+    }
+    used.add(id);
+    return {...m,_id:id};
+  });
+}
+function isOver(m){
+  // don't rely on _minsUntil cache — filter() runs before enrichSort
+  const mins=m._minsUntil!=null?m._minsUntil:minutesUntil(m,nowInfo());
+  return mins<-(m.dur||120);
+}
+
+const TC_CENTER=[44.9650,-93.1800];
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function safeHref(u){if(!u||typeof u!=="string")return "";try{const x=new URL(u,location.href);return /^https?:$/.test(x.protocol)?x.href:"";}catch(e){return "";}}
 function fmtTime(t){let[h,m]=t.split(":").map(Number);const ap=h<12?"AM":"PM";h=h%12||12;return `${h}:${String(m).padStart(2,"0")} ${ap}`;}
 function fmtParts(t){const [h,m]=t.split(":").map(Number);const ap=h<12?"AM":"PM";const hr=h%12||12;return{hr:`${hr}:${String(m).padStart(2,"0")}`,ap};}
 function fmtLabel(f){return f==="online"?"Online":f==="hybrid"?"Hybrid":"In person";}
+// Forecast at the event hour, from api.weather.gov. Only outdoor-ish categories
+// carry it, and only inside the ~6.5-day hourly window.
+function wxChip(m){
+  if(!m.wx)return "";
+  const w=m.wx;
+  const wet=w.pop!=null&&w.pop>=30;
+  const icon=/thunder|storm/i.test(w.summary)?"\u26C8\uFE0F"
+    :/rain|shower|drizzle/i.test(w.summary)?"\u{1F327}\uFE0F"
+    :/snow|flurr|sleet|ice/i.test(w.summary)?"\u{1F328}\uFE0F"
+    :/cloud|overcast/i.test(w.summary)?"\u26C5"
+    :/smoke|haze|fog/i.test(w.summary)?"\u{1F32B}\uFE0F":"\u2600\uFE0F";
+  const pop=wet?` \u00B7 ${w.pop}% rain`:"";
+  return `<span class="b wx${wet?" wet":""}" title="${esc(w.summary)}">${icon} ${w.temp}\u00B0${esc(w.unit)}${pop}</span>`;
+}
+function activityEmoji(cat){
+  return {Music:"🎵",Art:"🎨",Outdoors:"🌿",Games:"🎲",Social:"🤝",Zen:"🧘",Fitness:"🏃",Books:"📚",Volunteer:"🤲",Language:"💬",Family:"🧒",Learn:"🎓",Food:"🍽️"}[cat]||"✨";
+}
+function activityLabel(cat){
+  return {Music:"Music",Art:"Art & film",Outdoors:"Outdoors",Games:"Games",Social:"Social",Zen:"Wellness",Fitness:"Fitness",Books:"Books",Volunteer:"Volunteer",Language:"Languages",Family:"Kids & family",Learn:"Classes & talks",Food:"Food & drink"}[cat]||cat;
+}
 function mapsDir(m){return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((m.loc?m.loc+" ":"")+m.addr)}`;}
+function icsFor(m){
+  const pad=n=>String(n).padStart(2,"0");
+  let y,mo,d;
+  if(m.date){[y,mo,d]=m.date.split("-").map(Number);}
+  else{const n=new Date(),off=dayOffset(m.day,n.getDay()),t=new Date(n.getFullYear(),n.getMonth(),n.getDate()+off);y=t.getFullYear();mo=t.getMonth()+1;d=t.getDate();}
+  const [h,mi]=m.time.split(":").map(Number);
+  const endMin=h*60+mi+(m.dur||60);
+  const escT=s=>String(s||"").replace(/[\\;,]/g,x=>"\\"+x).replace(/\n/g,"\\n");
+  const lines=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Gather//EN","BEGIN:VEVENT",
+    `UID:${m._id}@gather`,
+    `DTSTART;TZID=America/Chicago:${y}${pad(mo)}${pad(d)}T${pad(h)}${pad(mi)}00`,
+    `DTEND;TZID=America/Chicago:${y}${pad(mo)}${pad(d)}T${pad(Math.floor(endMin/60)%24)}${pad(endMin%60)}00`,
+    m.date?"":"RRULE:FREQ=WEEKLY",
+    `SUMMARY:${escT(m.name)}`,
+    `LOCATION:${escT((m.loc?m.loc+", ":"")+(m.addr||""))}`,
+    m.url?`URL:${m.url}`:"",
+    "END:VEVENT","END:VCALENDAR"].filter(Boolean);
+  return "data:text/calendar;charset=utf-8,"+encodeURIComponent(lines.join("\r\n"));
+}
 function pickNextUp(list){
   enrichSort(list);
   for(const m of list){if(isNow(m))return m;}
   for(const m of list){if(m._minsUntil>=0&&m._minsUntil<=360)return m;}
-  return list[0]||null;
+  // never feature something that already ended (late-night "Try this first" bug)
+  return list.find(m=>!isOver(m))||null;
 }
 function timeMins(t){const [h,m]=t.split(":").map(Number);return h*60+m;}
-function nowInfo(){const d=new Date();return{day:d.getDay(),mins:d.getHours()*60+d.getMinutes()};}
-function dayOffset(meetingDay,today){return (meetingDay-today+7)%7;}
-// days until the item: dated events use their real calendar date,
-// weekly meetings use the next occurrence of their weekday
-function dateOff(m,n){
-  if(m.date){
-    const p=m.date.split("-").map(Number);
-    const today=new Date();
-    const t0=new Date(today.getFullYear(),today.getMonth(),today.getDate());
-    return Math.round((new Date(p[0],p[1]-1,p[2])-t0)/864e5);
-  }
-  return dayOffset(m.day,n.day);
+// Always Twin Cities wall-clock — browser local time mislabels "today" / "now"
+// when the phone is in another timezone (or set wrong).
+function nowInfo(){
+  const parts=new Intl.DateTimeFormat("en-US",{
+    timeZone:"America/Chicago",weekday:"short",hour:"numeric",minute:"numeric",hour12:false,
+  }).formatToParts(new Date());
+  const get=t=>(parts.find(p=>p.type===t)||{}).value;
+  const wd={Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6}[get("weekday")]??0;
+  let h=+get("hour");if(h===24)h=0;
+  return{day:wd,mins:h*60+(+get("minute")||0)};
 }
-function minutesUntil(m,n){const off=dateOff(m,n);if(off===0)return timeMins(m.time)-n.mins;return off*1440+timeMins(m.time);}
-function isNow(m){const n=nowInfo();if(m.day!==n.day)return false;if(m.date&&dateOff(m,n)!==0)return false;const s=timeMins(m.time);return n.mins>=s-15&&n.mins<=s+m.dur;}
+function todayDateKey(){return new Intl.DateTimeFormat("en-CA",{timeZone:"America/Chicago"}).format(new Date());}
+function dateOffset(date){
+  if(!date)return null;
+  return Math.round((Date.parse(date+"T12:00:00Z")-Date.parse(todayDateKey()+"T12:00:00Z"))/864e5);
+}
+function dayOffset(meetingDay,today){return (meetingDay-today+7)%7;}
+function minutesUntil(m,n){const off=m.date?dateOffset(m.date):dayOffset(m.day,n.day);if(off===0)return timeMins(m.time)-n.mins;return off*1440+timeMins(m.time)-n.mins;}
+function isNow(m){const n=nowInfo();if(m.date?dateOffset(m.date)!==0:m.day!==n.day)return false;const s=timeMins(m.time);return n.mins>=s-15&&n.mins<=s+m.dur;}
 function dist(a,b,c,d){const R=3959,r=x=>x*Math.PI/180;const dLat=r(c-a),dLon=r(d-b);const x=Math.sin(dLat/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
 function relSoon(mins){
   if(mins<=0)return null;
@@ -672,7 +1449,7 @@ function relSoon(mins){
   return r?`in ${h}h ${r}m`:`in ${h}h`;
 }
 function relWhen(m){
-  if((m._dayOff??dateOff(m,nowInfo()))!==0)return null;
+  if((m.date?dateOffset(m.date):dayOffset(m.day,nowInfo().day))!==0)return null;
   if(isNow(m))return "starting now";
   if(m._minsUntil>0&&m._minsUntil<=240)return relSoon(m._minsUntil);
   return null;
@@ -680,23 +1457,33 @@ function relWhen(m){
 function sectionTitle(m){
   if(m._dayOff===0)return "Today";
   if(m._dayOff===1)return "Tomorrow";
-  if(m._dayOff>6&&m.dateLabel)return m.dateLabel;
   return DAYS[m.day];
 }
 function enrichSort(list){
   const n=nowInfo(),pin=state.day!==null&&!state.daySet,useNear=!!state.near;
   list.forEach(m=>{
-    m._dayOff=pin?0:dateOff(m,n);
+    m._dayOff=m.date?dateOffset(m.date):(pin?0:dayOffset(m.day,n.day));
     m._minsUntil=minutesUntil(m,n);
-    m._d=useNear&&m.lat!=null?dist(state.near[0],state.near[1],m.lat,m.lng):null;
+    // Exact pins get distance labels; approx (city-centroid) still sort by dist
+    // when Near me is on but don't show a fake "X.X mi" on the card.
+    if(useNear&&m.lat!=null&&m.lng!=null&&isFinite(m.lat)&&isFinite(m.lng)){
+      const d=dist(state.near[0],state.near[1],m.lat,m.lng);
+      m._d=m.approx?null:d;
+      m._sortD=d;
+    }else{m._d=null;m._sortD=null;}
   });
   return list;
 }
 function smartSort(list){
   enrichSort(list);
   const pin=state.day!==null&&!state.daySet,useNear=!!state.near;
+  const boostSocial=state.mode==="activities"&&state.vibe==="social";
+  list.forEach(m=>{m._social=boostSocial?socialScore(m):0;});
   list.sort((a,b)=>{
     if(!pin&&!state.daySet&&a._dayOff!==b._dayOff)return a._dayOff-b._dayOff;
+    // events that already ended today sink below everything still coming up
+    const aOver=isOver(a),bOver=isOver(b);
+    if(a._dayOff===b._dayOff&&aOver!==bOver)return aOver?1:-1;
     if(!pin&&a._dayOff===0&&b._dayOff===0){
       const aNow=isNow(a),bNow=isNow(b);
       if(aNow!==bNow)return aNow?-1:1;
@@ -704,7 +1491,12 @@ function smartSort(list){
       if(aUp!==bUp)return aUp?-1:1;
       if(aUp&&bUp&&a._minsUntil!==b._minsUntil)return a._minsUntil-b._minsUntil;
     }
-    if(useNear&&a._d!=null&&b._d!=null&&Math.abs(a._d-b._d)>0.25)return a._d-b._d;
+    // In For You, rank known interests above random filler on the same day.
+    if(boostSocial&&a._dayOff===b._dayOff&&!aOver&&!bOver){
+      const ds=(b._social||0)-(a._social||0);
+      if(Math.abs(ds)>=2)return ds;
+    }
+    if(useNear&&a._sortD!=null&&b._sortD!=null&&Math.abs(a._sortD-b._sortD)>0.25)return a._sortD-b._sortD;
     if(a._dayOff===b._dayOff){
       if(a._minsUntil!==b._minsUntil)return a._minsUntil-b._minsUntil;
       return timeMins(a.time)-timeMins(b.time);
@@ -714,9 +1506,10 @@ function smartSort(list){
   return list;
 }
 function sortHint(){
-  const parts=[dayViewLabel()];
+  // Plain and short — the old version stacked day · For You · by time · two
+  // "hidden" notes into one unreadable line.
+  const parts=[state.q?"next 7 days":dayViewLabel()];
   if(state.near)parts.push("closest to you");
-  else parts.push("by time");
   return parts.join(" · ");
 }
 function syncTodUI(){
@@ -727,38 +1520,51 @@ function syncTodUI(){
 }
 function setViewDay(dayOrNull){
   state.daySet=null;state.day=dayOrNull;state.preset="";
+  // Daybar "All week" means the next 7 days, not leftover "Next 30 days" horizon.
+  if(dayOrNull===null)state.horizon=6;
   syncDayUI();render();
 }
 function syncDayUI(){
   const today=todayDay();
   document.querySelectorAll("#daybar .daypick").forEach(btn=>{
     const v=btn.dataset.day;
-    if(v==="all")btn.classList.toggle("on",isAllWeek());
-    else if(state.daySet)btn.classList.toggle("on",false);
-    else btn.classList.toggle("on",!isAllWeek()&&state.day===Number(v));
+    let on;
+    if(v==="all")on=btn.classList.toggle("on",isAllWeek());
+    else if(state.daySet)on=btn.classList.toggle("on",false);
+    else on=btn.classList.toggle("on",!isAllWeek()&&state.day===Number(v));
+    btn.setAttribute("aria-pressed",on?"true":"false");
   });
   const dc=document.getElementById("dayFilters");
   if(!dc)return;
   [...dc.querySelectorAll(".chip")].forEach(chip=>{
     const v=chip.dataset.day;
-    if(v==="all")chip.classList.toggle("on",isAllWeek());
-    else if(v!=null)chip.classList.toggle("on",!isAllWeek()&&!state.daySet&&state.day===Number(v));
+    let on;
+    if(v==="all")on=chip.classList.toggle("on",isAllWeek());
+    else if(v!=null)on=chip.classList.toggle("on",!isAllWeek()&&!state.daySet&&state.day===Number(v));
+    else on=chip.classList.contains("on");
+    chip.setAttribute("aria-pressed",on?"true":"false");
   });
 }
 function buildPresets(){
   const row=document.getElementById("presetrow");
   if(!row)return;
   row.innerHTML="";
-  const items=[
+  const items=state.mode==="activities"?[
+    {id:"today",label:"Today"},
+    {id:"now",label:"Right now"},
     {id:"tonight",label:"Tonight"},
-    {id:"tomorrow",label:"Tomorrow"},
     {id:"weekend",label:"This weekend"},
-    {id:"saved",label:state.savedOnly?"Show all":"Saved only"},
+    {id:"week",label:"Next 7 days"},
+    {id:"month",label:"Next 30 days"},
+  ]:[
+    {id:"soon",label:"Starting soon"},
+    {id:"tonight",label:"Tonight"},
+    {id:"first",label:"First visit · open"},
   ];
-  if(state.mode==="support")items.push({id:"first",label:"First visit"});
   items.forEach(pr=>{
     const b=document.createElement("button");
     b.type="button";b.className="pchip"+(state.preset===pr.id?" on":"");
+    b.setAttribute("aria-pressed",state.preset===pr.id?"true":"false");
     b.textContent=pr.label;
     b.onclick=()=>applyPreset(pr.id);
     row.appendChild(b);
@@ -766,20 +1572,32 @@ function buildPresets(){
 }
 function applyPreset(id){
   if(id==="saved"){state.savedOnly=!state.savedOnly;state.preset=state.savedOnly?"saved":"";updateSavedBtn();buildPresets();render();return;}
-  state.preset=id;state.savedOnly=false;state.cat.clear();state.quick.clear();
-  if(id==="tonight"){state.daySet=null;state.day=todayDay();state.tod="evening";state.nowOnly=false;}
-  else if(id==="tomorrow"){state.daySet=null;state.day=(todayDay()+1)%7;state.tod="";state.nowOnly=false;}
+  state.preset=id;state.savedOnly=false;state.cat.clear();state.quick.clear();state.tod="";state.nowOnly=false;state.horizon=6;state.hideEnded=true;state.soonOnly=false;state.flag="";
+  // presets re-assert walk-in unless the user is hunting online
+  state.fmt="in-person";
+  if(id==="today"){state.daySet=null;state.day=todayDay();state.tod="";state.nowOnly=false;}
+  else if(id==="now"){state.daySet=null;state.day=todayDay();state.tod="";state.nowOnly=true;state.hideEnded=false;}
+  else if(id==="soon"){
+    // The crisis path: on now or within 2 hours, closest first. Ask for location
+    // if we don't have it — "soon" without "near me" isn't much help.
+    state.daySet=null;state.day=todayDay();state.tod="";state.nowOnly=false;state.soonOnly=true;
+    if(!state.near)requestMyArea(document.getElementById("nearme"),{quiet:true});
+  }
+  else if(id==="tonight"){state.daySet=null;state.day=todayDay();state.tod="evening";state.nowOnly=false;}
   else if(id==="weekend"){state.day=null;state.daySet=new Set([5,6,0]);state.tod="";}
-  else if(id==="first"){state.daySet=null;state.day=todayDay();state.tod="";state.quick.add("open");document.getElementById("guide").hidden=false;}
-  syncTodUI();syncDayUI();buildQuickFilters();buildPresets();updateSavedBtn();render();
+  else if(id==="week"){state.day=null;state.daySet=null;state.tod="";state.nowOnly=false;state.horizon=6;}
+  else if(id==="month"){state.day=null;state.daySet=null;state.tod="";state.nowOnly=false;state.horizon=29;}
+  else if(id==="first"){state.daySet=null;state.day=todayDay();state.tod="";state.quick.add("open");state.fmt="in-person";document.getElementById("guide").hidden=false;}
+  syncTodUI();syncDayUI();syncFmtUI();buildQuickFilters();buildPresets();updateSavedBtn();render();
 }
 function buildDayBar(){
   const bar=document.getElementById("daybar");
   if(!bar||bar.dataset.built)return;
   bar.dataset.built="1";
   const today=todayDay();
-  bar.innerHTML='<span class="daybar-label">Map &amp; list</span>';
-  DAYS.forEach((d,i)=>{
+  bar.innerHTML='<span class="daybar-label">Day</span>';
+  for(let offset=0;offset<7;offset++){
+    const i=(today+offset)%7,d=DAYS[i];
     const b=document.createElement("button");
     b.type="button";
     b.className="daypick"+(i===today?" today-hint":"");
@@ -787,7 +1605,7 @@ function buildDayBar(){
     b.textContent=i===today?`Today · ${d}`:d;
     b.onclick=()=>setViewDay(i);
     bar.appendChild(b);
-  });
+  }
   const all=document.createElement("button");
   all.type="button";
   all.className="daypick all-week";
@@ -800,70 +1618,211 @@ function buildFilters(){
   const cf=document.getElementById("catFilters");
   cf.querySelectorAll(".chip").forEach(n=>n.remove());
   document.getElementById("catLabel").textContent=state.mode==="support"?"Fellowship":"Activity type";
-  Object.entries(META).forEach(([k,v])=>{
+  const have=new Set(DATA.map(m=>m.cat));
+  Object.entries(META).filter(([k])=>have.has(k)).forEach(([k,v])=>{
     const c=document.createElement("button");
-    c.className="chip";c.innerHTML=`<span class="swatch" style="background:${v.color}"></span>${k}`;
-    c.onclick=()=>{state.cat.has(k)?state.cat.delete(k):state.cat.add(k);c.classList.toggle("on");render();};
+    c.className="chip"+(state.cat.has(k)?" on":"");c.setAttribute("aria-pressed",state.cat.has(k)?"true":"false");
+    c.innerHTML=`<span class="swatch" style="background:${v.color}"></span>${k}`;
+    c.onclick=()=>{state.cat.has(k)?state.cat.delete(k):state.cat.add(k);const on=c.classList.toggle("on");c.setAttribute("aria-pressed",on?"true":"false");render();};
     cf.appendChild(c);
   });
   // day + format only once
   const dc=document.getElementById("dayFilters");
   if(dc.querySelectorAll(".chip").length===0){
     const all=document.createElement("button");
-    all.className="chip";all.dataset.day="all";all.textContent="All week";
+    all.className="chip";all.dataset.day="all";all.textContent="All week";all.setAttribute("aria-pressed","false");
     all.onclick=()=>setViewDay(isAllWeek()?todayDay():null);
     dc.appendChild(all);
-    DAYS.forEach((d,i)=>{const c=document.createElement("button");c.className="chip";c.dataset.day=String(i);c.textContent=d;
+    DAYS.forEach((d,i)=>{const c=document.createElement("button");c.className="chip";c.dataset.day=String(i);c.textContent=d;c.setAttribute("aria-pressed","false");
       c.onclick=()=>setViewDay(state.day===i?todayDay():i);dc.appendChild(c);});
     const mc=document.getElementById("fmtFilters");
     [["in-person","In-person"],["online","Online"],["hybrid","Hybrid"]].forEach(([k,lbl])=>{
-      const c=document.createElement("button");c.className="chip";c.textContent=lbl;
-      c.onclick=()=>{state.fmt=state.fmt===k?null:k;[...mc.children].forEach(x=>x.classList?.remove?.("on"));if(state.fmt===k)c.classList.add("on");render();};mc.appendChild(c);});
+      const c=document.createElement("button");c.className="chip";c.dataset.fmt=k;c.textContent=lbl;c.setAttribute("aria-pressed","false");
+      c.onclick=()=>{state.fmt=state.fmt===k?null:k;syncFmtUI();render();};mc.appendChild(c);});
   }
+  syncFmtUI();
+}
+function syncFmtUI(){
+  document.querySelectorAll("#fmtFilters .chip").forEach(c=>{
+    const on=!!state.fmt&&c.dataset.fmt===state.fmt;
+    c.classList.toggle("on",on);
+    c.setAttribute("aria-pressed",on?"true":"false");
+  });
 }
 
-function filtered(){
+function matchesDayView(m){
+  // Searching looks ahead a week. "free meditation" used to return 0 just
+  // because today's sittings had already ended — the answer was tomorrow 7:30am.
+  if(state.q&&!state.savedOnly){
+    if(!m.date)return true;
+    const o=dateOffset(m.date);
+    return o>=0&&o<=6;
+  }
+  if(!m.date){
+    if(state.daySet)return state.daySet.has(m.day);
+    return state.day===null||m.day===state.day;
+  }
+  const off=dateOffset(m.date);
+  if(off<0)return false;
+  if(state.daySet)return off<=7&&state.daySet.has(m.day);
+  if(state.day!==null)return off===dayOffset(state.day,todayDay());
+  // /api/events returns 45 days; the old hard-coded 6 made ~2/3 of the feed
+  // unreachable — nothing in the UI could ever show next month's concert.
+  return off<=state.horizon;
+}
+function filtered(opts={}){
   const quicks=QUICK[state.mode]||[];
-  const n=nowInfo();
+  const fmt=effectiveFmt();
+  // Enrich BEFORE filtering. _minsUntil/_dayOff were only set by smartSort, which
+  // runs after this filter — so isOver() saw undefined on first paint (the
+  // hide-ended gate silently did nothing) and stale values on every render after.
+  enrichSort(DATA);
+  const hideEnded=state.hideEnded&&!opts.includeEnded&&state.day===todayDay()&&!state.daySet&&!state.savedOnly&&!state.nowOnly;
   let list=DATA.filter(m=>{
+    // Saved view shows everything you starred (any day/format), minus past dates
+    if(state.savedOnly)return SAVED.has(m._id)&&!(m.date&&dateOffset(m.date)<0);
     if(state.cat.size&&!state.cat.has(m.cat))return false;
-    if(state.daySet){
-      if(!state.daySet.has(m.day))return false;
-      if(m.date&&dateOff(m,n)>6)return false; // dated events: this weekend only
+    if(!matchesDayView(m))return false;
+    if(state.area){
+      const sp=isStPaul(m),mp=isMpls(m);
+      if(state.area==="stpaul"&&!sp)return false;
+      if(state.area==="mpls"&&!mp)return false;
+      if(state.area==="suburbs"&&(sp||mp||m.fmt==="online"))return false;
     }
-    else if(state.day!==null){
-      if(m.day!==state.day)return false;
-      if(m.date&&dateOff(m,n)>6)return false; // dated events: the upcoming one only
-    }
-    if(state.savedOnly&&!SAVED.has(m._id))return false;
-    if(state.fmt&&m.fmt!==state.fmt)return false;
+    if(fmt&&!matchesFmt(m,fmt))return false;
     if(state.tod&&!inTod(m.time,state.tod))return false;
     if(state.nowOnly&&!isNow(m))return false;
-    if(state.quick.size){
-      const ok=[...state.quick].some(id=>quicks.find(q=>q.id===id)?.match(m));
-      if(!ok)return false;
+    // "Starting soon" is the support-mode crisis path: on now, or within 2 hours
+    if(state.soonOnly&&!(isNow(m)||(m._minsUntil>=-15&&m._minsUntil<=120)))return false;
+    if(state.hideSeries&&m.series)return false;
+    if(state.flag&&!(m.flags||[]).includes(state.flag))return false;
+    // Radius filter when Near me is on. Approx pins use city-centroid coords —
+    // still filter them (Shoreview vs far suburbs) but never hard-drop the whole
+    // Meetup feed the way we used to with `if (m.approx) return false`.
+    if(state.radius&&state.near){
+      if(m.lat==null||m.lng==null||!isFinite(m.lat)||!isFinite(m.lng))return false;
+      if(dist(state.near[0],state.near[1],m.lat,m.lng)>state.radius)return false;
     }
-    if(state.q){const h=(m.name+" "+m.loc+" "+m.addr+" "+(m.types||[]).join(" ")+" "+(m.source||"")+" "+(m.region||"")+" "+META[m.cat].name).toLowerCase();if(!h.includes(state.q.toLowerCase()))return false;}
+    if(hideEnded&&isOver(m))return false;
+    // Default activities feed = his scene (games games / dance / meet people). Kids & zoo sit under Everything.
+    // If they explicitly tapped Kids, let that through even in For You.
+    if(state.mode==="activities"&&state.vibe==="social"&&!state.quick.has("family")&&!matchesVibe(m))return false;
+    if(state.quick.size){
+      // format-owned chips are handled by effectiveFmt — don't double-filter them out
+      const ids=[...state.quick].filter(id=>id!=="online"&&id!=="hybrid");
+      if(ids.length){
+        const ok=ids.some(id=>quicks.find(q=>q.id===id)?.match(m));
+        if(!ok)return false;
+      }
+    }
+    if(state.q){
+      const h=(m.name+" "+m.loc+" "+m.addr+" "+(m.region||"")+" "+(m.door||"")+" "+(m.notes||"")+" "+(m.desc||"")+" "+(m.source||"")+" "+(m.free?"free ":"")+(m.types||[]).join(" ")+" "+(m.flags||[]).join(" ")+" "+meta(m.cat).name).toLowerCase();
+      // Every word must appear somewhere, not the phrase verbatim: "friday music"
+      // and "yoga st paul" matched nothing when this was a single includes().
+      if(!qTokens(state.q).every(t=>h.includes(t)))return false;
+    }
     return true;
   });
   return smartSort(list);
 }
+function endedTodayCount(){
+  if(state.day!==todayDay()||state.daySet||state.savedOnly||state.nowOnly)return 0;
+  // count rows that match filters except the hideEnded gate
+  return filtered({includeEnded:true}).filter(isOver).length;
+}
 
 function activeFilterCount(){
   const dayExtra=state.daySet?1:(isAllWeek()?1:(state.day!==todayDay()?1:0));
-  return state.cat.size+dayExtra+state.quick.size+(state.fmt?1:0)+(state.tod?1:0)+(state.nowOnly?1:0)+(state.savedOnly?1:0);
+  // in-person is the default for both modes — don't count it as an "extra" filter
+  const formatExtra=state.fmt&&state.fmt!=="in-person"?1:0;
+  const vibeExtra=state.mode==="activities"&&state.vibe==="all"?1:0;
+  return state.cat.size+dayExtra+state.quick.size+formatExtra+vibeExtra+(state.tod?1:0)+(state.nowOnly?1:0)+(state.savedOnly?1:0)+(state.area?1:0)+(state.radius?1:0)+(state.hideSeries?1:0)+(state.soonOnly?1:0)+(state.flag?1:0);
 }
 function buildQuickFilters(){
   const row=document.getElementById("quickrow");
   if(!row)return;
   row.innerHTML="";
+  if(state.mode==="support"){
+    // Which program first — it's the question people actually arrive with;
+    // the area chips scroll in right after it.
+    [["AA","AA"],["NA","NA"],["Al-Anon","Al-Anon"],["Dharma","🧘 Meditation"],["Refuge","Refuge"],["Buddhist","Buddhist"]].forEach(([k,lbl])=>{
+      // only show chips for fellowships we actually have rows for
+      if(!DATA.some(m=>m.cat===k)&&!state.cat.has(k))return;
+      const b=document.createElement("button");
+      b.type="button";b.className="qchip"+(state.cat.has(k)?" on":"");
+      b.setAttribute("aria-pressed",state.cat.has(k)?"true":"false");
+      b.textContent=lbl;
+      b.onclick=()=>{state.cat.has(k)?state.cat.delete(k):state.cat.add(k);buildQuickFilters();buildFilters();render();};
+      row.appendChild(b);
+    });
+    [["","Everywhere"],["stpaul","St Paul"],["mpls","Minneapolis"],["suburbs","Suburbs"]].forEach(([v,lbl])=>{
+      const b=document.createElement("button");
+      b.type="button";b.className="qchip"+((state.area||"")===v?" on":"");
+      b.setAttribute("aria-pressed",(state.area||"")===v?"true":"false");
+      b.textContent=lbl;
+      b.onclick=()=>{state.area=v;buildQuickFilters();render();};
+      row.appendChild(b);
+    });
+    // Access + identity. The feeds carry these as codes and we already parse
+    // them; only offer the ones that actually have rows right now.
+    [["Wheelchair","♿ Wheelchair"],["Women","Women"],["Men","Men"],["Spanish","Español"],["LGBTQ","LGBTQ"],["People of Color","POC"],["Babysitting","Childcare"]].forEach(([f,lbl])=>{
+      if(!DATA.some(m=>(m.flags||[]).includes(f)))return;
+      const b=document.createElement("button");
+      b.type="button";b.className="qchip"+(state.flag===f?" on":"");
+      b.setAttribute("aria-pressed",state.flag===f?"true":"false");
+      b.textContent=lbl;
+      b.onclick=()=>{state.flag=state.flag===f?"":f;buildQuickFilters();render();};
+      row.appendChild(b);
+    });
+  }
   (QUICK[state.mode]||[]).forEach(q=>{
+    // Kids chip lives under Everything so it doesn't clutter the default social feed
+    if(state.mode==="activities"&&state.vibe==="social"&&q.id==="family"&&!state.quick.has("family"))return;
+    // Feeds shift week to week — Food or Language can legitimately be empty, and
+    // a chip that returns "no matches" every time just wastes a tap.
+    if(!state.quick.has(q.id)&&!DATA.some(m=>{try{return q.match(m);}catch(e){return false;}}))return;
     const b=document.createElement("button");
     b.type="button";b.className="qchip"+(state.quick.has(q.id)?" on":"");
+    b.setAttribute("aria-pressed",state.quick.has(q.id)?"true":"false");
     b.textContent=q.label;
-    b.onclick=()=>{state.quick.has(q.id)?state.quick.delete(q.id):state.quick.add(q.id);buildQuickFilters();render();};
+    b.onclick=()=>{
+      const on=state.quick.has(q.id);
+      if(on)state.quick.delete(q.id);
+      else{
+        state.quick.add(q.id);
+        // Online/hybrid chips take over format so they don't fight the in-person default
+        if(q.id==="online"){state.fmt="online";state.quick.delete("hybrid");}
+        if(q.id==="hybrid"){state.fmt="hybrid";state.quick.delete("online");}
+      }
+      if((q.id==="online"||q.id==="hybrid")&&on)state.fmt="in-person";
+      syncFmtUI();buildQuickFilters();render();
+    };
     row.appendChild(b);
   });
+
+  // Standing drop-in programs (Como Zoo animal talks). Only offer when Everything
+  // is on — For You already strips kids/zoo, so the chip was just noise.
+  if(state.mode==="activities"&&state.vibe==="all"&&DATA.some(m=>m.series)){
+    const b=document.createElement("button");
+    b.type="button";b.className="qchip"+(state.hideSeries?" on":"");
+    b.setAttribute("aria-pressed",state.hideSeries?"true":"false");
+    b.textContent="Hide daily repeats";
+    b.onclick=()=>{state.hideSeries=!state.hideSeries;buildQuickFilters();render();};
+    row.appendChild(b);
+  }
+
+  // Distance only means something once we know where they are.
+  // 20 mi reaches the nearby-ring places the user asked not to miss.
+  if(state.near){
+    [[0,"Any distance"],[5,"\u22645 mi"],[10,"\u226410 mi"],[15,"\u226415 mi"],[20,"\u226420 mi"]].forEach(([r,lbl])=>{
+      const b=document.createElement("button");
+      b.type="button";b.className="qchip"+(state.radius===r?" on":"");
+      b.setAttribute("aria-pressed",state.radius===r?"true":"false");
+      b.textContent=lbl;
+      b.onclick=()=>{state.radius=r;buildQuickFilters();render();};
+      row.appendChild(b);
+    });
+  }
 }
 function updateInsight(list){
   const el=document.getElementById("insight");
@@ -871,15 +1830,47 @@ function updateInsight(list){
   const nowCt=list.filter(isNow).length;
   const verified=list.filter(m=>m.verified).length;
   const openCt=state.mode==="support"?list.filter(m=>(m.types||[]).some(t=>/^open$/i.test(t))).length:0;
+  const onMapN=list.filter(hasMapPin).length;
   const pills=[
+    `<span class="insight-pill"><strong>${list.length}</strong> on ${dayViewLabel()}</span>`,
     nowCt?`<span class="insight-pill live"><strong>${nowCt}</strong> happening now</span>`:"",
-    verified?`<span class="insight-pill live"><strong>${verified}</strong> verified live</span>`:"",
-    state.mode==="support"&&openCt?`<span class="insight-pill"><strong>${openCt}</strong> open meetings</span>`:"",
-    state.near?`<span class="insight-pill">sorted near you</span>`:"",
-    list.some(m=>!hasMapPin(m))?`<span class="insight-pill"><strong>${list.filter(m=>!hasMapPin(m)).length}</strong> online only</span>`:"",
+    state.mode==="support"&&openCt?`<span class="insight-pill"><strong>${openCt}</strong> open</span>`:"",
+    state.near?`<span class="insight-pill">nearest first</span>`:"",
+    state.mode==="support"&&onMapN?`<span class="insight-pill"><strong>${onMapN}</strong> on map</span>`:"",
+    state.mode==="activities"&&verified?`<span class="insight-pill live"><strong>${verified}</strong> live</span>`:"",
   ].filter(Boolean);
   el.innerHTML=pills.join("");
-  el.style.display=pills.length?"flex":"none";
+}
+function updateHero(list){
+  const title=document.getElementById("heroTitle");
+  const live=document.getElementById("heroLive");
+  const kicker=document.getElementById("dayKicker");
+  if(kicker)kicker.textContent=new Intl.DateTimeFormat("en-US",{
+    timeZone:"America/Chicago",weekday:"long",month:"long",day:"numeric"
+  }).format(new Date())+" · Twin Cities";
+  if(title)title.textContent=state.mode==="support"
+    ?"Find a meeting."
+    :(state.vibe==="social"?"Picked for you.":"Find something to do.");
+  const tag=document.querySelector(".tagline");
+  if(tag)tag.textContent=state.mode==="support"
+    ?"Live AA, NA, and Al-Anon times from official Twin Cities feeds. Confirm before you go."
+    :(state.vibe==="social"
+      ?"Games, creative tech, meditation, dance, and community picks first. Tap Everything anytime."
+      :"Full Twin Cities feed including family, zoo, and library programs.");
+  if(live){
+    if(state.mode==="support"){
+      const next=list.find(m=>!isOver(m));
+      const bits=[`${list.length} meeting${list.length===1?"":"s"}`, dayViewLabel()];
+      if(next)bits.push("next at "+fmtTime(next.time));
+      if(state.near)bits.push("nearest first");
+      live.innerHTML=`<span></span>${esc(bits.join("  ·  "))}`;
+    }else{
+      const vibeBit=state.vibe==="social"?" For You":"";
+      const bits=[`${list.length}${vibeBit} plan${list.length===1?"":"s"}`, dayViewLabel()];
+      live.innerHTML=`<span></span>${esc(bits.join("  ·  "))}`;
+    }
+  }
+  buildVibeBar();
 }
 function updateMapLegend(list){
   const el=document.getElementById("mapLegend");
@@ -889,36 +1880,71 @@ function updateMapLegend(list){
   const top=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,7);
   if(!top.length){el.innerHTML="";return;}
   el.innerHTML=`<div class="lg-title">On the map</div>${top.map(([k,n])=>
-    `<div class="lg-row"><span class="lg-dot" style="background:${META[k].color}"></span>${k} <span style="opacity:.7">(${n})</span></div>`
+    `<div class="lg-row"><span class="lg-dot" style="background:${meta(k).color}"></span>${k} <span style="opacity:.7">(${n})</span></div>`
   ).join("")}`;
 }
 function renderFeatured(el,list){
   const next=pickNextUp(list);
   if(!next)return;
-  const fc=META[next.cat].color;
+  const fc=meta(next.cat).color;
   const tp=fmtParts(next.time);
   const whenLbl=next.dateLabel?next.dateLabel:(next.day===todayDay()?"Today":DAYS[next.day]);
   const rel=relWhen(next);
-  const box=document.createElement("div");
+  const href=safeHref(next.url);
+  const why=state.mode==="activities"&&state.vibe==="social"?forYouReasons(next):[];
+  const box=document.createElement(state.mode==="activities"&&href?"a":"div");
   box.className="featured";
-  box.innerHTML=`<div class="eyebrow">${isNow(next)?"Happening now":"Up next"}</div>
-    <div class="fname">${next.name}</div>
-    <div class="fmeta">${whenLbl} · ${fmtTime(next.time)}${rel?` · ${rel}`:""} · ${next.loc}</div>
-    <div class="fcta">View on map →</div>`;
-  box.onclick=()=>focusMeeting(next);
+  if(box.tagName==="A"){box.href=href;box.target="_blank";box.rel="noopener";}
+  const image=safeHref(next.image);
+  if(state.mode==="activities"){
+    box.innerHTML=`<div class="feature-stamp" aria-hidden="true">${image?`<img class="stamp-img" src="${image}" alt="" loading="lazy" onerror="this.replaceWith('${activityEmoji(next.cat)}')">`:activityEmoji(next.cat)}</div>
+      <div><div class="eyebrow">${isNow(next)?"Happening now":why.length?`For You · ${esc(why.join(" · "))}`:"Try this first"}</div>
+      <div class="fname">${esc(next.name)}</div>
+      <div class="fmeta">${esc(whenLbl)} · ${fmtTime(next.time)}${rel?` · ${esc(rel)}`:""} · 📍 ${esc(next.loc)}</div>
+      <div class="fcta">See event →</div></div>`;
+  }else{
+    box.innerHTML=`<div><div class="eyebrow">${isNow(next)?"Happening now":"Up next"}</div>
+      <div class="fname">${esc(next.name)}</div>
+      <div class="fmeta">${esc(whenLbl)} · ${fmtTime(next.time)}${rel?` · ${esc(rel)}`:""} · ${esc(next.loc)}</div>
+      <div class="fcta">${hasMapPin(next)?"View on map":"View details"} →</div></div>
+      ${image?`<img class="feature-art" src="${image}" alt="" loading="lazy">`:""}`;
+  }
+  if(box.tagName!=="A")box.onclick=()=>state.mode==="activities"?openActivity(next):focusMeeting(next);
   el.appendChild(box);
+  return next._id;
 }
 function renderEmpty(el){
+  // If search has hits outside "today", offer to expand the day window
+  let weekHits=0;
+  if(state.q&&state.day!==null&&!state.daySet){
+    const keepDay=state.day,keepSet=state.daySet,keepHoriz=state.horizon;
+    state.day=null;state.daySet=null;state.horizon=30;
+    weekHits=filtered().length;
+    state.day=keepDay;state.daySet=keepSet;state.horizon=keepHoriz;
+  }
+  const tips=state.mode==="support"
+    ?"Try Tonight, Open, a different area, or turn on Online only."
+    :(state.vibe==="social"
+      ?"No For You picks on this day — try Tonight, or switch to Everything."
+      :"Try another day, turn off a filter, or search All week.");
+  const weekBtn=weekHits?`<button type="button" class="btn" data-empty="week">Show ${weekHits} match${weekHits===1?"":"es"} this month</button>`:"";
   el.innerHTML=`<div class="empty">
     <div class="empty-title">No matches for ${dayViewLabel()}</div>
-    Try another day, turn off a filter, or search All week.<br>
+    ${esc(tips)}<br>
     <div class="empty-actions">
+      ${weekBtn}
       <button type="button" class="btn" data-empty="today">Today</button>
-      <button type="button" class="btn" data-empty="week">All week</button>
+      <button type="button" class="btn" data-empty="tonight">Tonight</button>
+      ${state.mode==="activities"&&state.vibe==="social"?`<button type="button" class="btn" data-empty="all">Everything</button>`:""}
       <button type="button" class="btn" data-empty="clear">Clear filters</button>
     </div></div>`;
-  el.querySelector('[data-empty="today"]')?.addEventListener("click",()=>setViewDay(todayDay()));
-  el.querySelector('[data-empty="week"]')?.addEventListener("click",()=>setViewDay(null));
+  el.querySelector('[data-empty="week"]')?.addEventListener("click",()=>{
+    state.day=null;state.daySet=null;state.horizon=30;state.preset="";
+    syncDayUI();buildPresets();render();
+  });
+  el.querySelector('[data-empty="today"]')?.addEventListener("click",()=>applyPreset("today"));
+  el.querySelector('[data-empty="tonight"]')?.addEventListener("click",()=>applyPreset("tonight"));
+  el.querySelector('[data-empty="all"]')?.addEventListener("click",()=>setVibe("all"));
   el.querySelector('[data-empty="clear"]')?.addEventListener("click",clearFilters);
 }
 function updateFilterUI(){
@@ -928,84 +1954,208 @@ function updateFilterUI(){
   document.getElementById("fClear").classList.toggle("show",n>0);
 }
 function clearFilters(){
-  state.cat.clear();state.quick.clear();state.daySet=null;state.day=todayDay();state.fmt=null;state.tod="";state.nowOnly=false;state.savedOnly=false;state.preset="";state.q="";
+  state.cat.clear();state.quick.clear();state.daySet=null;state.day=todayDay();state.horizon=6;state.radius=0;state.hideSeries=true;state.soonOnly=false;state.flag="";state.fmt="in-person";state.tod="";state.nowOnly=false;state.savedOnly=false;state.hideEnded=true;state.preset=state.mode==="activities"?"today":"";state.q="";state.area="";
+  // Keep his preferred vibe (don't force Everything on clear)
   document.getElementById("q").value="";
-  document.querySelectorAll("#fmtFilters .chip").forEach(x=>x.classList.remove("on"));
   syncTodUI();
   document.getElementById("nowbtn").classList.remove("on");
-  syncDayUI();buildQuickFilters();buildPresets();buildFilters();updateSavedBtn();render();
+  syncDayUI();buildQuickFilters();buildPresets();buildFilters();buildVibeBar();updateSavedBtn();render();
 }
 function focusFromId(id){
   const m=DATA.find(x=>x._id===id)||lastFilteredList.find(x=>x._id===id);
   if(m)focusMeeting(m);
 }
-function renderOnlineSection(el,items){
-  const h=document.createElement("div");
-  h.className="list-section";
-  h.textContent=`Online (${items.length}) — not on map`;
-  el.appendChild(h);
-  items.forEach(m=>renderCard(el,m));
+function openActivity(m){
+  const href=safeHref(m.url);
+  if(href){location.assign(href);return;}
+  if(!hasMapPin(m)){toast("This listing has no event page or exact map pin.");return;}
+  document.querySelector('#viewtabs [data-view="map"]')?.click();
+  focusMeeting(m);
 }
 function renderCard(el,m){
-  const id=m._id,fc=META[m.cat].color,now=isNow(m);
+  const id=m._id,fc=meta(m.cat).color,now=isNow(m);
   const card=document.createElement("div");
   card.className="card"+(activeId===id?" active":"")+(SAVED.has(id)?" saved":"");card.dataset.id=id;
-  const trust=m.verified?'<span class="b ok">Live</span>':'<span class="b warn">Sample</span>';
+  card.tabIndex=0;card.setAttribute("role","button");
+  card.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();card.click();}};
   const whenLbl=m.dateLabel?m.dateLabel:(m.day===todayDay()?"Today":DAYS[m.day]);
   const rel=relWhen(m);
   const tp=fmtParts(m.time);
-  const join=m.url?`<a class="verify" href="${m.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${m.fmt==="online"?"Join link":"Details"} ↗</a>`:"";
-  const official=state.mode==="support"?FINDERS[m.cat]:null;
-  const verify=(official&&official!==m.url)?`<a class="verify vbtn" href="${official}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Official list ↗</a>`:"";
-  const dir=hasMapPin(m)?`<a class="dir" href="${mapsDir(m)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Directions ↗</a>`:"";
+  const href=safeHref(m.url);
+  if(state.mode==="activities"){
+    card.classList.add("activity-card");
+    const formatClass=m.fmt==="online"?" online":"";
+    const placeAddress=m.addr&&m.addr!==m.loc?`<span>${esc(m.addr)}</span>`:"";
+    const details=href?`<a class="event-details" href="${href}" target="_blank" rel="noopener" onclick="event.stopPropagation()">See event details →</a>`:"";
+    const directions=hasMapPin(m)?`<a class="event-details" href="${mapsDir(m)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Directions</a>`:"";
+    // libraries put "Free" in types AND set the free flag — don't print it twice
+    const usefulTypes=(m.types||[]).filter(Boolean).filter(t=>!(m.free&&/^free$/i.test(t))).slice(0,2);
+    const thumb=safeHref(m.image);
+    const title=href
+      ?`<a class="event-title" href="${href}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(m.name)}</a>`
+      :`<div class="event-title">${esc(m.name)}</div>`;
+    card.innerHTML=`<div class="activity-stamp" aria-hidden="true">${thumb?`<img class="stamp-img" src="${thumb}" alt="" loading="lazy" onerror="this.replaceWith('${activityEmoji(m.cat)}')">`:activityEmoji(m.cat)}</div>
+      <div class="event-main">
+        <div class="event-topline">
+          <span class="event-format${formatClass}">${m.fmt==="online"?"💻 Online":m.fmt==="hybrid"?"📍 In person + online":"📍 In person"}</span>
+          <span class="event-category">${activityEmoji(m.cat)} ${esc(activityLabel(m.cat))}</span>
+        </div>
+        ${title}
+        <div class="event-time">${esc(whenLbl)} · ${fmtTime(m.time)}${rel?` · ${esc(rel)}`:""}${m._d!=null?` · ${m._d.toFixed(1)} mi away`:""}</div>
+        <div class="event-place">📍 ${esc(m.loc)}${placeAddress}</div>
+        ${m.desc?`<div class="event-desc">${esc(m.desc)}</div>`:""}
+        ${now||usefulTypes.length||m.wx||m.free?`<div class="event-tags">${now?'<span class="b now">Happening now</span>':""}${m.free?'<span class="b ok">Free</span>':""}${wxChip(m)}${usefulTypes.map(t=>`<span class="b">${esc(t)}</span>`).join("")}</div>`:""}
+        <div class="event-actions">${details}${directions}<a class="event-details" href="${icsFor(m)}" download="${m._id}.ics" onclick="event.stopPropagation()">📅 Calendar</a></div>
+      </div>
+      <button type="button" class="savebtn${SAVED.has(id)?" on":""}" title="Save event" aria-label="Save event">${SAVED.has(id)?"★":"☆"}</button>`;
+    card.querySelector(".savebtn").onclick=e=>toggleSaved(id,e);
+    card.setAttribute("role","link");
+    card.setAttribute("aria-label",`Open ${m.name}`);
+    card.onclick=()=>openActivity(m);
+    el.appendChild(card);
+    return;
+  }
+  // —— Support meeting card (designed for "I need a meeting", not event browsing)
+  card.classList.add("meet-card");
   const saved=SAVED.has(id)?"★":"☆";
-  card.innerHTML=`<div class="timecol"><span class="timepill">${tp.hr}</span><span class="timeap">${tp.ap}</span></div>
-    <div class="body"><div class="top"><div class="name">${m.name}</div>
-      <button type="button" class="savebtn${SAVED.has(id)?" on":""}" title="Save" aria-label="Save">${saved}</button>
-      <div class="fell" style="background:${fc}">${m.cat}</div></div>
-    <div class="when">${whenLbl}${rel?` · <span style="color:var(--now)">${rel}</span>`:""}${m._d!=null?` · ${m._d.toFixed(1)} mi`:""}</div>
-    <div class="where">${m.loc}</div>
-    <div class="badges">${now?'<span class="b now">Now</span>':''}
-      <span class="b ${m.fmt==="online"?"online":m.fmt==="hybrid"?"hybrid":""}">${fmtLabel(m.fmt)}</span>
-      ${trust}
-      ${(m.types||[]).slice(0,3).map(t=>`<span class="b">${t}</span>`).join("")}</div>
-    <div class="linkrow">${dir}${join}${verify}
-      <button type="button" class="dir" style="border:none;background:none;padding:0;cursor:pointer" data-copy="${id}">Copy info</button></div></div>`;
-  card.tabIndex=0;
-  card.setAttribute("role","button");
-  card.addEventListener("keydown",e=>{
-    if(e.key==="Enter"&&e.target===card){e.preventDefault();focusMeeting(m);}
-  });
+  const showAddr=m.addr&&m.addr!==m.loc&&!/^online$/i.test(m.addr);
+  const hood=hoodLabel(m);
+  const typeBadges=[...(m.types||[])];
+  const badgeHtml=typeBadges.slice(0,4).map(t=>{
+    const cls=/^open$/i.test(t)?" open-b":/^closed$/i.test(t)?" closed-b":"";
+    return `<span class="b${cls}">${esc(t)}</span>`;
+  }).join("");
+  // Explicit spaces / line breaks so nothing runs together if flex/gap fails
+  const placeLine=m.fmt==="online"
+    ?`<div class="where">Online meeting</div>`
+    :`<div class="where">${hood?`<span class="hood">${esc(hood)}</span><span> · </span>`:""}<strong style="font-weight:600;color:var(--txt)">${esc(m.loc)}</strong>${showAddr?`<span class="addr">${esc(m.addr)}</span>`:""}</div>`;
+  const door=m.door?`<div class="door"><b>Entrance:</b> ${esc(m.door)}</div>`:"";
+  const note=m.notes&&m.notes!==m.door?`<div class="door" style="background:#f7f8fa;border-color:#e2e7ee"><b>Note:</b> ${esc(m.notes)}</div>`:"";
+  const whenParts=[whenLbl, fmtTime(m.time)];
+  if(rel)whenParts.push(rel);
+  if(m.fmt==="hybrid")whenParts.push("Hybrid");
+  if(m._d!=null)whenParts.push(m._d.toFixed(1)+" mi");
+  if(now)whenParts.push("Now");
+  const whenLine=whenParts.join("  ·  ");
+  let actions="";
+  if(hasMapPin(m))actions+=`<a class="act primary" href="${mapsDir(m)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Directions</a>`;
+  if(href)actions+=`<a class="act${m.fmt==="online"?" primary":""}" href="${href}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${m.fmt==="online"||m.fmt==="hybrid"?"Join meeting":"Details"}</a>`;
+  actions+=`<button type="button" class="act" data-copy="${id}">Copy</button>`;
+  actions+=`<a class="act" href="${icsFor(m)}" download="${id}.ics" onclick="event.stopPropagation()">Calendar</a>`;
+  card.innerHTML=`<div class="timecol"><span class="timepill">${esc(tp.hr)}</span><span class="timeap">${esc(tp.ap)}</span></div>
+    <div class="body">
+      <div class="top">
+        <div class="name">${esc(m.name)}</div>
+        <button type="button" class="savebtn${SAVED.has(id)?" on":""}" title="Save" aria-label="Save">${saved}</button>
+        <div class="fell" style="background:${fc}">${esc(m.cat)}</div>
+      </div>
+      <div class="when">${esc(whenLine)}</div>
+      ${placeLine}
+      ${door}${note}
+      <div class="badges">${badgeHtml}${m.fmt==="online"?" "+'<span class="b online">Online</span>':""}${m.approx&&m.fmt!=="online"?" "+'<span class="b">Area only</span>':""}</div>
+      <div class="meet-actions">${actions}</div>
+    </div>`;
   card.querySelector(".savebtn").onclick=e=>toggleSaved(id,e);
   card.querySelector("[data-copy]")?.addEventListener("click",e=>{
     e.stopPropagation();
-    navigator.clipboard?.writeText(meetingBlurb(m)).then(()=>toast("Copied to clipboard"));
+    navigator.clipboard?.writeText(meetingBlurb(m)).then(()=>toast("Copied — time, place, entrance notes"));
   });
   card.onclick=()=>focusMeeting(m);
   el.appendChild(card);
 }
 let _lastSig="";
+function ensureMapReady(cb){
+  if(!map)return;
+  // Map is created while activities mode hides it (display:none) → Leaflet gets
+  // 0×0 size and never paints tiles/markers until invalidateSize after show.
+  requestAnimationFrame(()=>{
+    try{map.invalidateSize({animate:false});}catch(e){}
+    if(typeof cb==="function")cb();
+  });
+}
+function fitMapToResults(list){
+  if(!map)return;
+  // Don't steal the view while the user is looking at a pin they just tapped
+  if(activeId)return;
+  const pts=list.filter(hasMapPin);
+  if(!pts.length){
+    map.setView(TC_CENTER,11,{animate:false});
+    return;
+  }
+  if(pts.length===1){
+    map.setView([pts[0].lat,pts[0].lng],14,{animate:false});
+    return;
+  }
+  try{
+    const b=L.latLngBounds(pts.map(m=>[m.lat,m.lng]));
+    if(b.isValid())map.fitBounds(b,{padding:[40,40],maxZoom:12,animate:false});
+  }catch(e){
+    map.setView(TC_CENTER,11,{animate:false});
+  }
+}
 function render(){
-  const sig=[state.mode,[...state.cat].sort().join(","),[...state.quick].sort().join(","),state.day,state.fmt,state.tod,state.nowOnly,state.q,state.near].join("|");
-  if(sig!==_lastSig){state.limit=RENDER_STEP;_lastSig=sig;}
+  // every field that changes the result set must be here, or "show more" stays
+  // expanded across an unrelated filter change and shows the wrong slice
+  const sig=[state.mode,state.vibe,[...state.cat].sort().join(","),[...state.quick].sort().join(","),state.day,state.daySet?"wknd":"",effectiveFmt(),state.tod,state.nowOnly,state.q,state.near,state.savedOnly,state.area,state.horizon,state.hideEnded,state.radius,state.hideSeries,state.soonOnly,state.flag].join("|");
+  const filtersChanged=sig!==_lastSig;
+  if(filtersChanged){state.limit=renderStep();_lastSig=sig;}
   const list=filtered();
+  const endedN=state.hideEnded?endedTodayCount():0;
+  updateHero(list);
   lastFilteredList=list;
   const el=document.getElementById("list");el.innerHTML="";
-  const word=state.mode==="support"?"fellowships":"activity types";
   const loadingNow=state.mode==="support"?LIVE_LOADING:EVENTS_LOADING;
-  const loading=loadingNow?'<span class="loading"><span class="spin"></span>loading live…</span> ':"";
   const sortNote=sortHint();
-  document.getElementById("count").innerHTML=loading+`<b>${list.length}</b> ${state.mode==="support"?"meeting":"activity"}${list.length!==1?"s":""} · ${sortNote}`;
+  const resultWord=state.mode==="support"?(list.length===1?"meeting":"meetings"):(list.length===1?"thing to do":"things to do");
+  const fmt=effectiveFmt();
+  const formatWords=fmt==="online"?"online ":fmt==="hybrid"?"hybrid ":"";
+  const sortPart=sortNote;
+  const kidsHidden=state.mode==="activities"&&state.vibe==="social"?DATA.filter(m=>matchesDayView(m)&&isKidsy(m)).length:0;
+  const kidsNote=kidsHidden?` <span aria-hidden="true">·</span> <button type="button" class="dir" style="border:none;background:none;padding:0;font:inherit;color:var(--muted)" id="countShowAll">show everything</button>`:"";
+  const endedNote=endedN?` <span aria-hidden="true">·</span> <button type="button" class="dir" style="border:none;background:none;padding:0;font:inherit;color:var(--muted)" id="countShowEnded">show ${endedN} earlier</button>`:"";
+  // While live feed is in flight, don't pretend sample rows are the full result
+  const countHtml=loadingNow
+    ?`<span class="loading"><span class="spin"></span></span> <b>Loading</b> live ${state.mode==="support"?"meetings":"events"}…`
+    :`<b>${list.length}</b> ${formatWords}${resultWord} <span aria-hidden="true">·</span> ${esc(sortPart)}${kidsNote}${endedNote}`;
+  document.getElementById("count").innerHTML=countHtml;
+  document.getElementById("countShowAll")?.addEventListener("click",()=>setVibe("all"));
+  document.getElementById("countShowEnded")?.addEventListener("click",()=>{state.hideEnded=false;render();});
   updateInsight(list);
   updateMapLegend(list);
   updateFilterUI();
-  if(!list.length){renderEmpty(el);drawMarkers([]);pushUrl();return;}
+  if(!list.length){
+    if(loadingNow){
+      el.innerHTML=`<div class="load-banner"><span class="spin" aria-hidden="true"></span>Pulling live Twin Cities listings… hang on a few seconds.</div>`;
+    }else{
+      renderEmpty(el);
+      if(endedN){
+        const b=document.createElement("button");
+        b.type="button";b.className="show-ended";
+        b.textContent=`Show ${endedN} earlier today →`;
+        b.onclick=()=>{state.hideEnded=false;render();};
+        el.appendChild(b);
+      }
+    }
+    drawMarkers([]);pushUrl();return;
+  }
+  if(loadingNow){
+    const ban=document.createElement("div");
+    ban.className="load-banner";
+    ban.innerHTML=`<span class="spin" aria-hidden="true"></span>Loading live listings — showing a few samples first.`;
+    el.appendChild(ban);
+  }
   const onMap=list.filter(hasMapPin);
-  const onlineOnly=list.filter(m=>!hasMapPin(m));
-  if(list.length>1)renderFeatured(el,list);
-  const shown=list.slice(0,state.limit);
-  let lastSection=null;
+  const featuredId=state.mode==="activities"&&list.length>1&&!loadingNow?renderFeatured(el,list):null;
+  const shown=list.filter(m=>m._id!==featuredId).slice(0,state.limit);
+  let lastSection=null,overHdr=false;
   shown.forEach(m=>{
+    if(!overHdr&&!state.daySet&&state.day===todayDay()&&isOver(m)){
+      overHdr=true;
+      const h=document.createElement("div");
+      h.className="list-section";
+      h.textContent="Earlier today — already ended";
+      el.appendChild(h);
+    }
     if(isAllWeek()||state.daySet){
       const sec=state.daySet?DAYS[m.day]:sectionTitle(m);
       if(sec!==lastSection){
@@ -1018,27 +2168,47 @@ function render(){
     }
     renderCard(el,m);
   });
-  const shownIds=new Set(shown.map(x=>x._id));
-  const onlineExtra=onlineOnly.filter(m=>!shownIds.has(m._id));
-  if(onlineExtra.length)renderOnlineSection(el,onlineExtra);
   if(list.length>state.limit){
     const more=document.createElement("div");more.className="showmore";
+    const step=renderStep();
     const rest=list.length-state.limit;
-    more.textContent=`Show ${Math.min(RENDER_STEP,rest)} more (${rest} hidden) ↓`;
-    more.onclick=()=>{state.limit+=RENDER_STEP;render();};
+    more.textContent=`Show ${Math.min(step,rest)} more (${rest} hidden) ↓`;
+    more.onclick=()=>{state.limit+=step;render();};
     el.appendChild(more);
   }
+  if(endedN){
+    const b=document.createElement("button");
+    b.type="button";b.className="show-ended";
+    b.textContent=`Show ${endedN} meetings from earlier today →`;
+    b.onclick=()=>{state.hideEnded=false;render();};
+    el.appendChild(b);
+  }
   document.getElementById("count").setAttribute("aria-label",`${list.length} results`);
-  drawMarkers(onMap);
+  // Paint map after layout — especially when switching out of activities (map was display:none)
+  if(state.mode==="support"){
+    ensureMapReady(()=>{
+      drawMarkers(onMap);
+      if(filtersChanged)fitMapToResults(list);
+    });
+  }else{
+    drawMarkers(onMap);
+  }
   pushUrl();
 }
 
 function popupHtml(m){
   const whenLbl=m.dateLabel?m.dateLabel:(m.day===todayDay()?"Today":DAYS[m.day]);
-  return `<div class="pop"><div class="pn">${m.name}</div><div class="pf">${META[m.cat].name}</div>
-    <div class="pw">${whenLbl} · ${fmtTime(m.time)} · ${fmtLabel(m.fmt)}</div><div class="pw">${m.loc}<br>${m.addr}</div>
-    ${m.fmt!=="online"?`<a href="${mapsDir(m)}" target="_blank" rel="noopener">Directions ↗</a><br>`:""}
-    ${m.url?`<a href="${m.url}" target="_blank" rel="noopener">More info ↗</a>`:""}
+  const href=safeHref(m.url);
+  const place=m.fmt==="online"
+    ?`Online meeting`
+    :`${esc(m.loc)}${m.addr&&m.addr!==m.loc?`<br>${esc(m.addr)}`:""}`;
+  const door=m.door?`<div class="pw" style="margin-top:6px;padding:6px 8px;background:#f1f5f4;border-radius:6px;font-size:12px"><b>Entrance:</b> ${esc(m.door)}</div>`:"";
+  return `<div class="pop"><div class="pn">${esc(m.name)}</div><div class="pf">${esc(meta(m.cat).name)} · ${fmtLabel(m.fmt)}</div>
+    <div class="pw">${esc(whenLbl)} · ${fmtTime(m.time)}</div><div class="pw">${place}</div>
+    ${(m.types||[]).length?`<div class="pw" style="margin-top:4px;color:#64748b">${esc((m.types||[]).slice(0,4).join(" · "))}</div>`:""}
+    ${door}
+    ${hasMapPin(m)?`<a href="${mapsDir(m)}" target="_blank" rel="noopener">Directions ↗</a><br>`:""}
+    ${href?`<a href="${href}" target="_blank" rel="noopener">${m.fmt==="online"||m.fmt==="hybrid"?"Join meeting ↗":"More info ↗"}</a>`:""}
     <div class="pw" style="margin-top:6px"><button type="button" class="pop-pick" data-id="${m._id}" style="padding:6px 0;color:#0d9488;font-weight:600">Show in list ↓</button></div></div>`;
 }
 function spotPopupHtml(meetings){
@@ -1046,7 +2216,7 @@ function spotPopupHtml(meetings){
   return `<div class="pop spot-pop"><div class="pn">${sorted.length} ${state.mode==="support"?"meetings":"events"} here</div>
     <ul class="pop-list">${sorted.map(m=>{
       const whenLbl=m.dateLabel?m.dateLabel:(m.day===todayDay()?"Today":DAYS[m.day]);
-      return `<li><button type="button" class="pop-pick" data-id="${m._id}"><strong>${m.name}</strong><span>${whenLbl} · ${fmtTime(m.time)} · ${META[m.cat].name}</span></button></li>`;
+      return `<li><button type="button" class="pop-pick" data-id="${m._id}"><strong>${esc(m.name)}</strong><span>${esc(whenLbl)} · ${fmtTime(m.time)} · ${esc(meta(m.cat).name)}</span></button></li>`;
     }).join("")}</ul></div>`;
 }
 function scrollCardIntoView(id){
@@ -1062,12 +2232,25 @@ function openMapPopup(m){
 function focusMeeting(m){
   if(!m)return;
   activeId=m._id;
+  // On phone list view, jump to the map so the pin is actually visible
+  if(window.matchMedia("(max-width:760px)").matches){
+    document.body.classList.remove("mobile-view-list");
+    document.body.classList.add("mobile-view-map");
+    document.querySelectorAll("#viewtabs button").forEach(b=>{
+      const on=b.dataset.view==="map";
+      b.classList.toggle("on",on);
+      b.setAttribute("aria-selected",on?"true":"false");
+    });
+  }
   render();
   scrollCardIntoView(m._id);
-  if(!hasMapPin(m)){map.closePopup();return;}
-  const z=Math.max(map.getZoom(),15);
-  map.setView([m.lat,m.lng],z,{animate:true});
-  requestAnimationFrame(()=>openMapPopup(m));
+  if(!hasMapPin(m)){map?.closePopup();return;}
+  ensureMapReady(()=>{
+    const z=Math.max(map.getZoom(),14);
+    map.setView([m.lat,m.lng],z,{animate:true});
+    // marker may be new after re-render
+    requestAnimationFrame(()=>openMapPopup(m));
+  });
 }
 function focusSpotMeetings(meetings,latlng){
   if(!meetings.length)return;
@@ -1089,18 +2272,23 @@ function meetingsFromLayers(layers){
   const ids=new Set(layers.map(l=>l._gatherId).filter(Boolean));
   return lastFilteredList.filter(m=>ids.has(m._id));
 }
+const MAP_PIN_CAP=250; // markercluster chokes / greys out past a few hundred
 function drawMarkers(list){
+  if(!markers||!map)return;
   markers.clearLayers();
   markerById.clear();
-  list.forEach(m=>{
-    if(!m.lat)return;
-    const fc=META[m.cat].color,on=activeId===m._id;
+  // Prefer soonest / closest pins when we have to cap (all-week dump)
+  const pinList=list.filter(m=>m.lat!=null&&m.lng!=null&&hasMapPin(m));
+  const draw=pinList.length>MAP_PIN_CAP?pinList.slice(0,MAP_PIN_CAP):pinList;
+  draw.forEach(m=>{
+    const fc=meta(m.cat).color,on=activeId===m._id;
     const mk=L.circleMarker([m.lat,m.lng],{
-      radius:on?12:10,
+      radius:on?11:9,
       fillColor:fc,
-      color:on?"#eef2f6":"#0c1017",
+      color:on?"#0f172a":"#ffffff",
       weight:on?3:2,
-      fillOpacity:.92,
+      fillOpacity:.95,
+      opacity:1,
       className:on?"gather-marker-active":"",
     });
     mk._gatherId=m._id;
@@ -1117,116 +2305,144 @@ function drawMarkers(list){
 
 function setMode(mode,opts={}){
   state.mode=mode;
-  if(!opts.keepFilters){state.cat.clear();state.quick.clear();activeId=null;state.daySet=null;state.day=todayDay();state.savedOnly=false;state.preset="";}
-  document.body.classList.toggle("mode-activities",mode==="activities");
-  const guide=document.getElementById("guide");
-  if(guide){
-    if(mode==="support"){try{if(!localStorage.getItem("gather-guide-hide"))guide.hidden=false;}catch(e){}}
-    else guide.hidden=true;
+  if(!opts.keepFilters){
+    state.cat.clear();state.quick.clear();activeId=null;state.daySet=null;state.day=todayDay();state.horizon=6;state.radius=0;state.hideSeries=true;state.soonOnly=false;state.flag="";
+    // Both modes default to walk-in listings; hybrid still matches in-person.
+    state.fmt="in-person";state.nowOnly=false;state.savedOnly=false;state.hideEnded=true;
+    // After late afternoon, jump to evening — mornings aren't useful at 7pm
+    state.tod=mode==="support"?defaultSupportTod():"";
+    state.preset=mode==="support"?(state.tod==="evening"?"tonight":"today"):(mode==="activities"?"today":"");
+    state.area="";
+    state.limit=renderStep();
+    // Activities stay on For You unless they picked Everything (persisted).
   }
-  const ms=document.getElementById("mSupport");ms.classList.toggle("on",mode==="support");ms.classList.toggle("support",mode==="support");
-  const mp=document.getElementById("mPlay");mp.classList.toggle("on",mode==="activities");mp.classList.toggle("play",mode==="activities");
-  if(mode==="support"){META=FELLOWSHIPS;DATA=supportMeetings().map((m,i)=>({...m,_id:"s"+i}));}
-  else{META=ACTIVITIES;DATA=activityItems().map((m,i)=>({...m,_id:"p"+i}));}
-  document.getElementById("q").placeholder=mode==="support"?"Search meetings, neighborhoods, Open, beginners…":"Search activities, free events, yoga, games…";
+  document.body.classList.toggle("mode-activities",mode==="activities");
+  // guide stays closed until asked for (the "First visit" preset opens it) —
+  // auto-opening it buried the meeting list below the fold on phones
+  const guide=document.getElementById("guide");
+  if(guide&&mode!=="support")guide.hidden=true;
+  const ms=document.getElementById("mSupport");ms.classList.toggle("on",mode==="support");ms.classList.toggle("support",mode==="support");ms.setAttribute("aria-selected",mode==="support"?"true":"false");
+  const mp=document.getElementById("mPlay");mp.classList.toggle("on",mode==="activities");mp.classList.toggle("play",mode==="activities");mp.setAttribute("aria-selected",mode==="activities"?"true":"false");
+  if(mode==="support"){META=FELLOWSHIPS;DATA=withStableIds(supportMeetings(),"s-");}
+  else{META=ACTIVITIES;DATA=withStableIds(activityItems(),"p-");}
+  document.getElementById("q").placeholder=mode==="support"?"Search name, street, neighborhood…":"Search music, games, dance, meetups…";
   document.getElementById("mapHint").textContent=mode==="support"?"Tap a dot — meetings at that place":"Tap a dot — events at that spot";
-  syncDayUI();buildQuickFilters();buildPresets();buildFilters();updateFooter();updateSavedBtn();render();
+  // Mode-specific tip copy
+  const tipsP=document.querySelector("#tips p");
+  if(tipsP){
+    tipsP.innerHTML=mode==="support"
+      ?`<strong style="color:var(--txt)">Tip:</strong> Use <b>Near me</b> or pick <b>Open</b> if it’s your first meeting. Times come from official AA/NA/Al-Anon lists — double-check before you go.`
+      :`<strong style="color:var(--txt)">How Gather works:</strong> Pick a day, open a listing, or use quick filters. Live listings come from public event pages and official feeds — confirm before you go.`;
+  }
+  // Phone map/list: leave user on list when switching modes so they aren't stranded on empty map
+  if(window.matchMedia("(max-width:760px)").matches){
+    document.body.classList.add("mobile-view-list");
+    document.body.classList.remove("mobile-view-map");
+    document.querySelectorAll("#viewtabs button").forEach(b=>{
+      const on=b.dataset.view==="list";
+      b.classList.toggle("on",on);
+      b.setAttribute("aria-selected",on?"true":"false");
+    });
+  }
+  syncTodUI();syncDayUI();buildQuickFilters();buildPresets();buildFilters();buildVibeBar();updateFooter();updateSavedBtn();render();
+  // Map was hidden under activities — force Leaflet to remeasure once it's shown
+  if(mode==="support"){
+    setTimeout(()=>ensureMapReady(()=>{
+      drawMarkers(lastFilteredList.filter(hasMapPin));
+      fitMapToResults(lastFilteredList);
+    }),80);
+  }
+}
+// The service worker answers from cache when the network fails, and does it
+// silently — `updated` is the only way to tell the user they're on a saved copy.
+function staleNote(updated){
+  if(!updated)return "";
+  const hrs=(Date.now()-Date.parse(updated))/36e5;
+  if(!Number.isFinite(hrs)||hrs<3)return "";
+  const when=hrs<48?`${Math.round(hrs)} hours`:`${Math.round(hrs/24)} days`;
+  return ` <span style="color:var(--now)">Showing a saved copy from ${when} ago — reconnect to refresh.</span>`;
 }
 function updateFooter(){
+  const pl=document.getElementById("programLinks");
+  if(pl&&!pl.dataset.built){
+    pl.dataset.built="1";
+    Object.entries(FINDERS).forEach(([k,u])=>{
+      if(k==="AA"||k==="NA"||k==="Al-Anon")return; // live feeds cover these
+      const a=document.createElement("a");
+      a.href=u;a.target="_blank";a.rel="noopener";
+      a.textContent=k;a.title=(FELLOWSHIPS[k]||{}).name||k;
+      pl.appendChild(a);
+    });
+  }
   const s=document.getElementById("src");
   if(state.mode==="support"){
     const liveN=LIVE.length;
-    const curatedN=SUPPORT.filter(m=>!LIVE_CATS.has(m.cat)).length;
     if(liveN){
       const when=LAST_UPDATED?new Date(LAST_UPDATED).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):"";
-      const ok=SOURCE_INFO.filter(x=>x.ok).map(x=>`${x.name} (${x.count})`).join(", ");
-      s.innerHTML=`Not affiliated with any fellowship. Confirm time &amp; format on official sites before attending.`+
-        `<br><span style="color:var(--live)">${liveN} live</span> from ${ok}.`+(curatedN?` ${curatedN} sample listings for programs without feeds.`:"")+(when?` Updated ${when}.`:"");
+      const ok=SOURCE_INFO.filter(x=>x.ok).map(x=>x.name.replace(/\s*\(.*\)/,"").trim()).join(" · ");
+      s.innerHTML=`Not affiliated with AA, NA, or Al-Anon. Confirm time &amp; format before you go.<br>`+
+        `<span style="color:var(--live)">${liveN} meetings</span> from ${ok}.`+(when?` Updated ${when}.`:"")+staleNote(LAST_UPDATED);
     }else{
-      s.innerHTML=`Not affiliated with any program. Sample listings shown until live feeds connect via <code>/api/meetings</code>.`;
+      s.innerHTML=`Not affiliated with any program. Sample listings shown until live feeds connect.`;
     }
   }else{
     const liveN=LIVE_EVENTS.length;
     if(liveN){
       const when=EVENTS_UPDATED?new Date(EVENTS_UPDATED).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):"";
-      const ok=EVENT_SOURCES.filter(x=>x.ok).map(x=>x.name).join(", ");
-      s.innerHTML=`<span style="color:var(--live)">${liveN} verified</span> events (45 days) + ${PLAY.length} sample groups. Venues: ${ok}.`+(when?` Updated ${when}.`:"");
+      const ok=EVENT_SOURCES.filter(x=>x.ok);
+      const failed=EVENT_SOURCES.filter(x=>!x.ok);
+      s.innerHTML=`<span style="color:var(--live)">${liveN} current events</span> from ${ok.length} live sources — Meetup, Eventbrite, Minneapolis Parks and local venues.`
+        +(failed.length?` <span title="${esc(failed.map(x=>x.name+(x.error?" — "+x.error:"")).join(", "))}">${failed.length} source${failed.length===1?" is":"s are"} down: ${esc(failed.map(x=>x.name).join(", "))}.</span>`:"")+(when?` Updated ${when}.`:"")+staleNote(EVENTS_UPDATED);
     }else{
       s.innerHTML=`<b>${PLAY.length}</b> sample activities — live events load from <code>/api/events</code> when deployed.`;
     }
   }
 }
 
-// cache live feeds locally so repeat visits render instantly and a flaky
-// network still shows the last good data (refreshed in the background)
-function readCache(key,maxAgeMs){
-  try{
-    const c=JSON.parse(localStorage.getItem(key)||"null");
-    if(c&&c.ts&&Date.now()-c.ts<maxAgeMs)return c.data;
-  }catch(e){}
-  return null;
+function refreshAfterLive(mode){
+  if(state.mode!==mode)return;
+  if(mode==="support")DATA=withStableIds(supportMeetings(),"s-");
+  else DATA=withStableIds(activityItems(),"p-");
+  // live data lands after first paint — rebuild chips so empty categories and
+  // Al-Anon/etc. appear, instead of staying stuck on the sample set
+  buildQuickFilters();buildFilters();updateFooter();render();
 }
-function writeCache(key,data){
-  try{localStorage.setItem(key,JSON.stringify({ts:Date.now(),data}));}catch(e){}
-}
-function applyMeetingsData(data){
-  LIVE=(data.meetings||[]).map(m=>({...m,verified:true}));
-  LIVE_CATS=new Set(LIVE.map(m=>m.cat));
-  LAST_UPDATED=data.updated||null;
-  SOURCE_INFO=data.sources||[];
-  if(state.mode==="support"){
-    // swap in live data without wiping the user's active filters
-    DATA=supportMeetings().map((m,i)=>({...m,_id:"s"+i}));
-    updateFooter();render();
-  }
-}
-function applyEventsData(data){
-  const d=new Date();
-  const todayStr=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-  LIVE_EVENTS=(data.events||[]).filter(m=>!m.date||m.date>=todayStr).map(m=>({...m,verified:true}));
-  EVENTS_UPDATED=data.updated||null;
-  EVENT_SOURCES=data.sources||[];
-  if(state.mode==="activities"){
-    DATA=activityItems().map((m,i)=>({...m,_id:"p"+i}));
-    updateFooter();render();
-  }
-}
+
 async function loadLive(){
-  const cached=readCache("gather-cache-meetings",864e5);
-  if(cached)applyMeetingsData(cached);
   try{
-    const res=await fetch("/api/meetings",{headers:{Accept:"application/json"}});
+    const res=await fetch("/api/meetings",{headers:{Accept:"application/json"},signal:AbortSignal.timeout(45000)});
     if(!res.ok)throw 0;
     const data=await res.json();
-    if((data.meetings||[]).length)writeCache("gather-cache-meetings",data);
+    LIVE=(data.meetings||[]).map(m=>({...m,verified:true}));
+    LIVE_CATS=new Set(LIVE.map(m=>m.cat));
+    LAST_UPDATED=data.updated||null;
+    SOURCE_INFO=data.sources||[];
+  }catch(e){/* backend unavailable (e.g. opened as a local file) — curated samples still show */}
+  finally{
     LIVE_LOADING=false;
-    applyMeetingsData(data);
-  }catch(e){
-    /* backend unavailable (e.g. opened as a local file) — cache or curated samples still show */
-    LIVE_LOADING=false;
-    if(state.mode==="support"){updateFooter();render();}
+    refreshAfterLive("support");
   }
 }
 
 async function loadEvents(){
-  const cached=readCache("gather-cache-events",864e5);
-  if(cached)applyEventsData(cached);
   try{
-    const res=await fetch("/api/events",{headers:{Accept:"application/json"}});
+    // Aggregator fans out to many venues — 20s was aborting and leaving a tiny sample list
+    const res=await fetch("/api/events",{headers:{Accept:"application/json"},signal:AbortSignal.timeout(45000)});
     if(!res.ok)throw 0;
     const data=await res.json();
-    if((data.events||[]).length)writeCache("gather-cache-events",data);
+    LIVE_EVENTS=(data.events||[]).map(m=>({...m,verified:true}));
+    EVENTS_UPDATED=data.updated||null;
+    EVENT_SOURCES=data.sources||[];
+  }catch(e){/* backend unavailable — curated samples still show */}
+  finally{
     EVENTS_LOADING=false;
-    applyEventsData(data);
-  }catch(e){
-    EVENTS_LOADING=false;
-    if(state.mode==="activities"){updateFooter();render();}
+    refreshAfterLive("activities");
   }
 }
 
 function init(){
-  map=L.map("map",{zoomControl:true}).setView([44.9537,-93.0900],11);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",{attribution:"© OpenStreetMap © CARTO",maxZoom:19}).addTo(map);
+  map=L.map("map",{zoomControl:true}).setView(TC_CENTER,11);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",{attribution:"© OpenStreetMap © CARTO",maxZoom:19}).addTo(map);
   markers=L.markerClusterGroup({
     chunkedLoading:true,
     maxClusterRadius:42,
@@ -1283,11 +2499,10 @@ function init(){
     this.classList.toggle("open",!collapsed);
   };
   document.getElementById("fClear").onclick=clearFilters;
-  let _qTimer=null;
+  let _qT=null;
   document.getElementById("q").addEventListener("input",e=>{
-    state.q=e.target.value;
-    clearTimeout(_qTimer);
-    _qTimer=setTimeout(render,160);
+    clearTimeout(_qT);
+    _qT=setTimeout(()=>{state.q=e.target.value;render();},150);
   });
   document.getElementById("btnSaved").onclick=()=>{state.savedOnly=!state.savedOnly;state.preset=state.savedOnly?"saved":"";updateSavedBtn();buildPresets();render();};
   document.getElementById("btnShare").onclick=()=>{
@@ -1308,40 +2523,60 @@ function init(){
       btn.classList.add("on");btn.setAttribute("aria-selected","true");
       document.body.classList.remove("mobile-view-map","mobile-view-list");
       document.body.classList.add(btn.dataset.view==="map"?"mobile-view-map":"mobile-view-list");
+      if(btn.dataset.view==="map"){
+        setTimeout(()=>ensureMapReady(()=>{
+          drawMarkers(lastFilteredList.filter(hasMapPin));
+          fitMapToResults(lastFilteredList);
+        }),80);
+      }
     };
   });
-  const helpModal=document.getElementById("helpModal");
-  document.getElementById("btnHelp").onclick=()=>{helpModal.hidden=false;};
-  document.getElementById("helpClose").onclick=()=>{helpModal.hidden=true;};
-  helpModal.addEventListener("click",e=>{if(e.target===helpModal)helpModal.hidden=true;});
   document.addEventListener("keydown",e=>{
     if(e.key==="/"&&document.activeElement!==document.getElementById("q")){
       e.preventDefault();document.getElementById("q").focus();
     }
-    if(e.key==="Escape"){
-      if(!helpModal.hidden){helpModal.hidden=true;return;}
-      map?.closePopup();
-    }
+    if(e.key==="Escape")map?.closePopup();
   });
   document.getElementById("nowbtn").onclick=function(){state.nowOnly=!state.nowOnly;this.classList.toggle("on");render();};
   document.getElementById("nearme").onclick=function(){toggleMyArea(this);};
   buildDayBar();
-  const urlId=readUrl();
-  if(!location.search){state.day=todayDay();state.daySet=null;}
+  const urlInfo=readUrl();
+  const urlId=urlInfo&&urlInfo.id;
+  // Default to TODAY unless the link explicitly asked for a day/week/weekend.
+  // Bare ?mode=support used to mean "all week" (day stayed null) → 1500 rows + dead map.
+  if(!urlInfo?.hasDayScope){
+    state.day=todayDay();
+    state.daySet=null;
+    if(!state.preset)state.preset="today";
+  }
+  // Both modes: walk-in first. Shared links with ?fmt= still win via readUrl.
+  if(!state.fmt&&!new URLSearchParams(location.search).has("fmt"))state.fmt="in-person";
+  // Support: evening default after 4pm only when URL didn't pick a time-of-day
+  if(state.mode==="support"&&!new URLSearchParams(location.search).has("tod")&&!state.tod){
+    state.tod=defaultSupportTod();
+    if(state.tod==="evening"&&state.preset==="today")state.preset="tonight";
+  }
   document.getElementById("q").value=state.q||"";
   document.getElementById("nowbtn").classList.toggle("on",state.nowOnly);
   syncTodUI();syncDayUI();updateSavedBtn();
-  try{if(!localStorage.getItem("gather-tips-hide"))document.getElementById("tips").hidden=false;}catch(e){}
   document.getElementById("tipsDismiss")?.addEventListener("click",()=>{
     document.getElementById("tips").hidden=true;
     try{localStorage.setItem("gather-tips-hide","1");}catch(e){}
   });
-  if(window.matchMedia("(max-width:760px)").matches)document.body.classList.add("mobile-view-map");
+  if(window.matchMedia("(max-width:760px)").matches)document.body.classList.add("mobile-view-list");
+  // remembered location: grant "Near me" once, distances show on every visit
+  try{
+    const s=JSON.parse(localStorage.getItem("gather-near")||"null");
+    if(s&&s.c){
+      state.near=s.c;state.nearGps=!!s.g;
+      if(!state.radius)state.radius=20;
+      setUserMarker();document.getElementById("nearme").classList.add("on");
+    }
+  }catch(e){}
   setMode(state.mode,{keepFilters:true});
   buildPresets();
   loadLive();
   loadEvents();
-  requestMyArea(document.getElementById("nearme"),{onLoad:true});
   if(urlId)setTimeout(()=>focusFromId(urlId),800);
 }
 function setUserMarker(){
@@ -1349,27 +2584,37 @@ function setUserMarker(){
   userMarker=L.circleMarker(state.near,{radius:8,fillColor:"#60a5fa",color:"#eef2f6",weight:2,fillOpacity:.95})
     .addTo(map).bindPopup("Your area");
 }
+function persistNear(){
+  try{state.near?localStorage.setItem("gather-near",JSON.stringify({c:state.near,g:state.nearGps})):localStorage.removeItem("gather-near");}catch(e){}
+}
 function applyMyArea(btn){
-  if(btn){btn.classList.add("on");btn.classList.remove("locating");btn.textContent="My area";}
+  if(btn){btn.classList.add("on");btn.classList.remove("locating");btn.textContent="Near me";}
+  // Default to the wider nearby ring the user asked for.
+  if(!state.radius)state.radius=20;
   setUserMarker();
-  map.setView(state.near,state.nearGps?12:11);
+  map.setView(state.near,state.nearGps?11:10);
+  persistNear();
+  buildQuickFilters();
   render();
 }
 function requestMyArea(btn,opts={}){
   if(btn){btn.classList.add("locating");btn.textContent="Locating…";}
+  // quiet = triggered by a preset, not a tap: never fall back to city centre,
+  // because a fake location would silently fake every distance
+  if(opts.quiet)opts.onLoad=true;
   const finish=(coords,gps)=>{
     state.near=coords;state.nearGps=gps;
     applyMyArea(btn);
   };
   if(!navigator.geolocation){
-    if(opts.onLoad){if(btn){btn.classList.remove("locating");btn.textContent="My area";}return;}
+    if(opts.onLoad){if(btn){btn.classList.remove("locating");btn.textContent="Near me";}return;}
     finish(TC_CENTER,false);
     return;
   }
   navigator.geolocation.getCurrentPosition(
     p=>finish([p.coords.latitude,p.coords.longitude],true),
     ()=>{
-      if(opts.onLoad){if(btn){btn.classList.remove("locating");btn.textContent="My area";}return;}
+      if(opts.onLoad){if(btn){btn.classList.remove("locating");btn.textContent="Near me";}return;}
       finish(TC_CENTER,false);
     },
     {enableHighAccuracy:true,timeout:12000,maximumAge:300000}
@@ -1378,6 +2623,7 @@ function requestMyArea(btn,opts={}){
 function toggleMyArea(btn){
   if(state.near&&btn.classList.contains("on")){
     state.near=null;state.nearGps=false;
+    persistNear();
     btn.classList.remove("on");
     if(userMarker){map.removeLayer(userMarker);userMarker=null;}
     map.setView(TC_CENTER,11);
@@ -1387,6 +2633,17 @@ function toggleMyArea(btn){
   requestMyArea(btn);
 }
 init();
+if("serviceWorker" in navigator&&(location.protocol==="https:"||/^(localhost|127\.0\.0\.1)$/.test(location.hostname))){
+  let refreshing=false;
+  navigator.serviceWorker.addEventListener("controllerchange",()=>{
+    if(refreshing)return;
+    refreshing=true;
+    location.reload();
+  });
+  navigator.serviceWorker.register("/sw.js",{updateViaCache:"none"})
+    .then(reg=>reg.update())
+    .catch(()=>{});
+}
 </script>
 </body>
 </html>
