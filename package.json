@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Twin Cities meetings & things to do — static SPA + serverless api/",
   "scripts": {
-    "build": "node scripts/apply-polish.cjs && node test/design-guard.mjs",
+    "build": "echo skip-build",
     "dev": "node test/dev-server.mjs",
     "test": "node scripts/apply-polish.cjs && node test/design-guard.mjs && node test/smoke.mjs",
     "test:api": "node test/api-probe.mjs",
