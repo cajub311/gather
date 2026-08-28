@@ -1,0 +1,98 @@
+[
+  {
+    "old": "const FINDERS={\n  AA:\"https://aaminneapolis.org/meetings/\",\n  NA:\"https://naminnesota.org/meetings/\",\n  \"Al-Anon\":\"https://al-anon.org/al-anon-meetings/\",\n  ACA:\"https://adultchildren.org/meeting-search/\",\n  EA:\"https://emotionsanonymous.org/find-a-meeting/\",\n  CoDA:\"https://coda.org/coda-meetings/\",\n  OA:\"https://oa.org/find-a-meeting/\",\n  GA:\"https://www.gamblersanonymous.org/ga/locations\",\n  SMART:\"https://meetings.smartrecovery.org/meetings/\",\n  Dharma:\"https://recoverydharma.org/find-a-meeting/\",\n  Refuge:\"https://www.refugerecovery.org/meetings\",\n  Buddhist:\"https://buddhistrecovery.org/meetings/\",\n  LifeRing:\"https://lifering.org/find-a-meeting/\",\n  WFS:\"https://womenforsobriety.org/find-meetings/\",\n  Wellbriety:\"https://wellbriety.com/\",\n  CR:\"https://locator.crgroups.info/\",\n  SOS:\"https://www.sossobriety.org/meetings/\",\n  CA:\"https://ca.org/meetings/\",\n  MA:\"https://www.marijuana-anonymous.org/meetings/\",\n  DDA:\"https://draonline.org/\",\n};",
+    "new": "const FINDERS={\n  AA:\"https://aaminneapolis.org/meetings/\",\n  NA:\"https://naminnesota.org/find-a-meeting/\",\n  \"Al-Anon\":\"https://al-anon.org/al-anon-meetings/find-an-al-anon-meeting/\",\n  ACA:\"https://adultchildren.org/meeting-search/\",\n  EA:\"https://emotionsanonymous.org/find-an-ea-meeting/\",\n  CoDA:\"https://coda.org/find-a-meeting/\",\n  OA:\"https://oa.org/find-a-meeting/\",\n  GA:\"https://www.gamblersanonymous.org/find-a-meeting/\",\n  SMART:\"https://meetings.smartrecovery.org/meetings/\",\n  Dharma:\"https://recoverydharma.org/meetings/\",\n  Refuge:\"https://refugerecoverymeetings.org/\",\n  Buddhist:\"https://buddhistrecovery.org/meetings/\",\n  LifeRing:\"https://lifering.org/meeting-menu/\",\n  WFS:\"https://meetings.womenforsobriety.org/meetings/\",\n  Wellbriety:\"https://whitebison.org/circle-meetings/\",\n  CR:\"https://crlocator.com/\",\n  SOS:\"https://www.sossobriety.org/on-line-groups\",\n  CA:\"https://ca.org/meetings/\",\n  MA:\"https://www.marijuana-anonymous.org/meetings/\",\n  DDA:\"https://draonline.org/meetings/\",\n};",
+    "label": "FINDERS",
+    "all": false
+  },
+  {
+    "old": "{cat:\"Games\",name:\"Twin Cities Board Game Night\",day:1,time:\"18:00\",dur:180,fmt:\"in-person\",loc:\"Fantasy Flight Games Center\",addr:\"1995 W County Rd B2, Roseville\",lat:45.0119,lng:-93.1760,types:[\"All ages\",\"Free\"]},",
+    "new": "{cat:\"Games\",name:\"Twin Cities Board Game Night\",day:1,time:\"18:00\",dur:180,fmt:\"in-person\",loc:\"Gamezenter\",addr:\"1975 County Rd B2 W, Roseville\",lat:45.0119,lng:-93.1760,types:[\"All ages\",\"Free\"]},",
+    "label": "gamezenter",
+    "all": false
+  },
+  {
+    "old": "{cat:\"Games\",name:\"Magic: The Gathering Commander\",day:5,time:\"18:00\",dur:180,fmt:\"in-person\",loc:\"Misty Mountain Games\",addr:\"2024 S Robert St, West St Paul\",lat:44.9000,lng:-93.0790,types:[\"All levels\"]},",
+    "new": "{cat:\"Games\",name:\"Magic: The Gathering Commander\",day:5,time:\"18:00\",dur:180,fmt:\"in-person\",loc:\"The Source Comics & Games\",addr:\"2057 Snelling Ave N, Roseville\",lat:45.0150,lng:-93.1670,types:[\"All levels\"]},",
+    "label": "source",
+    "all": false
+  },
+  {
+    "old": "addr:\"3343 E Calhoun Pkwy, Minneapolis\"",
+    "new": "addr:\"3343 E Bde Maka Ska Pkwy, Minneapolis\"",
+    "label": "bde-maka-ska",
+    "all": true
+  },
+  {
+    "old": "{cat:\"Art\",name:\"Knit & Stitch Night\",day:2,time:\"18:00\",dur:120,fmt:\"in-person\",loc:\"The Yarnery\",addr:\"840 Grand Ave, St Paul\",lat:44.9400,lng:-93.1370,types:[\"All skill levels\"]},",
+    "new": "{cat:\"Art\",name:\"Knit & Stitch Night\",day:2,time:\"18:00\",dur:120,fmt:\"in-person\",loc:\"The Yarnery\",addr:\"2040 St Clair Ave, St Paul\",lat:44.9342,lng:-93.1850,types:[\"All skill levels\"]},",
+    "label": "yarnery",
+    "all": false
+  },
+  {
+    "old": "{cat:\"Art\",name:\"Open Studio Pottery\",day:5,time:\"18:00\",dur:150,fmt:\"in-person\",loc:\"Northern Clay Center\",addr:\"2424 Franklin Ave E, Minneapolis\",lat:44.9627,lng:-93.2330,types:[\"Drop-in\",\"Fee\"]},",
+    "new": "{cat:\"Art\",name:\"Open Studio Pottery\",day:5,time:\"18:00\",dur:150,fmt:\"in-person\",loc:\"Northern Clay Center\",addr:\"2424 E Franklin Ave, Minneapolis\",lat:44.9627,lng:-93.2330,types:[\"Drop-in\",\"Fee\"]},",
+    "label": "clay",
+    "all": false
+  },
+  {
+    "old": "{cat:\"Volunteer\",name:\"Community Garden Volunteers\",day:6,time:\"10:00\",dur:120,fmt:\"in-person\",loc:\"Frogtown Farm\",addr:\"940 Lafond Ave, St Paul\",lat:44.9620,lng:-93.1300,types:[\"Family\",\"Outdoors\"]},",
+    "new": "{cat:\"Volunteer\",name:\"Community Garden Volunteers\",day:6,time:\"10:00\",dur:120,fmt:\"in-person\",loc:\"Frogtown Park & Farm\",addr:\"946 Minnehaha Ave W, St Paul\",lat:44.9620,lng:-93.1300,types:[\"Family\",\"Outdoors\"]},",
+    "label": "frogtown",
+    "all": false
+  },
+  {
+    "old": "{cat:\"Language\",name:\"Spanish Conversation Table\",day:3,time:\"18:30\",dur:90,fmt:\"hybrid\",loc:\"Black Dog Cafe\",addr:\"308 Prince St, St Paul\",lat:44.9490,lng:-93.0840,types:[\"All levels\"]},",
+    "new": "{cat:\"Language\",name:\"Spanish Conversation Table\",day:3,time:\"18:30\",dur:90,fmt:\"hybrid\",loc:\"Hennepin County Library \u2014 Central\",addr:\"300 Nicollet Mall, Minneapolis\",lat:44.9788,lng:-93.2700,types:[\"All levels\",\"Free\"]},",
+    "label": "central-lib",
+    "all": false
+  },
+  {
+    "old": "{cat:\"Language\",name:\"French Meetup\",day:1,time:\"18:00\",dur:90,fmt:\"in-person\",loc:\"Alliance Fran\u00e7aise\",addr:\"113 N 1st St, Minneapolis\",lat:44.9850,lng:-93.2680,types:[\"Intermediate+\"]},",
+    "new": "{cat:\"Language\",name:\"French Meetup\",day:1,time:\"18:00\",dur:90,fmt:\"in-person\",loc:\"Alliance Fran\u00e7aise\",addr:\"227 Colfax Ave N, Minneapolis\",lat:44.9803,lng:-93.2968,types:[\"Intermediate+\"]},",
+    "label": "alliance",
+    "all": false
+  },
+  {
+    "old": "{cat:\"AA\",name:\"Young People's Online\",day:0,time:\"20:00\",dur:60,fmt:\"online\",loc:\"Zoom\",addr:\"Online\",lat:44.95,lng:-93.09,types:[\"Open\",\"Young People\"],url:\"https://zoom.us\"},",
+    "new": "{cat:\"AA\",name:\"Young People's Online\",day:0,time:\"20:00\",dur:60,fmt:\"online\",loc:\"Online Intergroup of AA\",addr:\"Online \u00b7 aa-intergroup.org\",lat:44.95,lng:-93.09,types:[\"Open\",\"Young People\"],url:\"https://aa-intergroup.org/meetings/\"},",
+    "label": "ypaa",
+    "all": false
+  },
+  {
+    "old": "{cat:\"NA\",name:\"Clean & Serene\",day:4,time:\"20:00\",dur:60,fmt:\"hybrid\",loc:\"Mercy Seat\",addr:\"2422 18th Ave S, Minneapolis\",lat:44.9560,lng:-93.2466,types:[\"Open\",\"Speaker\"]},",
+    "new": "{cat:\"NA\",name:\"Clean & Serene\",day:4,time:\"20:00\",dur:60,fmt:\"hybrid\",loc:\"Mercy Seat Lutheran\",addr:\"1500 6th St NE, Minneapolis\",lat:44.9993,lng:-93.2566,types:[\"Open\",\"Speaker\"]},",
+    "label": "mercy",
+    "all": false
+  },
+  {
+    "old": "{cat:\"LifeRing\",name:\"LifeRing Online Meeting\",day:3,time:\"18:00\",dur:60,fmt:\"online\",loc:\"LifeRing Secular Recovery\",addr:\"Online \u00b7 lifering.org\",lat:44.95,lng:-93.09,types:[\"Open\",\"Secular\",\"Abstinence\"],url:\"https://lifering.org/find-a-meeting/\"},",
+    "new": "{cat:\"LifeRing\",name:\"LifeRing Online Meeting\",day:3,time:\"18:00\",dur:60,fmt:\"online\",loc:\"LifeRing Secular Recovery\",addr:\"Online \u00b7 lifering.org\",lat:44.95,lng:-93.09,types:[\"Open\",\"Secular\",\"Abstinence\"],url:\"https://lifering.org/meeting-menu/\"},",
+    "label": "lifering",
+    "all": false
+  },
+  {
+    "old": "{cat:\"WFS\",name:\"Women for Sobriety Online\",day:1,time:\"19:00\",dur:60,fmt:\"online\",loc:\"Women for Sobriety\",addr:\"Online \u00b7 womenforsobriety.org\",lat:44.95,lng:-93.09,types:[\"Closed\",\"Women\",\"New Life\"],url:\"https://womenforsobriety.org/find-meetings/\"},",
+    "new": "{cat:\"WFS\",name:\"Women for Sobriety Online\",day:1,time:\"19:00\",dur:60,fmt:\"online\",loc:\"Women for Sobriety\",addr:\"Online \u00b7 womenforsobriety.org\",lat:44.95,lng:-93.09,types:[\"Closed\",\"Women\",\"New Life\"],url:\"https://meetings.womenforsobriety.org/meetings/\"},",
+    "label": "wfs",
+    "all": false
+  },
+  {
+    "old": "{cat:\"Wellbriety\",name:\"Wellbriety Talking Circle\",day:4,time:\"18:30\",dur:90,fmt:\"online\",loc:\"White Bison Wellbriety\",addr:\"Online \u00b7 wellbriety.com\",lat:44.95,lng:-93.09,types:[\"Open\",\"Native American\",\"Medicine Wheel\"],url:\"https://wellbriety.com/\"},",
+    "new": "{cat:\"Wellbriety\",name:\"Wellbriety Talking Circle\",day:4,time:\"18:30\",dur:90,fmt:\"online\",loc:\"White Bison Wellbriety\",addr:\"Online \u00b7 whitebison.org\",lat:44.95,lng:-93.09,types:[\"Open\",\"Native American\",\"Medicine Wheel\"],url:\"https://whitebison.org/circle-meetings/\"},",
+    "label": "wellbriety",
+    "all": false
+  },
+  {
+    "old": "{cat:\"SOS\",name:\"SOS Secular Sobriety (online)\",day:6,time:\"10:00\",dur:60,fmt:\"online\",loc:\"Secular Organizations for Sobriety\",addr:\"Online \u00b7 sossobriety.org\",lat:44.95,lng:-93.09,types:[\"Open\",\"Secular\"],url:\"https://www.sossobriety.org/meetings/\"},",
+    "new": "{cat:\"SOS\",name:\"SOS Secular Sobriety (online)\",day:6,time:\"10:00\",dur:60,fmt:\"online\",loc:\"Secular Organizations for Sobriety\",addr:\"Online \u00b7 sossobriety.org\",lat:44.95,lng:-93.09,types:[\"Open\",\"Secular\"],url:\"https://www.sossobriety.org/on-line-groups\"},",
+    "label": "sos",
+    "all": false
+  },
+  {
+    "old": "{cat:\"CR\",name:\"Celebrate Recovery \u2014 St Paul\",day:5,time:\"19:00\",dur:120,fmt:\"hybrid\",loc:\"Substance Church\",addr:\"1390 Arcade St, St Paul\",lat:44.9810,lng:-93.0640,types:[\"Open\",\"Christian\"],url:\"https://locator.crgroups.info/\"},",
+    "new": "{cat:\"CR\",name:\"Celebrate Recovery \u2014 Twin Cities\",day:5,time:\"19:00\",dur:120,fmt:\"hybrid\",loc:\"Find a local CR group\",addr:\"Multiple Twin Cities churches \u00b7 crlocator.com\",lat:null,lng:null,types:[\"Open\",\"Christian\"],url:\"https://crlocator.com/\"},",
+    "label": "cr",
+    "all": false
+  }
+]
