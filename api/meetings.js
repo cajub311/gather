@@ -345,7 +345,52 @@ function dedupeMeetings(list) {
       byName.set(k + "|" + placeKey(m), m);
     }
   }
-  return [...byName.values()];
+  return sameRoomRepeats([...byName.values()]);
+}
+
+// Pass 3: the two feeds spell the same meeting differently ("Squad 1-G Bryant
+// Ave. Group" vs "Squad 1G", "Beltline Mon. 5:00 Mens" vs "Beltline Monday 5PM
+// Men's"). Alano clubs run several meetings at the same hour in different
+// rooms, so the names have to agree, not just the place and time.
+const GENERIC = new Set("open closed discussion big book study step steps speaker men mens women womens noon morning night evening meditation beginners beginner newcomers newcomer literature hybrid online".split(" "));
+function nameTokens(name) {
+  return new Set(
+    nameKey(String(name || "").replace(/'/g, "").replace(/\bnite\b/gi, "night").replace(/(\d)-([a-z])\b/gi, "$1$2"))
+      .split(" ")
+      .filter((t) => t && !/^\d+(am|pm)?$/.test(t) && !/^(sun|mon|tue|tues|wed|thu|thur|thurs|fri|sat)(day|nesday|rsday|urday|sday)?$/.test(t) && !/^(am|pm|s|ave|st|sq)$/.test(t))
+  );
+}
+function sameMeetingName(a, b) {
+  const A = nameTokens(a), B = nameTokens(b);
+  if (!A.size || !B.size) return false;
+  let both = 0;
+  for (const t of A) if (B.has(t)) both++;
+  if (both / (A.size + B.size - both) >= 0.5) return true;
+  const [small, big] = A.size <= B.size ? [A, B] : [B, A];
+  return both === small.size && [...small].some((t) => !GENERIC.has(t)) && big.size > 0;
+}
+function sameRoomRepeats(rows) {
+  const groups = new Map();
+  for (const m of rows) {
+    const k = `${m.cat}|${m.day}|${m.time}`;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(m);
+  }
+  const out = [];
+  for (const g of groups.values()) {
+    const kept = [];
+    for (const m of g) {
+      const inPerson = m.fmt !== "online" && !m.approx && m.lat != null && m.lng != null;
+      const i = inPerson
+        ? kept.findIndex((o) => o.fmt !== "online" && !o.approx && o.lat != null &&
+            Math.abs(o.lat - m.lat) < 0.0025 && Math.abs(o.lng - m.lng) < 0.003 && sameMeetingName(o.name, m.name))
+        : -1;
+      if (i >= 0) kept[i] = prefer(kept[i], m);
+      else kept.push(m);
+    }
+    out.push(...kept);
+  }
+  return out;
 }
 
 module.exports = async (req, res) => {
