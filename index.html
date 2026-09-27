@@ -337,6 +337,12 @@
   }
   .vchip.on strong,.vchip.on span{color:#fff}
   .vchip.on span{opacity:.78}
+  .sortchips{display:inline-flex;gap:2px;margin-left:auto;padding:3px;border:1px solid var(--line);border-radius:999px;background:var(--paper)}
+  .sortchip{padding:5px 11px;border-radius:999px;border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:700;color:var(--muted);cursor:pointer}
+  .sortchip:hover{color:var(--txt)}
+  .sortchip.on{background:var(--ink);color:#fff}
+  .sortchip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  @media(max-width:420px){.vchip{padding:7px 12px}.sortchip{padding:5px 9px}.vibebar{gap:6px}}
 
   .daybar{display:flex;flex-wrap:wrap;gap:5px;padding:12px 16px 8px;background:var(--surface);align-items:center;border-bottom:1px solid var(--line)}
   .daybar-label,.flabel,.list-section,.map-legend .lg-title{
@@ -586,6 +592,9 @@
   .b.hybrid{background:#f8ecd8;color:#9a5b13}
   .b.now{background:#fbdcc9;color:#b3400f;font-weight:800}
   .b.ok{background:#dcefe4;color:#0d6b45}
+  .b.pop{background:#ffe1cc;color:#9a3412;font-weight:800}
+  .b.why{background:#f4efe4;color:#5c4a24}
+  .event-also{margin-top:6px;font-size:12.5px;color:var(--muted)}
   .b.warn{background:#f8e9ce;color:#9a5b13}
   .b.source{background:#e4eef0;color:#2d5a66}
   .b.wx{background:#e6f0f7;color:#2c5875}
@@ -1028,6 +1037,7 @@ const ACTIVITIES = {
   Learn:{name:"Classes & Talks",color:"#22d3ee"},
   Food:{name:"Food & Drink",color:"#fb7185"},
   Language:{name:"Language Exchange",color:"#a78bfa"},
+  Sports:{name:"Pro & College Sports",color:"#ef4444"},
 };
 // Unknown categories used to crash search and the map legend on META[cat].name.
 // A new feed category should degrade to a plain label, not a blank page.
@@ -1080,6 +1090,7 @@ const QUICK={
     {id:"games",label:"🎲 Board games",match:m=>m.cat==="Games"||/trivia|bingo|board game|tabletop|d&d|dungeons|game night|card game/i.test(m.name||"")},
     {id:"dance",label:"💃 Dance",match:m=>/dance|dj\b|communion|edm|techno|rave|dance church|zouk|salsa|swing dance/i.test((m.name||"")+" "+(m.desc||"")+" "+(m.types||[]).join(" "))},
     {id:"music",label:"🎵 Music & shows",match:m=>m.cat==="Music"},
+    {id:"sports",label:"🏟️ Pro sports",match:m=>m.cat==="Sports"},
     {id:"social",label:"🤝 Meet people",match:m=>m.cat==="Social"||m.cat==="Language"||/mixer|meetup|social|networking|20s|30s|singles|open mic|new in town/i.test(m.name||"")},
     {id:"food",label:"🍽️ Food & drink",match:m=>m.cat==="Food"},
     {id:"wellness",label:"🧘 Meditation / wellness",match:m=>m.cat==="Zen"||m.cat==="Fitness"},
@@ -1100,7 +1111,10 @@ try{SAVED=new Set(JSON.parse(localStorage.getItem("gather-saved")||"[]"));}catch
 // "For You" is one tap away and sticks once chosen.
 let _vibeStored="all";
 try{const v=localStorage.getItem("gather-vibe");if(v==="all"||v==="social")_vibeStored=v;}catch(e){}
-const state={mode:"activities",cat:new Set(),day:null,daySet:null,fmt:null,tod:"",nowOnly:false,q:"",near:null,nearGps:false,quick:new Set(),savedOnly:false,preset:"",area:"",horizon:6,radius:0,hideSeries:true,soonOnly:false,flag:"",hideEnded:true,vibe:_vibeStored,limit:80};
+// Things to do open most-popular-first; Soonest is one tap away and sticks.
+let _sortStored="popular";
+try{if(localStorage.getItem("gather-sort")==="soon")_sortStored="soon";}catch(e){}
+const state={mode:"activities",cat:new Set(),day:null,daySet:null,fmt:null,tod:"",nowOnly:false,q:"",near:null,nearGps:false,quick:new Set(),savedOnly:false,preset:"",area:"",horizon:6,radius:0,hideSeries:false,soonOnly:false,flag:"",hideEnded:true,vibe:_vibeStored,sort:_sortStored,limit:80};
 let _urlTimer=null;
 function todayDay(){return nowInfo().day;}
 function dayViewLabel(){
@@ -1159,7 +1173,7 @@ function socialScore(m){
   else if(cat==="Music")s+=5;
   else if(cat==="Social"||cat==="Language")s+=5;
   else if(cat==="Fitness"||cat==="Books"||cat==="Volunteer")s+=3;
-  else if(cat==="Food"||cat==="Outdoors")s+=2;
+  else if(cat==="Food"||cat==="Outdoors"||cat==="Sports")s+=2;
   else if(cat==="Family")s-=12;
   const t=((m.name||"")+" "+(m.types||[]).join(" ")+" "+(m.desc||"")+" "+(m.loc||"")+" "+(m.source||"")).toLowerCase();
   if(/trivia|bingo|board game|tabletop|d&d|dungeons|game night|card game|crokinole|magic the|pinball|arcade|can can wonderland/.test(t))s+=7;
@@ -1227,7 +1241,24 @@ function buildVibeBar(){
     b.onclick=()=>setVibe(v.id);
     row.appendChild(b);
   });
+  const sw=document.createElement("div");
+  sw.className="sortchips";sw.setAttribute("role","group");sw.setAttribute("aria-label","Sort");
+  [["popular","🔥 Popular"],["soon","Soonest"]].forEach(([id,label])=>{
+    const b=document.createElement("button");
+    b.type="button";b.className="sortchip"+(state.sort===id?" on":"");
+    b.setAttribute("aria-pressed",state.sort===id?"true":"false");
+    b.textContent=label;
+    b.onclick=()=>setSort(id);
+    sw.appendChild(b);
+  });
+  row.appendChild(sw);
 }
+function setSort(v){
+  state.sort=v==="soon"?"soon":"popular";
+  try{localStorage.setItem("gather-sort",state.sort);}catch(e){}
+  buildVibeBar();render();
+}
+function popularMode(){return state.mode==="activities"&&state.sort==="popular"&&!state.savedOnly;}
 function hoodLabel(m){
   if(m.fmt==="online")return "";
   const r=(m.region||"").replace(/,?\s*MN\s*$/i,"").trim();
@@ -1286,6 +1317,7 @@ function pushUrl(){
     if(state.area)p.set("area",state.area);
     if(state.horizon!==6)p.set("days",state.horizon+1);
     if(state.mode==="activities"&&state.vibe!=="social")p.set("vibe","all");
+    if(state.mode==="activities"&&state.sort==="soon")p.set("sort","soon");
     if([...state.quick].length)p.set("quick",[...state.quick].join(","));
     if(activeId)p.set("id",activeId);
     history.replaceState(null,"",location.pathname+"?"+p);
@@ -1310,6 +1342,7 @@ function readUrl(){
   if(days>=1&&days<=45)state.horizon=days-1;
   if(p.get("quick"))state.quick=new Set(p.get("quick").split(",").filter(Boolean));
   if(p.get("vibe")==="all"||p.get("vibe")==="social"){state.vibe=p.get("vibe");persistVibe();}
+  if(p.get("sort")==="soon"||p.get("sort")==="popular")state.sort=p.get("sort");
   return {id:p.get("id"),hasDayScope};
 }
 // Search terms, deduped. Quoted phrases are kept intact so "open mic" can still
@@ -1372,6 +1405,13 @@ const TC_CENTER=[44.9650,-93.1800];
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function safeHref(u){if(!u||typeof u!=="string")return "";try{const x=new URL(u,location.href);return /^https?:$/.test(x.protocol)?x.href:"";}catch(e){return "";}}
 function fmtTime(t){let[h,m]=t.split(":").map(Number);const ap=h<12?"AM":"PM";h=h%12||12;return `${h}:${String(m).padStart(2,"0")} ${ap}`;}
+// Game times the league hasn't set yet say so; venue shows with no listed
+// start get a "~" instead of a made-up exact time.
+function whenTime(m){return m.tba?"Time TBA":(m.timeGuess?"~":"")+fmtTime(m.time);}
+function whenDay(m){
+  if(m.date){const o=dateOffset(m.date);if(o===0)return "Today";if(o===1)return "Tomorrow";}
+  return m.dateLabel?m.dateLabel:(m.day===todayDay()?"Today":DAYS[m.day]);
+}
 function fmtParts(t){const [h,m]=t.split(":").map(Number);const ap=h<12?"AM":"PM";const hr=h%12||12;return{hr:`${hr}:${String(m).padStart(2,"0")}`,ap};}
 function fmtLabel(f){return f==="online"?"Online":f==="hybrid"?"Hybrid":"In person";}
 // Forecast at the event hour, from api.weather.gov. Only outdoor-ish categories
@@ -1389,10 +1429,10 @@ function wxChip(m){
   return `<span class="b wx${wet?" wet":""}" title="${esc(w.summary)}">${icon} ${w.temp}\u00B0${esc(w.unit)}${pop}</span>`;
 }
 function activityEmoji(cat){
-  return {Music:"🎵",Art:"🎨",Outdoors:"🌿",Games:"🎲",Social:"🤝",Zen:"🧘",Fitness:"🏃",Books:"📚",Volunteer:"🤲",Language:"💬",Family:"🧒",Learn:"🎓",Food:"🍽️"}[cat]||"✨";
+  return {Music:"🎵",Art:"🎨",Outdoors:"🌿",Games:"🎲",Social:"🤝",Zen:"🧘",Fitness:"🏃",Books:"📚",Volunteer:"🤲",Language:"💬",Family:"🧒",Learn:"🎓",Food:"🍽️",Sports:"🏟️"}[cat]||"✨";
 }
 function activityLabel(cat){
-  return {Music:"Music",Art:"Art & film",Outdoors:"Outdoors",Games:"Games",Social:"Social",Zen:"Wellness",Fitness:"Fitness",Books:"Books",Volunteer:"Volunteer",Language:"Languages",Family:"Kids & family",Learn:"Classes & talks",Food:"Food & drink"}[cat]||cat;
+  return {Music:"Music",Art:"Art & film",Outdoors:"Outdoors",Games:"Games",Social:"Social",Zen:"Wellness",Fitness:"Fitness",Books:"Books",Volunteer:"Volunteer",Language:"Languages",Family:"Kids & family",Learn:"Classes & talks",Food:"Food & drink",Sports:"Sports"}[cat]||cat;
 }
 function mapsDir(m){return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((m.loc?m.loc+" ":"")+m.addr)}`;}
 function icsFor(m){
@@ -1416,6 +1456,7 @@ function icsFor(m){
 }
 function pickNextUp(list){
   enrichSort(list);
+  if(popularMode())return list.find(m=>!isOver(m))||null;
   for(const m of list){if(isNow(m))return m;}
   for(const m of list){if(m._minsUntil>=0&&m._minsUntil<=360)return m;}
   // never feature something that already ended (late-night "Try this first" bug)
@@ -1440,7 +1481,7 @@ function dateOffset(date){
 }
 function dayOffset(meetingDay,today){return (meetingDay-today+7)%7;}
 function minutesUntil(m,n){const off=m.date?dateOffset(m.date):dayOffset(m.day,n.day);if(off===0)return timeMins(m.time)-n.mins;return off*1440+timeMins(m.time)-n.mins;}
-function isNow(m){const n=nowInfo();if(m.date?dateOffset(m.date)!==0:m.day!==n.day)return false;const s=timeMins(m.time);return n.mins>=s-15&&n.mins<=s+m.dur;}
+function isNow(m){if(m.tba)return false;const n=nowInfo();if(m.date?dateOffset(m.date)!==0:m.day!==n.day)return false;const s=timeMins(m.time);return n.mins>=s-15&&n.mins<=s+m.dur;}
 function dist(a,b,c,d){const R=3959,r=x=>x*Math.PI/180;const dLat=r(c-a),dLon=r(d-b);const x=Math.sin(dLat/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
 function relSoon(mins){
   if(mins<=0)return null;
@@ -1450,7 +1491,7 @@ function relSoon(mins){
 }
 function relWhen(m){
   if((m.date?dateOffset(m.date):dayOffset(m.day,nowInfo().day))!==0)return null;
-  if(isNow(m))return "starting now";
+  if(isNow(m))return m._minsUntil<-10?"on now":"starting now";
   if(m._minsUntil>0&&m._minsUntil<=240)return relSoon(m._minsUntil);
   return null;
 }
@@ -1474,11 +1515,62 @@ function enrichSort(list){
   });
   return list;
 }
+// Client twin of repeatName() in api/events.js — "VIP event: X" and "X (late
+// show)" are the same night out.
+function repeatName(name){
+  return String(name||"").toLowerCase()
+    .replace(/^vip( event)?\s*[:\-–]\s*/,"")
+    .replace(/\((?:early|late)(?: show)?\)|\b(?:early|late) show\b|\bnight (?:one|two|three|\d)\b|\d{1,2}\/\d{1,2}(?:\/\d{2,4})?/g," ")
+    .replace(/\W+/g," ").trim();
+}
+// Popular = the server's pop score (people going, tickets nearly gone, room
+// size, home games, one-night-only) plus For You taste, fading a little per
+// day away so tonight's good show still beats a so-so one next month.
+function popRank(m,boostSocial,useNear){
+  let s=(m.pop||10)+(boostSocial?(m._social||0)*0.8:0);
+  s-=Math.min(Math.max(m._dayOff||0,0),30)*0.7;
+  if(isNow(m))s+=4;else if(m._dayOff===0&&m._minsUntil>0&&m._minsUntil<=180)s+=2;
+  if(useNear&&m._sortD!=null)s-=Math.min(m._sortD,25)*0.6;
+  // the VIP meet-and-greet shouldn't front for the actual show
+  if(/^vip\b/i.test(m.name||""))s-=6;
+  return s;
+}
+function byRank(a,b){
+  const aOver=isOver(a),bOver=isOver(b);
+  if(aOver!==bOver)return aOver?1:-1;
+  return (b._rank-a._rank)||(a._minsUntil-b._minsUntil);
+}
+// One card per thing: the 7 and 9:30 shows, VIP + regular tickets, a daily zoo
+// talk, seven Wild home games. The rest ride along as "Also …" on that card.
+// Soonest folds within a day (day headers stay honest); Popular folds across days.
+function collapseRepeats(list){
+  if(state.mode!=="activities"||state.savedOnly)return list;
+  const acrossDays=popularMode();
+  const lead=new Map(),out=[];
+  for(const m of list){
+    m._also=null;
+    const k=(m.sport?"sport:"+m.sport:repeatName(m.name)+"|"+String(m.loc||"").toLowerCase())+(acrossDays?"":"|"+(m.date||m.day));
+    const first=lead.get(k);
+    if(first){(first._also||(first._also=[])).push(m);continue;}
+    lead.set(k,m);out.push(m);
+  }
+  if(acrossDays){
+    // Don't let one room own the top of the list.
+    const perLoc=new Map();
+    out.forEach(m=>{const k=String(m.loc||"").toLowerCase(),n=perLoc.get(k)||0;m._rank-=n*5;perLoc.set(k,n+1);});
+    out.sort(byRank);
+  }
+  return out;
+}
 function smartSort(list){
   enrichSort(list);
   const pin=state.day!==null&&!state.daySet,useNear=!!state.near;
   const boostSocial=state.mode==="activities"&&state.vibe==="social";
   list.forEach(m=>{m._social=boostSocial?socialScore(m):0;});
+  if(popularMode()){
+    list.forEach(m=>{m._rank=popRank(m,boostSocial,useNear);});
+    return list.sort(byRank);
+  }
   list.sort((a,b)=>{
     if(!pin&&!state.daySet&&a._dayOff!==b._dayOff)return a._dayOff-b._dayOff;
     // events that already ended today sink below everything still coming up
@@ -1509,6 +1601,7 @@ function sortHint(){
   // Plain and short — the old version stacked day · For You · by time · two
   // "hidden" notes into one unreadable line.
   const parts=[state.q?"next 7 days":dayViewLabel()];
+  if(popularMode())parts.push("most popular first");
   if(state.near)parts.push("closest to you");
   return parts.join(" · ");
 }
@@ -1723,7 +1816,7 @@ function filtered(opts={}){
     }
     return true;
   });
-  return smartSort(list);
+  return collapseRepeats(smartSort(list));
 }
 function endedTodayCount(){
   if(state.day!==todayDay()||state.daySet||state.savedOnly||state.nowOnly)return 0;
@@ -1856,7 +1949,9 @@ function updateHero(list){
     ?"Live AA, NA, and Al-Anon times from official Twin Cities feeds. Confirm before you go."
     :(state.vibe==="social"
       ?"Games, creative tech, meditation, dance, and community picks first. Tap Everything anytime."
-      :"Full Twin Cities feed including family, zoo, and library programs.");
+      :(popularMode()
+        ?"Most popular first: big shows, home games, sold-out-soon and one-night-only events."
+        :"Full Twin Cities feed including family, zoo, and library programs."));
   if(live){
     if(state.mode==="support"){
       const next=list.find(m=>!isOver(m));
@@ -1888,7 +1983,7 @@ function renderFeatured(el,list){
   if(!next)return;
   const fc=meta(next.cat).color;
   const tp=fmtParts(next.time);
-  const whenLbl=next.dateLabel?next.dateLabel:(next.day===todayDay()?"Today":DAYS[next.day]);
+  const whenLbl=whenDay(next);
   const rel=relWhen(next);
   const href=safeHref(next.url);
   const why=state.mode==="activities"&&state.vibe==="social"?forYouReasons(next):[];
@@ -1898,9 +1993,9 @@ function renderFeatured(el,list){
   const image=safeHref(next.image);
   if(state.mode==="activities"){
     box.innerHTML=`<div class="feature-stamp" aria-hidden="true">${image?`<img class="stamp-img" src="${image}" alt="" loading="lazy" onerror="this.replaceWith('${activityEmoji(next.cat)}')">`:activityEmoji(next.cat)}</div>
-      <div><div class="eyebrow">${isNow(next)?"Happening now":why.length?`For You · ${esc(why.join(" · "))}`:"Try this first"}</div>
+      <div><div class="eyebrow">${esc(featuredEyebrow(next,why))}</div>
       <div class="fname">${esc(next.name)}</div>
-      <div class="fmeta">${esc(whenLbl)} · ${fmtTime(next.time)}${rel?` · ${esc(rel)}`:""} · 📍 ${esc(next.loc)}</div>
+      <div class="fmeta">${esc(whenLbl)} · ${esc(whenTime(next))}${rel?` · ${esc(rel)}`:""} · 📍 ${esc(next.loc)}</div>
       <div class="fcta">See event →</div></div>`;
   }else{
     box.innerHTML=`<div><div class="eyebrow">${isNow(next)?"Happening now":"Up next"}</div>
@@ -1912,6 +2007,31 @@ function renderFeatured(el,list){
   if(box.tagName!=="A")box.onclick=()=>state.mode==="activities"?openActivity(next):focusMeeting(next);
   el.appendChild(box);
   return next._id;
+}
+function featuredEyebrow(m,why){
+  if(why.length)return `For You · ${why.join(" · ")}`;
+  if(!popularMode())return isNow(m)?"Happening now":"Try this first";
+  const scope=state.q?"":state.daySet?" this weekend":isAllWeek()?(state.horizon>6?" this month":" this week"):state.day===todayDay()?" today":` on ${DAYS[state.day]}`;
+  const reason=(m.popWhy||[])[0];
+  return `🔥 Most popular${scope}${reason?" · "+reason:""}`;
+}
+function popChips(m){
+  const out=[];
+  if((m.pop||0)>=40)out.push('<span class="b pop">🔥 Popular</span>');
+  (m.popWhy||[]).slice(0,2).forEach(w=>{
+    // "Big room · First Avenue" — the place line already names the room
+    const t=String(w).replace(" · "+m.loc,"");
+    out.push(`<span class="b why">${esc(t)}</span>`);
+  });
+  return out.join("");
+}
+function alsoLine(m){
+  const more=(m._also||[]).slice().sort((a,b)=>a._minsUntil-b._minsUntil);
+  if(!more.length)return "";
+  const bits=more.slice(0,3).map(x=>x.date&&x.date!==m.date?`${DAYS[x.day]} ${+x.date.slice(5,7)}/${+x.date.slice(8,10)}`:whenTime(x));
+  const rest=more.length-bits.length;
+  const noun=m.sport?`more ${m.sport} home game${more.length===1?"":"s"}`:"more";
+  return `<div class="event-also">Also ${esc(bits.join(" · "))}${rest>0?` · +${rest} ${esc(noun)}`:""}</div>`;
 }
 function renderEmpty(el){
   // If search has hits outside "today", offer to expand the day window
@@ -1954,7 +2074,7 @@ function updateFilterUI(){
   document.getElementById("fClear").classList.toggle("show",n>0);
 }
 function clearFilters(){
-  state.cat.clear();state.quick.clear();state.daySet=null;state.day=todayDay();state.horizon=6;state.radius=0;state.hideSeries=true;state.soonOnly=false;state.flag="";state.fmt="in-person";state.tod="";state.nowOnly=false;state.savedOnly=false;state.hideEnded=true;state.preset=state.mode==="activities"?"today":"";state.q="";state.area="";
+  state.cat.clear();state.quick.clear();state.daySet=null;state.day=todayDay();state.horizon=6;state.radius=0;state.hideSeries=false;state.soonOnly=false;state.flag="";state.fmt="in-person";state.tod="";state.nowOnly=false;state.savedOnly=false;state.hideEnded=true;state.preset=state.mode==="activities"?"today":"";state.q="";state.area="";
   // Keep his preferred vibe (don't force Everything on clear)
   document.getElementById("q").value="";
   syncTodUI();
@@ -1978,7 +2098,7 @@ function renderCard(el,m){
   card.className="card"+(activeId===id?" active":"")+(SAVED.has(id)?" saved":"");card.dataset.id=id;
   card.tabIndex=0;card.setAttribute("role","button");
   card.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();card.click();}};
-  const whenLbl=m.dateLabel?m.dateLabel:(m.day===todayDay()?"Today":DAYS[m.day]);
+  const whenLbl=whenDay(m);
   const rel=relWhen(m);
   const tp=fmtParts(m.time);
   const href=safeHref(m.url);
@@ -2001,10 +2121,11 @@ function renderCard(el,m){
           <span class="event-category">${activityEmoji(m.cat)} ${esc(activityLabel(m.cat))}</span>
         </div>
         ${title}
-        <div class="event-time">${esc(whenLbl)} · ${fmtTime(m.time)}${rel?` · ${esc(rel)}`:""}${m._d!=null?` · ${m._d.toFixed(1)} mi away`:""}</div>
+        <div class="event-time">${esc(whenLbl)} · ${esc(whenTime(m))}${rel?` · ${esc(rel)}`:""}${m._d!=null?` · ${m._d.toFixed(1)} mi away`:""}</div>
         <div class="event-place">📍 ${esc(m.loc)}${placeAddress}</div>
         ${m.desc?`<div class="event-desc">${esc(m.desc)}</div>`:""}
-        ${now||usefulTypes.length||m.wx||m.free?`<div class="event-tags">${now?'<span class="b now">Happening now</span>':""}${m.free?'<span class="b ok">Free</span>':""}${wxChip(m)}${usefulTypes.map(t=>`<span class="b">${esc(t)}</span>`).join("")}</div>`:""}
+        ${alsoLine(m)}
+        ${now||usefulTypes.length||m.wx||m.free||m.popWhy?.length||m.pop>=40?`<div class="event-tags">${now?'<span class="b now">Happening now</span>':""}${popChips(m)}${m.free?'<span class="b ok">Free</span>':""}${wxChip(m)}${usefulTypes.map(t=>`<span class="b">${esc(t)}</span>`).join("")}</div>`:""}
         <div class="event-actions">${details}${directions}<a class="event-details" href="${icsFor(m)}" download="${m._id}.ics" onclick="event.stopPropagation()">📅 Calendar</a></div>
       </div>
       <button type="button" class="savebtn${SAVED.has(id)?" on":""}" title="Save event" aria-label="Save event">${SAVED.has(id)?"★":"☆"}</button>`;
@@ -2035,7 +2156,7 @@ function renderCard(el,m){
   if(rel)whenParts.push(rel);
   if(m.fmt==="hybrid")whenParts.push("Hybrid");
   if(m._d!=null)whenParts.push(m._d.toFixed(1)+" mi");
-  if(now)whenParts.push("Now");
+  if(now&&!rel)whenParts.push("Now");
   const whenLine=whenParts.join("  ·  ");
   let actions="";
   if(hasMapPin(m))actions+=`<a class="act primary" href="${mapsDir(m)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Directions</a>`;
@@ -2096,7 +2217,7 @@ function fitMapToResults(list){
 function render(){
   // every field that changes the result set must be here, or "show more" stays
   // expanded across an unrelated filter change and shows the wrong slice
-  const sig=[state.mode,state.vibe,[...state.cat].sort().join(","),[...state.quick].sort().join(","),state.day,state.daySet?"wknd":"",effectiveFmt(),state.tod,state.nowOnly,state.q,state.near,state.savedOnly,state.area,state.horizon,state.hideEnded,state.radius,state.hideSeries,state.soonOnly,state.flag].join("|");
+  const sig=[state.mode,state.vibe,[...state.cat].sort().join(","),[...state.quick].sort().join(","),state.day,state.daySet?"wknd":"",effectiveFmt(),state.tod,state.nowOnly,state.q,state.near,state.savedOnly,state.area,state.horizon,state.hideEnded,state.radius,state.hideSeries,state.soonOnly,state.flag,state.sort].join("|");
   const filtersChanged=sig!==_lastSig;
   if(filtersChanged){state.limit=renderStep();_lastSig=sig;}
   const list=filtered();
@@ -2156,7 +2277,7 @@ function render(){
       h.textContent="Earlier today — already ended";
       el.appendChild(h);
     }
-    if(isAllWeek()||state.daySet){
+    if((isAllWeek()||state.daySet)&&!popularMode()){
       const sec=state.daySet?DAYS[m.day]:sectionTitle(m);
       if(sec!==lastSection){
         lastSection=sec;
@@ -2306,7 +2427,7 @@ function drawMarkers(list){
 function setMode(mode,opts={}){
   state.mode=mode;
   if(!opts.keepFilters){
-    state.cat.clear();state.quick.clear();activeId=null;state.daySet=null;state.day=todayDay();state.horizon=6;state.radius=0;state.hideSeries=true;state.soonOnly=false;state.flag="";
+    state.cat.clear();state.quick.clear();activeId=null;state.daySet=null;state.day=todayDay();state.horizon=6;state.radius=0;state.hideSeries=false;state.soonOnly=false;state.flag="";
     // Both modes default to walk-in listings; hybrid still matches in-person.
     state.fmt="in-person";state.nowOnly=false;state.savedOnly=false;state.hideEnded=true;
     // After late afternoon, jump to evening — mornings aren't useful at 7pm
