@@ -1211,10 +1211,15 @@ async function fromSports(src) {
     jobs.push({ t, url });
     if (t.regular) jobs.push({ t, url: url + "?seasontype=2" });
   }
+  let firstErr = "";
+  const miss = (e) => { firstErr = firstErr || String((e && e.message) || e); return null; };
+  // site.web.api is the same data behind a different edge; try it if the first is refused
   const pages = await Promise.all(jobs.map((j) =>
-    getJSON(j.url, 10000, budget, BROWSER_UA).then((data) => ({ ...j, data }), () => null)
+    getJSON(j.url, 10000, budget, BROWSER_UA)
+      .catch((e) => { miss(e); return getJSON(j.url.replace("//site.api.", "//site.web.api."), 8000, budget, BROWSER_UA); })
+      .then((data) => ({ ...j, data }), miss)
   ));
-  if (!pages.some(Boolean)) throw new Error("sports schedules unavailable");
+  if (!pages.some(Boolean)) throw new Error("sports schedules unavailable" + (firstErr ? ` (${firstErr})` : ""));
   const out = [], seen = new Set();
   for (const page of pages.filter(Boolean)) {
     const { t } = page;
