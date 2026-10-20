@@ -2301,14 +2301,21 @@ function render(){
   const sortPart=sortNote;
   const kidsHidden=state.mode==="activities"&&state.vibe==="social"?DATA.filter(m=>matchesDayView(m)&&isKidsy(m)).length:0;
   const kidsNote=kidsHidden?` <span aria-hidden="true">·</span> <button type="button" class="dir" style="border:none;background:none;padding:0;font:inherit;color:var(--muted)" id="countShowAll">show everything</button>`:"";
+  // In-person is the default; online-only meetings (NAMI classes, Zoom groups) were invisible
+  let onlineN=0;
+  if(state.mode==="support"&&state.fmt==="in-person"&&effectiveFmt()==="in-person"&&!state.savedOnly){
+    state.fmt="online";try{onlineN=filtered().length;}finally{state.fmt="in-person";}
+  }
+  const onlineNote=onlineN?` <span aria-hidden="true">·</span> <button type="button" class="dir" style="border:none;background:none;padding:0;font:inherit;color:var(--muted)" id="countShowOnline">+ ${onlineN} online</button>`:"";
   const endedNote=endedN?` <span aria-hidden="true">·</span> <button type="button" class="dir" style="border:none;background:none;padding:0;font:inherit;color:var(--muted)" id="countShowEnded">show ${endedN} earlier</button>`:"";
   // While live feed is in flight, don't pretend sample rows are the full result
   const countHtml=loadingNow
     ?`<span class="loading"><span class="spin"></span></span> <b>Loading</b> live ${state.mode==="support"?"meetings":"events"}…`
-    :`<b>${list.length}</b> ${formatWords}${resultWord} <span aria-hidden="true">·</span> ${esc(sortPart)}${kidsNote}${endedNote}`;
+    :`<b>${list.length}</b> ${formatWords}${resultWord} <span aria-hidden="true">·</span> ${esc(sortPart)}${kidsNote}${onlineNote}${endedNote}`;
   document.getElementById("count").innerHTML=countHtml;
   document.getElementById("countShowAll")?.addEventListener("click",()=>setVibe("all"));
   document.getElementById("countShowEnded")?.addEventListener("click",()=>{state.hideEnded=false;render();});
+  document.getElementById("countShowOnline")?.addEventListener("click",()=>{state.fmt=null;syncFmtUI();render();});
   updateInsight(list);
   updateMapLegend(list);
   updateFilterUI();

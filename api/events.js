@@ -1561,6 +1561,8 @@ module.exports = async (req, res) => {
         const kind = e.support || supportKind(e.name);
         if (kind) e.support = kind;
         else delete e.support;
+        // "… - Zoom only" listed at the venue's address isn't somewhere to walk in
+        if (/\b(?:zoom|online|virtual)[- ]only\b/i.test(e.name)) e.fmt = "online";
       }
       events = events.concat(list);
       sources.push({ name: src.name, count: list.length, ok: true });
