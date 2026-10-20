@@ -628,6 +628,69 @@ async function fetchCROnline() {
   }];
 }
 
+// Pills Anonymous lists meetings as plain text on two Wix pages: blocks of
+// "ST - City / Day 7:00PM / Meeting Code: O / "Name" / ...". Rooms are kept in
+// Minnesota; US online meetings are kept with their state's clock turned into
+// Central. Contacts, links and passcodes are left on the PA page.
+const PA_BASE = "https://www.pillsanonymous.org";
+const PA_CODES = { O: "Open", C: "Closed", W: "Women", M: "Men", LGBT: "LGBTQ" };
+function paBlocks(html) {
+  const lines = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, " ")
+    .replace(/<br\s*\/?>|<\/(p|div|h\d|li|span)>/g, "\n").replace(/&ndash;|&#8211;/g, "-")
+    .replace(/&[lr]dquo;|&#822[01];/g, '"').replace(/&[lr]squo;|&#821[67];/g, "'").replace(/\u200b/g, "")
+    .split("\n").map(htmlText).filter(Boolean);
+  const out = [];
+  for (const line of lines) {
+    const head = line.match(/^([A-Z]{2}) [-–] (.+)$/);
+    if (head) out.push({ st: head[1], city: head[2], lines: [] });
+    else if (out.length) out[out.length - 1].lines.push(line);
+  }
+  return out.map((b) => {
+    const when = b.lines.join(" ").match(/\b(Su|Mo|Tu|We|Th|Fr|Sa)\w*:? (\d{1,2})(?::(\d\d))?(?: ?- ?\d{1,2}(?::\d\d)?)? ?([AP])M(?:\s*\((\w+)\))?/i);
+    const code = (b.lines.find((l) => /^Meeting Code:/i.test(l)) || "").replace(/^Meeting Code:\s*/i, "");
+    const quoted = b.lines.find((l) => /^["“].+["”]$/.test(l));
+    const day = when ? WEEKDAYS.findIndex((d) => d.startsWith(when[1].toLowerCase())) : -1;
+    return {
+      ...b, day, clock: when ? `${when[2]}:${when[3] || "00"} ${when[4]}m` : "", zone: when?.[5],
+      name: quoted ? quoted.replace(/^["“]|["”]$/g, "") : "",
+      types: code.split(/,\s*/).map((c) => PA_CODES[c.trim()]).filter(Boolean),
+    };
+  }).filter((b) => b.day >= 0 && b.clock);
+}
+async function fetchPA() {
+  const [rooms, online] = await Promise.all([getText(`${PA_BASE}/find-a-meeting`), getText(`${PA_BASE}/find-a-virtual-meeting`)]);
+  const out = [];
+  for (const b of paBlocks(rooms).filter((x) => x.st === "MN")) {
+    const i = b.lines.findIndex((l) => /,? MN \d{5}/.test(l));
+    const at = clockToCentral(b.day, b.clock, "America/Chicago");
+    const ll = i > 0 ? await censusPin(`${b.lines[i - 1]}, ${b.lines[i]}`).catch(() => null) : null;
+    const zip = (b.lines[i] || "").match(/\d{5}/)?.[0];
+    const pin = ll || ZIP_PINS[zip];
+    if (!at || !pin) continue;
+    const end = b.lines.join(" ").match(/\d{1,2}(?::\d\d)?-(\d{1,2})(?::(\d\d))? ?([AP])M/i);
+    out.push({
+      cat: "PA", name: b.name ? `Pills Anonymous — ${b.name}` : `Pills Anonymous — ${b.city}`, ...at,
+      dur: end ? durMins(at.time, clockToCentral(0, `${end[1]}:${end[2] || "00"} ${end[3]}m`, "America/Chicago").time) : 60,
+      fmt: "in-person", loc: b.city, addr: `${b.lines[i - 1]}, ${b.lines[i].replace(/,? MN \d{5}.*/, "")}`,
+      approx: ll ? undefined : true, lat: +pin[0].toFixed(5), lng: +pin[1].toFixed(5), types: b.types,
+      url: `${PA_BASE}/find-a-meeting`, live: true, verified: true,
+    });
+  }
+  const usStart = online.indexOf("United States of America");
+  if (usStart < 0) throw new Error("pa: US online section not found");
+  for (const b of paBlocks(online.slice(usStart))) {
+    const tz = b.zone ? ZONE[b.zone.toLowerCase()] : b.st === "AZ" ? "America/Phoenix" : STATE_TZ[b.st.toLowerCase()];
+    const at = tz && clockToCentral(b.day, b.clock, tz);
+    if (!at) continue;
+    out.push({
+      cat: "PA", name: `Pills Anonymous — ${b.name || b.city} (${b.city}, ${b.st})`, ...at, dur: 60, fmt: "online",
+      types: b.types, notes: "Join details are on the Pills Anonymous virtual meeting page.",
+      url: `${PA_BASE}/find-a-virtual-meeting`, live: true, verified: true,
+    });
+  }
+  return [...out.filter((x) => x.fmt !== "online"), ...onlineOnly(out)];
+}
+
 // SLAA's finder is a Caspio search form: plain HTML that posts back to itself.
 // Send the form's own fields with State = Minnesota and read each result's
 // "Sunday 1:00 PM CT | name | Location | Address" block (contacts left out).
@@ -1180,7 +1243,7 @@ module.exports = async (req, res) => {
 
   // start the newer feeds alongside the main ones, not after them
   const extrasP = Promise.allSettled(EXTRA_TSML.map((f) => getJSON(f.url)));
-  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), fetchCAOnline(), fetchMA(), fetchDA(), fetchGamAnon(), fetchHA(), fetchDRA(), fetchCROnline(), fetchSLAA(), ...PATHMINDER.map(fetchPathminder)]);
+  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), fetchCAOnline(), fetchMA(), fetchDA(), fetchGamAnon(), fetchHA(), fetchDRA(), fetchCROnline(), fetchSLAA(), fetchPA(), ...PATHMINDER.map(fetchPathminder)]);
   const [aa, na, aamn, alanon, dharma, refuge, buddhist] = await Promise.allSettled([
     getJSON(AA_URL),
     getJSON(NA_URL),
@@ -1191,7 +1254,7 @@ module.exports = async (req, res) => {
     getJSON(BUDDHIST_URL),
   ]);
   const extras = await extrasP;
-  const [sa, soba, saa, ga, naranon, ea, caOnline, ma, da, gamanon, ha, dra, crOnline, slaa, ...pm] = await moreP;
+  const [sa, soba, saa, ga, naranon, ea, caOnline, ma, da, gamanon, ha, dra, crOnline, slaa, pa, ...pm] = await moreP;
 
   function take(label, result, list) {
     if (result.status === "fulfilled" && Array.isArray(result.value)) {
@@ -1276,6 +1339,7 @@ module.exports = async (req, res) => {
   take("Dual Recovery Anonymous (online)", dra, dra.status === "fulfilled" ? dra.value : []);
   take("Celebrate Recovery (online)", crOnline, crOnline.status === "fulfilled" ? crOnline.value : []);
   take("SLAA (Sex and Love Addicts Anonymous)", slaa, slaa.status === "fulfilled" ? slaa.value.filter((x) => inMetro(x)) : []);
+  take("Pills Anonymous", pa, pa.status === "fulfilled" ? pa.value.filter((x) => x.fmt === "online" || inMetro(x)) : []);
   PATHMINDER.forEach((site, i) => take(site.label, pm[i], pm[i].status === "fulfilled" ? pm[i].value : []));
   take("SobaSearch (OA, CoDA, ACA, SMART, CR, MA, EDA)", soba,
     soba.status === "fulfilled" ? soba.value.filter((x) => inMetro(x)) : []);
