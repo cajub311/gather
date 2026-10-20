@@ -373,6 +373,10 @@ const FA_ONLINE = [
 const PATHMINDER = [
   { cat: "LifeRing", label: "LifeRing Secular Recovery", base: "https://meetings.lifering.org", types: ["Secular"] },
   { cat: "WFS", label: "Women for Sobriety", base: "https://meetings.womenforsobriety.org", types: ["Women", "Secular"] },
+  // SMART's list stays empty until a city is searched (50 miles; online = ones run from nearby)
+  { cat: "SMART", label: "SMART Recovery", base: "https://meetings.smartrecovery.org", types: [], near: "Minneapolis, MN",
+    // same names as SobaSearch's copies, so the two merge instead of doubling
+    name: (x, city) => (/family/i.test(x.title) ? "SMART Family & Friends" : "SMART Recovery") + (city ? ` – ${city}` : " online") },
 ];
 // ZIP centers (OpenStreetMap) for rooms with no street number to geocode
 const ZIP_PINS = { 55105: [44.935, -93.1666], 55305: [44.9529, -93.4264], 55391: [44.9741, -93.5066] };
@@ -387,9 +391,12 @@ async function fetchPathminder(site) {
     return r.text();
   };
   const scopeRows = async (scope) => {
-    const first = await get(`/meetings/?scope=${scope}`);
+    const first = await get(site.near
+      ? `/meetings/?location=${encodeURIComponent(site.near)}&coordinates=50&finder_form=true&scope=${scope}`
+      : `/meetings/?scope=${scope}`);
     const n = +((first.match(/Found (\d+) meetings/) || [])[1] || 0);
-    const pages = Math.min(Math.max(1, Math.ceil(n / 25)), 12);
+    // a city search ignores page=2, so it keeps its first 25
+    const pages = site.near ? 1 : Math.min(Math.max(1, Math.ceil(n / 25)), 12);
     const rest = await Promise.all(Array.from({ length: pages - 1 }, (_, i) => get(`/meetings/?scope=${scope}&page=${i + 2}`)));
     return [first, ...rest].flatMap((t) => t.split(/<a[^>]+href="\/meetings\/(?=\d+\/\?fromlist)/).slice(1).map((b) => b.slice(0, 7000)));
   };
@@ -400,14 +407,15 @@ async function fetchPathminder(site) {
     if (!utc || !title) return null;
     return { id: b.match(/^\d+/)[0], ...utcToCentral(utc), title, program, audience, online: /fa-video/.test(b.slice(0, 2500)) };
   };
-  const row = (x, extra) => ({
+  const row = (x, extra, city) => ({
     cat: site.cat,
-    name: x.title,
+    name: site.name ? site.name(x, city) : x.title,
     day: x.day,
     time: x.time,
     dur: 60,
-    types: [...site.types, ...x.audience.split(/,\s*/).filter((t) => t && !/^(english|all are welcome)$/i.test(t))],
-    notes: x.program || undefined,
+    types: [...site.types, ...(/family/i.test(x.title) ? ["Family & friends"] : []),
+      ...x.audience.split(/,\s*/).filter((t) => t && !/^(english|all are welcome)$/i.test(t))],
+    notes: (site.name ? [x.title, x.program].filter(Boolean).join(" · ") : x.program) || undefined,
     url: `${site.base}/meetings/${x.id}/`,
     live: true,
     verified: true,
@@ -418,14 +426,19 @@ async function fetchPathminder(site) {
   const [global, local] = await Promise.all([scopeRows("only"), scopeRows("hide")]);
   const out = global.map(parse).filter((x) => x && x.time >= "06:00" && x.time <= "22:00").map((x) => row(x, online(x)));
   const mn = local.filter((b) => /Minnesota|Twin Cities|,\s*MN\b/.test(b)).map(parse).filter(Boolean);
-  for (const x of mn) {
+  await Promise.all(mn.map(async (x) => {
     const page = plain(await get(`/meetings/${x.id}/`).catch(() => ""));
+    // "Location <venue> <street>, <city>, MN 55343" — only the place, never the facilitators
+    const at = !x.online && page.match(/Location\s+(.*?)\s*(\d+ [^,]+?)\s*,(?:\s*Suite [^,]+,)?\s*([^,]+?),\s*(?:MN|Minnesota),?\s*(\d{5})/);
+    const ll = at && await censusPin(`${at[2].replace(/\bNicolett\b/i, "Nicollet")}, ${at[3]}, MN ${at[4]}`).catch(() => null);
     const zip = (page.match(/Location\s+[^|]*?,\s*MN,\s*(\d{5})/) || [])[1];
-    if (!x.online && ZIP_PINS[zip]) {
+    if (ll) {
+      out.push(row(x, { fmt: "in-person", loc: at[1] || at[3], addr: `${at[2]}, ${at[3]}`, lat: ll[0], lng: ll[1] }, at[3]));
+    } else if (!x.online && ZIP_PINS[zip]) {
       const city = (page.match(/Location\s+([^,]+),\s*MN/) || [])[1] || "Twin Cities";
-      out.push(row(x, { fmt: "in-person", approx: true, loc: `${city} (room shared by email)`, addr: `${city}, MN ${zip}`, lat: ZIP_PINS[zip][0], lng: ZIP_PINS[zip][1] }));
+      out.push(row(x, { fmt: "in-person", approx: true, loc: `${city} (room shared by email)`, addr: `${city}, MN ${zip}`, lat: ZIP_PINS[zip][0], lng: ZIP_PINS[zip][1] }, city));
     } else if (x.online) out.push(row(x, online(x)));
-  }
+  }));
   return out;
 }
 
@@ -1343,8 +1356,10 @@ function placeKey(m) {
 function slotKey(m) {
   // same fellowship + day + time + block = almost certainly the same meeting
   // listed twice (Mpls intergroup + statewide AA)
-  return `${m.cat}|${m.day}|${m.time}|${placeKey(m)}`;
+  // ...unless one is for family and friends (SMART runs both in one room at once)
+  return `${m.cat}|${m.day}|${m.time}|${placeKey(m)}${forFamily(m) ? "|family" : ""}`;
 }
+const forFamily = (m) => !!m.types?.includes("Family & friends");
 
 function fuzzyNameKey(m) {
   return `${m.cat}|${m.day}|${m.time}|${nameKey(m.name)}`;
@@ -1436,7 +1451,7 @@ function sameRoomRepeats(rows) {
       const inPerson = m.fmt !== "online" && !m.approx && m.lat != null && m.lng != null;
       const i = inPerson
         ? kept.findIndex((o) => o.fmt !== "online" && !o.approx && o.lat != null &&
-            Math.abs(o.lat - m.lat) < 0.0025 && Math.abs(o.lng - m.lng) < 0.003 && sameMeetingName(o.name, m.name))
+            Math.abs(o.lat - m.lat) < 0.0025 && Math.abs(o.lng - m.lng) < 0.003 && forFamily(o) === forFamily(m) && sameMeetingName(o.name, m.name))
         : -1;
       if (i >= 0) kept[i] = prefer(kept[i], m);
       else kept.push(m);
@@ -1577,8 +1592,10 @@ module.exports = async (req, res) => {
   take("NA online (virtual-na.org)", naVirtual, naVirtual.status === "fulfilled" ? naVirtual.value : []);
   take("Pills Anonymous", pa, pa.status === "fulfilled" ? pa.value.filter((x) => x.fmt === "online" || inMetro(x)) : []);
   PATHMINDER.forEach((site, i) => take(site.label, pm[i], pm[i].status === "fulfilled" ? pm[i].value : []));
+  // SMART's own list has real addresses; SobaSearch's SMART copies are only a fallback
+  const smartRooms = PATHMINDER.some((site, i) => site.cat === "SMART" && pm[i].status === "fulfilled" && pm[i].value.some((x) => x.fmt !== "online"));
   take("SobaSearch (OA, CoDA, ACA, SMART, CR, MA, EDA)", soba,
-    soba.status === "fulfilled" ? soba.value.filter((x) => inMetro(x)) : []);
+    soba.status === "fulfilled" ? soba.value.filter((x) => inMetro(x) && !(smartRooms && x.cat === "SMART")) : []);
 
   const before = meetings.length;
   meetings = dedupeMeetings(meetings);
