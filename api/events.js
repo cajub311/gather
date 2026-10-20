@@ -1439,7 +1439,7 @@ async function fromChurchFinder(src) {
       const endYear = (String(b).match(/\d{4}/) || [])[0] || next.getFullYear();
       last = toDate(b && /[A-Za-z]/.test(b) ? b : `${(a || "").match(/[A-Za-z]+/)?.[0]} ${b}`, endYear) || next;
     }
-    const horizon = new Date(t0.getTime() + 42 * 864e5);
+    const horizon = new Date(t0.getTime() + (src.days || 42) * 864e5);
     const label = oneTime ? d["event-label"].replace(/\s+Event$/i, "") : src.group;
     for (let day = new Date(next); day <= last && day <= horizon; day.setDate(day.getDate() + 7)) {
       const p = { y: day.getFullYear(), mo: day.getMonth() + 1, d: day.getDate(), h: Math.floor(t.start / 60), mi: t.start % 60 };
@@ -1615,6 +1615,33 @@ function popularity(e, runs, sameDay, buzz) {
   return { pop: Math.max(0, Math.round(s)), popWhy: why.slice(0, 2) };
 }
 
+async function readSource(src, startISO, endISO) {
+  if (src.type === "ics") return parseICS(await getText(src.url), src);
+  if (src.type === "commonground") return fromCommonGround(src);
+  if (src.type === "biblio") return fromBiblio(src);
+  if (src.type === "livewhale") return fromLiveWhale(src);
+  if (src.type === "squarespace") return fromSquarespace(src);
+  if (src.type === "rss") return fromRSS(src);
+  if (src.type === "opendate") return fromOpenDate(src);
+  if (src.type === "meetup") return fromMeetup(src);
+  if (src.type === "eventbrite") return fromEventbrite(src);
+  if (src.type === "cabooze") return fromCabooze(src);
+  if (src.type === "firstave") return fromFirstAve(src);
+  if (src.type === "sports") return fromSports(src);
+  if (src.type === "standing") return fromStanding(src);
+  if (src.type === "jsonld") return fromJsonLd(src);
+  if (src.type === "churchfinder") return fromChurchFinder(src);
+  if (src.type === "mindbody") return fromMindbody(src);
+  return fromTribe(src, startISO, endISO);
+}
+
+// Backup copy of sources that block Vercel's servers by IP (Cloudflare 403s
+// there, fine from a home connection). Made by `node scripts/backup-blocked.cjs`
+// on a Mac; used only when the live read fails, and ignored once 75 days old.
+let BACKUP = {};
+try { BACKUP = require("./_backup.json"); } catch {}
+const backupFresh = () => BACKUP.taken && Date.now() - Date.parse(BACKUP.taken) < 75 * 864e5;
+
 module.exports = async (req, res) => {
   const now = new Date();
   const end = new Date(now.getTime() + 45 * 864e5); // next 45 days
@@ -1627,25 +1654,13 @@ module.exports = async (req, res) => {
   hostQueues.clear(); // serverless containers are reused between requests
   const results = await Promise.allSettled(
     SOURCES.map((src) => hostGate(hostKeyFor(src), async () => {
-      let list;
-      if (src.type === "ics") list = parseICS(await getText(src.url), src);
-      else if (src.type === "commonground") list = await fromCommonGround(src);
-      else if (src.type === "biblio") list = await fromBiblio(src);
-      else if (src.type === "livewhale") list = await fromLiveWhale(src);
-      else if (src.type === "squarespace") list = await fromSquarespace(src);
-      else if (src.type === "rss") list = await fromRSS(src);
-      else if (src.type === "opendate") list = await fromOpenDate(src);
-      else if (src.type === "meetup") list = await fromMeetup(src);
-      else if (src.type === "eventbrite") list = await fromEventbrite(src);
-      else if (src.type === "cabooze") list = await fromCabooze(src);
-      else if (src.type === "firstave") list = await fromFirstAve(src);
-      else if (src.type === "sports") list = await fromSports(src);
-      else if (src.type === "standing") list = fromStanding(src);
-      else if (src.type === "jsonld") list = await fromJsonLd(src);
-      else if (src.type === "churchfinder") list = await fromChurchFinder(src);
-      else if (src.type === "mindbody") list = await fromMindbody(src);
-      else list = await fromTribe(src, startISO, endISO);
-      return { src, list };
+      try {
+        return { src, list: await readSource(src, startISO, endISO) };
+      } catch (e) {
+        const saved = backupFresh() && BACKUP.events && BACKUP.events[src.name];
+        if (!saved) throw e;
+        return { src, list: saved.map((x) => ({ ...x })), backup: BACKUP.taken };
+      }
     }))
   );
 
@@ -1665,7 +1680,7 @@ module.exports = async (req, res) => {
         if (/\b(?:zoom|online|virtual)[- ]only\b/i.test(e.name)) e.fmt = "online";
       }
       events = events.concat(list);
-      sources.push({ name: src.name, count: list.length, ok: true });
+      sources.push({ name: src.name, count: list.length, ok: true, ...(r.value.backup ? { backup: r.value.backup } : {}) });
     } else {
       sources.push({ name: src.name, count: 0, ok: false, error: String(r.reason && r.reason.message || r.reason || "Unavailable") });
     }
@@ -1756,3 +1771,7 @@ module.exports = async (req, res) => {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.status(200).json({ updated: new Date().toISOString(), sources, events });
 };
+
+// for scripts/backup-blocked.cjs
+module.exports.SOURCES = SOURCES;
+module.exports.readSource = readSource;

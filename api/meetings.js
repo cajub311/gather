@@ -801,13 +801,30 @@ function sameRoomRepeats(rows) {
   return out;
 }
 
+// Backup copy for feeds that block Vercel's servers (see api/events.js BACKUP)
+let BACKUP = {};
+try { BACKUP = require("./_backup.json"); } catch {}
+const backupFresh = () => BACKUP.taken && Date.now() - Date.parse(BACKUP.taken) < 75 * 864e5;
+async function withBackup(label, fn) {
+  try {
+    return await fn();
+  } catch (e) {
+    const saved = backupFresh() && BACKUP.meetings && BACKUP.meetings[label];
+    if (!saved) throw e;
+    const list = saved.map((x) => ({ ...x }));
+    list.backup = BACKUP.taken;
+    return list;
+  }
+}
+const SAA_LABEL = "Sex Addicts Anonymous (SAA)";
+
 module.exports = async (req, res) => {
   const sources = [];
   let meetings = [];
 
   // start the newer feeds alongside the main ones, not after them
   const extrasP = Promise.allSettled(EXTRA_TSML.map((f) => getJSON(f.url)));
-  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), fetchSAA(), fetchGA(), fetchNarAnon(), fetchEA()]);
+  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA()]);
   const [aa, na, aamn, alanon, dharma, refuge, buddhist] = await Promise.allSettled([
     getJSON(AA_URL),
     getJSON(NA_URL),
@@ -822,7 +839,7 @@ module.exports = async (req, res) => {
 
   function take(label, result, list) {
     if (result.status === "fulfilled" && Array.isArray(result.value)) {
-      sources.push({ name: label, count: list.length, ok: true });
+      sources.push({ name: label, count: list.length, ok: true, ...(result.value.backup ? { backup: result.value.backup } : {}) });
       meetings = meetings.concat(list);
     } else {
       sources.push({ name: label, count: 0, ok: false, error: String(result.reason?.message || result.reason || "no data").slice(0, 120) });
@@ -885,7 +902,7 @@ module.exports = async (req, res) => {
 
   take("Sexaholics Anonymous Twin Cities", sa,
     sa.status === "fulfilled" ? normalizeSA(sa.value).filter((x) => x.lat && x.lng && inMetro(x)) : []);
-  take("Sex Addicts Anonymous (SAA)", saa,
+  take(SAA_LABEL, saa,
     saa.status === "fulfilled" ? saa.value.filter((x) => inMetro(x)) : []);
   take("Gamblers Anonymous", ga,
     ga.status === "fulfilled" ? ga.value.filter((x) => inMetro(x)) : []);
@@ -911,3 +928,6 @@ module.exports = async (req, res) => {
     meetings,
   });
 };
+
+// for scripts/backup-blocked.cjs
+module.exports.backupFetchers = { [SAA_LABEL]: fetchSAA };
