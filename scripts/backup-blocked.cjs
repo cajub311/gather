@@ -8,8 +8,10 @@ const path = require("path");
 const events = require("../api/events.js");
 const meetings = require("../api/meetings.js");
 
-// confirmed 403 on a Vercel preview 2026-10-19
-const BLOCKED_EVENTS = ["GriefShare", "DivorceCare", "Utepils Brewing", "American Swedish Institute", "Indeed Brewing"];
+// confirmed failing on a Vercel preview 2026-10-19: 403s, plus SiteGround
+// captcha pages (HTML instead of JSON) and DanceMN timeouts
+const BLOCKED_EVENTS = ["GriefShare", "DivorceCare", "Utepils Brewing", "American Swedish Institute", "Indeed Brewing",
+  "56 Brewing", "Minnesota Museum of American Art", "DanceMN"];
 const DAYS = 90; // cover the backup's whole useful life, not just the next 45 days
 
 function chicagoKey(d) {
