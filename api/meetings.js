@@ -375,7 +375,7 @@ const PATHMINDER = [
   { cat: "WFS", label: "Women for Sobriety", base: "https://meetings.womenforsobriety.org", types: ["Women", "Secular"] },
 ];
 // ZIP centers (OpenStreetMap) for rooms with no street number to geocode
-const ZIP_PINS = { 55105: [44.935, -93.1666], 55305: [44.9529, -93.4264] };
+const ZIP_PINS = { 55105: [44.935, -93.1666], 55305: [44.9529, -93.4264], 55391: [44.9741, -93.5066] };
 
 async function fetchPathminder(site) {
   // own cleaner: cleanText splits glued words, and "LifeRing" is one
@@ -837,6 +837,60 @@ async function fetchRI() {
         lat: +pin[0].toFixed(5), lng: +pin[1].toFixed(5), types: [], url: RI_PAGE, live: true, verified: true,
       });
     }
+  }
+  return [...out.filter((x) => x.fmt !== "online"), ...onlineOnly(out)];
+}
+
+// S-Anon (family and friends of sex addicts): its finder posts to a WordPress
+// ajax action and gets back HTML blocks. Each block's "Add to Calendar" form
+// holds the next date, time, place and the zone it's written in. Group emails
+// and phone numbers are left on S-Anon's page.
+const SANON_AJAX = "https://sanon.org/wp-admin/admin-ajax.php";
+const SANON_PAGE = "https://sanon.org/find-a-meeting/";
+async function sanonBlocks(fields) {
+  const body = new URLSearchParams({ action: "meeting_areas_load_meetings", weekday: "", search: "", lang: "", time: "",
+    special: "any", country: "", user_location: "0", location_selected: "0", city_state: "", ...fields });
+  const r = await fetch(SANON_AJAX, { method: "POST", body, headers: { "User-Agent": CHROME_UA }, signal: AbortSignal.timeout(15000) });
+  if (!r.ok) throw new Error(`s-anon HTTP ${r.status}`);
+  return (await r.text()).split('<div class="meeting"').slice(1).map((b) => {
+    const hidden = (n) => htmlText((b.match(new RegExp(`name="${n}" value="([^"]*)"`)) || [])[1]);
+    const [, ymd, hh, mm] = hidden("date_start").match(/^(\d{4}-\d\d-\d\d) (\d\d):(\d\d)/) || [];
+    const at = ymd && clockToCentral(new Date(`${ymd}T12:00:00Z`).getUTCDay(), `${+hh % 12 || 12}:${mm} ${+hh < 12 ? "am" : "pm"}`, hidden("timezone"));
+    const end = hidden("date_end").match(/ (\d\d):(\d\d)/);
+    return {
+      at, name: htmlText((b.match(/class="title">([^<]*)/) || [])[1]), id: (b.match(/ID:<\/span><strong>([^<]+)/) || [])[1],
+      place: htmlText((b.match(/fa-map-marker[^>]*><\/i>\s*<strong>([^<]*)/) || [])[1]),
+      where: hidden("location").replace(/\s*USA & Canada\s*$/, ""), lang: htmlText((b.match(/Language:[\s\S]*?<strong>([^<]*)|Language:<\/span>\s*([^<]*)/) || [])[1]),
+      dur: end ? Math.max(30, (+end[1] * 60 + +end[2] - (+hh * 60 + +mm) + 1440) % 1440) : 60,
+      extra: htmlText((b.match(/class="additional_information">([^<]*)/) || [])[1]),
+    };
+  }).filter((x) => x.at && x.name);
+}
+async function fetchSAnon() {
+  const [rooms, online] = await Promise.all([
+    sanonBlocks({ city_state: "Minnesota-MN", type: "in_person" }),
+    sanonBlocks({ type: "phone_web", lang: "English" }),
+  ]);
+  const out = [];
+  for (const b of rooms) {
+    const ll = await censusPin(b.where).catch(() => null);
+    const pin = ll || ZIP_PINS[(b.where.match(/\b\d{5}\b/) || [])[0]];
+    if (!pin || !inMetro({ lat: pin[0], lng: pin[1] })) continue;
+    out.push({
+      cat: "S-Anon", name: `S-Anon — ${b.name}`, ...b.at, dur: b.dur, fmt: "in-person", loc: b.place || b.where.replace(/,? MN .*/, ""),
+      addr: b.where.replace(/,? MN \d{5}.*/, "").replace(/\s+/g, " "), approx: ll ? undefined : true,
+      lat: +pin[0].toFixed(5), lng: +pin[1].toFixed(5), types: [],
+      door: b.extra && !/@|\d{3}\D?\d{4}/.test(b.extra) ? b.extra : undefined, url: SANON_PAGE, live: true, verified: true,
+    });
+  }
+  const seen = new Set();
+  for (const b of online) {
+    if (seen.has(b.id || b.name + b.at.day + b.at.time)) continue;
+    seen.add(b.id || b.name + b.at.day + b.at.time);
+    out.push({
+      cat: "S-Anon", name: `S-Anon — ${b.name.replace(/^S-Anon\s+/i, "")}${b.id ? ` (${b.id})` : ""}`, ...b.at, dur: b.dur, fmt: "online", types: [],
+      notes: "Join details are on S-Anon's meeting finder.", url: SANON_PAGE, live: true, verified: true,
+    });
   }
   return [...out.filter((x) => x.fmt !== "online"), ...onlineOnly(out)];
 }
@@ -1393,7 +1447,7 @@ module.exports = async (req, res) => {
 
   // start the newer feeds alongside the main ones, not after them
   const extrasP = Promise.allSettled(EXTRA_TSML.map((f) => getJSON(f.url)));
-  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), fetchCAOnline(), fetchMA(), fetchDA(), fetchGamAnon(), fetchHA(), fetchDRA(), fetchCROnline(), fetchSLAA(), fetchPA(), fetchRI(), ...TSML_ONLINE.map(fetchTSMLOnline), ...PATHMINDER.map(fetchPathminder)]);
+  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), fetchCAOnline(), fetchMA(), fetchDA(), fetchGamAnon(), fetchHA(), fetchDRA(), fetchCROnline(), fetchSLAA(), fetchPA(), fetchRI(), fetchSAnon(), ...TSML_ONLINE.map(fetchTSMLOnline), ...PATHMINDER.map(fetchPathminder)]);
   const [aa, na, aamn, alanon, dharma, refuge, buddhist] = await Promise.allSettled([
     getJSON(AA_URL),
     getJSON(NA_URL),
@@ -1404,7 +1458,7 @@ module.exports = async (req, res) => {
     getJSON(BUDDHIST_URL),
   ]);
   const extras = await extrasP;
-  const [sa, soba, saa, ga, naranon, ea, caOnline, ma, da, gamanon, ha, dra, crOnline, slaa, pa, ri, rca, sia, wa, ...pm] = await moreP;
+  const [sa, soba, saa, ga, naranon, ea, caOnline, ma, da, gamanon, ha, dra, crOnline, slaa, pa, ri, sanon, rca, sia, wa, ...pm] = await moreP;
 
   function take(label, result, list) {
     if (result.status === "fulfilled" && Array.isArray(result.value)) {
@@ -1497,6 +1551,7 @@ module.exports = async (req, res) => {
   take("Survivors of Incest Anonymous (online)", sia, sia.status === "fulfilled" ? sia.value : []);
   take("Workaholics Anonymous (online)", wa, wa.status === "fulfilled" ? wa.value : []);
   take("Recovery International", ri, ri.status === "fulfilled" ? ri.value : []);
+  take("S-Anon", sanon, sanon.status === "fulfilled" ? sanon.value : []);
   take("Pills Anonymous", pa, pa.status === "fulfilled" ? pa.value.filter((x) => x.fmt === "online" || inMetro(x)) : []);
   PATHMINDER.forEach((site, i) => take(site.label, pm[i], pm[i].status === "fulfilled" ? pm[i].value : []));
   take("SobaSearch (OA, CoDA, ACA, SMART, CR, MA, EDA)", soba,
