@@ -825,7 +825,7 @@ module.exports = async (req, res) => {
       sources.push({ name: label, count: list.length, ok: true });
       meetings = meetings.concat(list);
     } else {
-      sources.push({ name: label, count: 0, ok: false });
+      sources.push({ name: label, count: 0, ok: false, error: String(result.reason?.message || result.reason || "no data").slice(0, 120) });
     }
   }
 

@@ -389,6 +389,9 @@ async function fetchWithRetry(url, accept, ms, budget, ua = UA) {
       return r;
     } catch (e) {
       last = e;
+      // Some sites (Cloudflare) 403 the Gather UA from Vercel's servers but serve
+      // a plain browser one — try that once before giving up
+      if (/HTTP 403/.test(String(e.message)) && ua === UA) { ua = BROWSER_UA; continue; }
       // a 4xx is a decision, not a hiccup — retrying just burns the time budget
       if (/HTTP 4\d\d/.test(String(e.message))) break;
       if (budget && budget.expired()) break;
