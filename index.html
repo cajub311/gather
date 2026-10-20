@@ -970,6 +970,9 @@ const FELLOWSHIPS = {
   FA:{name:"Families Anonymous",color:"#bbf7d0"},
   HA:{name:"Heroin Anonymous",color:"#fda4af"},
   PA:{name:"Pills Anonymous",color:"#d9f99d"},
+  NicA:{name:"Nicotine Anonymous",color:"#e7e5e4"},
+  RCA:{name:"Recovering Couples Anonymous",color:"#fecdd3"},
+  SIA:{name:"Survivors of Incest Anonymous",color:"#ddd6fe"},
   NAMI:{name:"NAMI Minnesota (mental illness support)",color:"#99f6e4"},
   DBSA:{name:"DBSA (depression & bipolar groups)",color:"#bae6fd"},
   MHMN:{name:"Mental Health Minnesota",color:"#a7f3d0"},
@@ -1017,6 +1020,9 @@ const FINDERS={
   FA:"https://www.familiesanonymous.org/",
   HA:"https://heroinanonymous.org/",
   PA:"https://www.pillsanonymous.org/",
+  NicA:"https://nicotine-anonymous.org/find-a-meeting/",
+  RCA:"https://recovering-couples.org/rca-meetings/",
+  SIA:"https://siawso.org/meetings/",
   NAMI:"https://namimn.org/",
   DBSA:"https://www.dbsalliance.org/",
   MHMN:"https://mentalhealthmn.org/",
@@ -2586,10 +2592,10 @@ function updateFooter(){
     pl.dataset.built="1";
     // grouped by what someone is dealing with; AA/NA/Al-Anon live feeds cover those
     const groups=[
-      ["Drinking & drugs",["MRC","CMA","CA","MA","HA","PA","DDA","SMART","LifeRing","WFS","Refuge","Dharma","Buddhist","CR","Wellbriety"]],
+      ["Drinking & drugs",["MRC","CMA","CA","MA","HA","PA","DDA","SMART","LifeRing","WFS","Refuge","Dharma","Buddhist","CR","Wellbriety","NicA"]],
       ["Gambling, food, sex, money",["GA","OA","EDA","SA","SAA","SLAA","DA"]],
-      ["Family & friends of someone struggling",["Nar-Anon","Gam-Anon","FA","ACA","CoDA"]],
-      ["Mental health, grief & divorce",["NAMI","DBSA","MHMN","EA","GriefShare","TCF","POMC","DivorceCare","Group"]],
+      ["Family & friends of someone struggling",["Nar-Anon","Gam-Anon","FA","ACA","CoDA","RCA"]],
+      ["Mental health, grief & divorce",["NAMI","DBSA","MHMN","EA","SIA","GriefShare","TCF","POMC","DivorceCare","Group"]],
       ["Illness, injury & caregivers",["Gilda","ALZ","PD","Stroke","BIA"]],
     ];
     const placed=new Set(groups.flatMap(g=>g[1]));

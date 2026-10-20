@@ -38,6 +38,8 @@ const SOBA_CAT = { WB: "Wellbriety" };
 
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Gather/1.0";
+const CHROME_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
 
 // TSML codes → short UI labels. Skip noise codes that appear on almost every row (MW).
 const TSML_TYPES = {
@@ -391,19 +393,12 @@ async function fetchPathminder(site) {
     const rest = await Promise.all(Array.from({ length: pages - 1 }, (_, i) => get(`/meetings/?scope=${scope}&page=${i + 2}`)));
     return [first, ...rest].flatMap((t) => t.split(/<a[^>]+href="\/meetings\/(?=\d+\/\?fromlist)/).slice(1).map((b) => b.slice(0, 7000)));
   };
-  const central = (utc) => {
-    const p = Object.fromEntries(
-      new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", weekday: "long", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
-        .formatToParts(new Date(utc)).map((x) => [x.type, x.value])
-    );
-    return { day: WEEKDAYS.indexOf(p.weekday.toLowerCase()), time: `${p.hour}:${p.minute}` };
-  };
   const parse = (b) => {
     const utc = (b.match(/data-utc="([^"]+)"/) || [])[1];
     const md = (b.split(/d-none d-md-block text-center">/)[1] || "").split("</span>")[0];
     const [title = "", program = "", audience = ""] = md.split(/<br\s*\/?>/).map(plain);
     if (!utc || !title) return null;
-    return { id: b.match(/^\d+/)[0], ...central(utc), title, program, audience, online: /fa-video/.test(b.slice(0, 2500)) };
+    return { id: b.match(/^\d+/)[0], ...utcToCentral(utc), title, program, audience, online: /fa-video/.test(b.slice(0, 2500)) };
   };
   const row = (x, extra) => ({
     cat: site.cat,
@@ -450,6 +445,14 @@ const htmlText = (h) => String(h || "").replace(/<[^>]+>/g, " ").replace(/&nbsp;
   .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n)).replace(/\s+/g, " ").trim();
 const wakingCentral = (x) => x.time >= "06:00" && x.time <= "22:00";
 // "7:00 PM" on day 4 in zone tz -> Central day + "HH:MM"
+// a moment in UTC -> weekday and "HH:MM" in Central
+function utcToCentral(utc) {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", weekday: "long", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+      .formatToParts(new Date(utc)).map((x) => [x.type, x.value])
+  );
+  return { day: WEEKDAYS.indexOf(p.weekday.toLowerCase()), time: `${p.hour}:${p.minute}` };
+}
 function clockToCentral(day, clock, tz) {
   const m = String(clock).match(/(\d{1,2}):(\d{2})\s*([ap])\.?m/i);
   if (!m || day < 0) return null;
@@ -627,6 +630,65 @@ async function fetchCROnline() {
     notes: "Sign up with your email on the page to get the Zoom link.", url: CR_ONLINE_URL, live: true, verified: true,
   }];
 }
+
+// Recovering Couples Anonymous and Survivors of Incest Anonymous share the
+// TSML feed AA uses. Nearly all are online; each row carries its own zone.
+const TSML_ONLINE = [
+  ["RCA", "https://recovering-couples.org/wp-admin/admin-ajax.php?action=meetings"],
+  ["SIA", "https://siawso.org/wp-admin/admin-ajax.php?action=meetings"],
+];
+async function fetchTSMLOnline([cat, url]) {
+  const rows = normalizeAA(await getJSON(url), cat);
+  return [...rows.filter((x) => x.fmt !== "online" && x.lat && x.lng && inMetro(x)), ...onlineOnly(rows)];
+}
+
+// Nicotine Anonymous runs its meetings as The Events Calendar events, one per
+// occurrence, each with "Language" and "Type" custom fields. A week of them is
+// folded into weekly slots: Twin Cities rooms plus English online/phone meetings.
+// Links, dial-in numbers and passcodes stay on the NicA event page. Their server
+// answers one 50-event page at a time (~10 pages, 3s each), too slow for a page
+// load, so scripts/refresh-saved-lists.cjs saves the result to api/_nica.json.
+const NICA_API = "https://nicotine-anonymous.org/wp-json/tribe/events/v1/events";
+// NicA turns away the plain Gather user agent, so ask like a browser does
+const getNicA = async (url) => {
+  const r = await fetch(url, { headers: { "User-Agent": CHROME_UA, Accept: "application/json" }, signal: AbortSignal.timeout(15000) });
+  if (!r.ok) throw new Error(`nica HTTP ${r.status}`);
+  return r.json();
+};
+async function fetchNicA() {
+  const ymd = (d) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(d);
+  const q = `?per_page=50&start_date=${ymd(new Date())}&end_date=${ymd(new Date(Date.now() + 6 * 864e5))}%2023:59:59`;
+  const all = [await getNicA(`${NICA_API}${q}&page=1`)];
+  for (let p = 2; p <= Math.min(all[0].total_pages || 1, 15); p++) all.push(await getNicA(`${NICA_API}${q}&page=${p}`));
+  const field = (e, label) => Object.values(e.custom_fields || {}).find((c) => c.label === label)?.value || "";
+  const seen = new Set(), out = [];
+  for (const e of all.flatMap((r) => r.events || [])) {
+    const at = utcToCentral(e.utc_start_date.replace(" ", "T") + "Z");
+    const name = htmlText(e.title).replace(/\s+/g, " ").trim();
+    const key = `${name}|${at.day}|${at.time}`;
+    if (at.day < 0 || seen.has(key)) continue;
+    seen.add(key);
+    const dur = Math.round((Date.parse(e.utc_end_date + "Z") - Date.parse(e.utc_start_date + "Z")) / 60000) || 60;
+    const topic = field(e, "Topic");
+    const base = { cat: "NicA", name: /nicotine|nica/i.test(name) ? name : `Nicotine Anonymous — ${name}`, ...at,
+      dur: dur > 0 && dur <= 180 ? dur : 60, types: topic ? [topic.replace(/ Meeting$/, "")] : [], url: e.url, live: true, verified: true };
+    const v = e.venue || {};
+    if (field(e, "Type") === "In-Person") {
+      if (v.state !== "MN" && v.stateprovince !== "MN") continue;
+      const ll = await censusPin(`${v.address}, ${v.city}, MN ${v.zip || ""}`).catch(() => null);
+      if (!ll) continue;
+      const room = { ...base, fmt: "in-person", loc: htmlText(v.venue), addr: `${v.address}, ${v.city}`,
+        lat: +ll[0].toFixed(5), lng: +ll[1].toFixed(5) };
+      if (inMetro(room)) out.push(room);
+    } else if (field(e, "Language") === "English") {
+      out.push({ ...base, fmt: "online", notes: "Join details are on the Nicotine Anonymous meeting page." });
+    }
+  }
+  return [...out.filter((x) => x.fmt !== "online"), ...onlineOnly(out)];
+}
+
+let NICA_SAVED = { listed: "", rows: [] };
+try { NICA_SAVED = require("./_nica.json"); } catch {}
 
 // SLAA's online list only fills in inside a real browser, so it is copied on the
 // Mac by scripts/refresh-slaa-online.mjs into api/_slaa-online.json as
@@ -1264,7 +1326,7 @@ module.exports = async (req, res) => {
 
   // start the newer feeds alongside the main ones, not after them
   const extrasP = Promise.allSettled(EXTRA_TSML.map((f) => getJSON(f.url)));
-  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), fetchCAOnline(), fetchMA(), fetchDA(), fetchGamAnon(), fetchHA(), fetchDRA(), fetchCROnline(), fetchSLAA(), fetchPA(), ...PATHMINDER.map(fetchPathminder)]);
+  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), fetchCAOnline(), fetchMA(), fetchDA(), fetchGamAnon(), fetchHA(), fetchDRA(), fetchCROnline(), fetchSLAA(), fetchPA(), ...TSML_ONLINE.map(fetchTSMLOnline), ...PATHMINDER.map(fetchPathminder)]);
   const [aa, na, aamn, alanon, dharma, refuge, buddhist] = await Promise.allSettled([
     getJSON(AA_URL),
     getJSON(NA_URL),
@@ -1275,7 +1337,7 @@ module.exports = async (req, res) => {
     getJSON(BUDDHIST_URL),
   ]);
   const extras = await extrasP;
-  const [sa, soba, saa, ga, naranon, ea, caOnline, ma, da, gamanon, ha, dra, crOnline, slaa, pa, ...pm] = await moreP;
+  const [sa, soba, saa, ga, naranon, ea, caOnline, ma, da, gamanon, ha, dra, crOnline, slaa, pa, rca, sia, ...pm] = await moreP;
 
   function take(label, result, list) {
     if (result.status === "fulfilled" && Array.isArray(result.value)) {
@@ -1362,6 +1424,10 @@ module.exports = async (req, res) => {
   take("SLAA (Sex and Love Addicts Anonymous)", slaa, slaa.status === "fulfilled" ? slaa.value.filter((x) => inMetro(x)) : []);
   const slaaOn = slaaOnline();
   take(`SLAA online (copied ${SLAA_SAVED.listed || "—"})`, { status: slaaOn.length ? "fulfilled" : "rejected", value: slaaOn, reason: new Error("api/_slaa-online.json missing") }, onlineOnly(slaaOn));
+  take(`Nicotine Anonymous (copied ${NICA_SAVED.listed || "—"})`, { status: NICA_SAVED.rows.length ? "fulfilled" : "rejected",
+    value: NICA_SAVED.rows, reason: new Error("api/_nica.json missing") }, NICA_SAVED.rows);
+  take("Recovering Couples Anonymous", rca, rca.status === "fulfilled" ? rca.value : []);
+  take("Survivors of Incest Anonymous (online)", sia, sia.status === "fulfilled" ? sia.value : []);
   take("Pills Anonymous", pa, pa.status === "fulfilled" ? pa.value.filter((x) => x.fmt === "online" || inMetro(x)) : []);
   PATHMINDER.forEach((site, i) => take(site.label, pm[i], pm[i].status === "fulfilled" ? pm[i].value : []));
   take("SobaSearch (OA, CoDA, ACA, SMART, CR, MA, EDA)", soba,
@@ -1385,3 +1451,4 @@ module.exports = async (req, res) => {
 
 // for scripts/backup-blocked.cjs
 module.exports.backupFetchers = { [SAA_LABEL]: fetchSAA };
+module.exports.savedLists = { "_nica.json": fetchNicA };
