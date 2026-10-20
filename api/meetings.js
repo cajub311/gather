@@ -331,6 +331,43 @@ const FA_ROOMS = [
     url: "https://familiesanonymous.org/meetings/meeting-directories/", listed: "2026-10-15", live: true, verified: true },
 ];
 
+// FA's online groups, from "2. Virtual US Canada 10.13.26" in the same
+// directory: [day, Central time, group's home, group #]. The PDF holds Zoom
+// links and passcodes, so each row points to the directory instead.
+const FA_ONLINE_LISTED = "2026-10-13";
+const FA_ONLINE = [
+  [0,"11:00","Bradenton, FL",2177], [0,"16:30","Marlboro, NJ",2187], [0,"19:00","Huntley, IL",157],
+  [0,"19:00","Des Plaines, IL",162], [1,"18:00","Miami, FL",134], [1,"18:00","Antigo, WI",2186],
+  [1,"18:00","Glenville, NY",899], [1,"18:00","Syosset, NY",1974], [1,"18:15","Roswell, GA",1906],
+  [1,"18:30","Mount Laurel, NJ",2119], [1,"18:30","Annandale, VA",874], [1,"18:30","Lawrenceville, NJ",665],
+  [1,"18:30","Syracuse, NY",1301], [1,"18:30","Lafayette Hill, PA",2105], [1,"19:00","Chandler, TX",2176],
+  [1,"19:00","New Lenox, IL",1196], [1,"19:00","Edmond, OK",1806], [1,"19:00","Buffalo Grove, IL",2023],
+  [1,"19:00","Gurnee, IL",177], [1,"19:30","Park Ridge, IL",173], [1,"19:30","Canada",1444],
+  [1,"21:00","Torrance, CA",121], [2,"17:00","Spanish-speaking",2153], [2,"17:15","Boca Raton, FL",1318],
+  [2,"17:30","Franklin, MA",2159], [2,"18:00","Suffield, CT",2038], [2,"18:00","Chicago - Near North, IL",2204],
+  [2,"18:00","Charlottesville, VA",1561], [2,"18:15","Tenafly, NJ",1533], [2,"18:30","Milford, CT",788],
+  [2,"18:30","Bradenton, FL",2056], [2,"19:00","Glencoe, IL",2027], [2,"19:00","Rock Island, IL",2101],
+  [2,"19:00","McKinney, TX",1391], [2,"19:00","Dallas, TX",631], [2,"21:00","Redlands, CA",641],
+  [2,"21:00","Ridgecrest, CA",1979], [3,"11:00","Jupiter, FL",2191], [3,"13:00","Canada",1833],
+  [3,"16:30","Shallotte, NC",2030], [3,"17:30","Willoughby, OH",1840], [3,"18:00","Bradenton, FL",2205],
+  [3,"18:00","Louisville, KY",2082], [3,"18:00","Laurel, MD",1739], [3,"18:00","Hauppauge, NY",2068],
+  [3,"18:00","Henrico County - Lakeside, VA",1978], [3,"18:00","Colts Neck, NJ",976], [3,"18:30","Mahwah, NJ",1735],
+  [3,"18:45","Cherry Hill, NJ",1345], [3,"19:00","Franklin and Nashville, TN",2108],
+  [3,"19:30","Arlington Hts., IL",171], [3,"20:30","Vancouver, Canada",2116],
+  [3,"21:00","San Luis Obispo Area, CA",2149], [4,"16:30","Parkland, FL",1831], [4,"18:00","E. Ellenton, FL",2185],
+  [4,"18:00","St. Augustine, FL",2200], [4,"18:00","Fort Myers, FL",1996], [4,"18:00","Buckhead, GA",1639],
+  [4,"18:00","Birmingham, MI",1615], [4,"18:00","Summit, NJ",252], [4,"18:00","Chattanooga, TN",337],
+  [4,"19:00","Dallas, TX",2085], [4,"19:00","Grapevine, TX",1686], [4,"19:30","Fort Collins, CO",2136],
+  [5,"10:00","Skokie, IL",831], [5,"18:15","Massapequa, NY",270], [5,"18:15","Englewood, NJ",1152],
+  [5,"19:30","Glenview, IL",478], [6,"08:30","Amityville, NY",279], [6,"09:30","Bloomfield, CT",1187],
+  [6,"12:30","Santa Barbara, CA",1346],
+].map(([day, time, home, grp]) => ({
+  cat: "FA", name: `Families Anonymous — ${home} (group ${grp})`, day, time, dur: 60, fmt: "online",
+  types: /^Spanish/.test(home) ? ["Open", "Spanish"] : ["Open"],
+  notes: "Zoom link or contact is in FA's Virtual Directory PDF. Some groups meet only on certain weeks.",
+  url: "https://familiesanonymous.org/meetings/meeting-directories/", listed: FA_ONLINE_LISTED, live: true, verified: true,
+}));
+
 const PATHMINDER = [
   { cat: "LifeRing", label: "LifeRing Secular Recovery", base: "https://meetings.lifering.org", types: ["Secular"] },
   { cat: "WFS", label: "Women for Sobriety", base: "https://meetings.womenforsobriety.org", types: ["Women", "Secular"] },
@@ -1235,6 +1272,7 @@ module.exports = async (req, res) => {
   take("Gam-Anon (online)", gamanon, gamanon.status === "fulfilled" ? gamanon.value : []);
   take("Heroin Anonymous (online)", ha, ha.status === "fulfilled" ? ha.value : []);
   take("Families Anonymous (directory 2026-10-15)", { status: "fulfilled", value: FA_ROOMS }, FA_ROOMS);
+  take(`Families Anonymous online (directory ${FA_ONLINE_LISTED})`, { status: "fulfilled", value: FA_ONLINE }, onlineOnly(FA_ONLINE));
   take("Dual Recovery Anonymous (online)", dra, dra.status === "fulfilled" ? dra.value : []);
   take("Celebrate Recovery (online)", crOnline, crOnline.status === "fulfilled" ? crOnline.value : []);
   take("SLAA (Sex and Love Addicts Anonymous)", slaa, slaa.status === "fulfilled" ? slaa.value.filter((x) => inMetro(x)) : []);
