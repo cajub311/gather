@@ -340,11 +340,23 @@ function normalizeAA(rows, cat = "AA") {
     const notes = cleanText(m.notes);
     const door = cleanText(m.location_notes);
 
+    // national feeds (Refuge, Buddhist, Dharma, CMA) write each time in the
+    // meeting's own zone — "5am PT" was showing as 5 AM here instead of 7
+    let day = typeof m.day === "number" ? m.day : Number(m.day) || 0;
+    let time = hhmm(m.time);
+    const shiftH = hoursToCentral(m.timezone);
+    if (shiftH) {
+      let mins = +time.slice(0, 2) * 60 + +time.slice(3) + shiftH * 60;
+      if (mins < 0) { mins += 1440; day = (day + 6) % 7; }
+      if (mins >= 1440) { mins -= 1440; day = (day + 1) % 7; }
+      time = String(Math.floor(mins / 60)).padStart(2, "0") + ":" + String(mins % 60).padStart(2, "0");
+    }
+
     out.push({
       cat,
       name: cleanText(m.name) || cat + " Meeting",
-      day: typeof m.day === "number" ? m.day : Number(m.day) || 0,
-      time: hhmm(m.time),
+      day,
+      time,
       dur: m.end_time ? durMins(hhmm(m.time), hhmm(m.end_time)) : 60,
       fmt,
       approx: approx || undefined,
@@ -601,16 +613,20 @@ module.exports = async (req, res) => {
     take("NA Minnesota (BMLT)", na, list);
   } else take("NA Minnesota (BMLT)", na, []);
 
+  // Buddhist Recovery Network re-lists every Refuge meeting; keep one copy
+  const refugeKeys = new Set();
+  const meetKey = (x) => `${x.day}|${x.time}|${x.name.toLowerCase()}`;
   if (refuge.status === "fulfilled" && Array.isArray(refuge.value)) {
     const list = normalizeAA(refuge.value, "Refuge").filter(
       (x) => (x.lat && x.lng && inMetro(x)) || (x.approx && looksCentralTime(x.name))
     );
+    list.forEach((x) => refugeKeys.add(meetKey(x)));
     take("Refuge Recovery", refuge, list);
   } else take("Refuge Recovery", refuge, []);
 
   if (buddhist.status === "fulfilled" && Array.isArray(buddhist.value)) {
     const list = normalizeAA(buddhist.value, "Buddhist").filter(
-      (x) => (x.lat && x.lng && inMetro(x)) || (x.approx && looksCentralTime(x.name))
+      (x) => ((x.lat && x.lng && inMetro(x)) || (x.approx && looksCentralTime(x.name))) && !refugeKeys.has(meetKey(x))
     );
     take("Buddhist Recovery Network", buddhist, list);
   } else take("Buddhist Recovery Network", buddhist, []);
