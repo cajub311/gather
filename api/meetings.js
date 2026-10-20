@@ -974,6 +974,68 @@ async function fetchAlAnonOnline() {
   return onlineOnly(out);
 }
 
+// ACA's world service finder (adultchildren.org) answers a WordPress REST search,
+// 30 meetings a page, with times already turned into the zone asked for. Twin
+// Cities rooms are read live (2 pages). Online meetings take ~33 pages, too many
+// for each page load, so scripts/refresh-saved-lists.cjs saves them to
+// api/_aca-online.json. Group notes, meeting IDs and links stay on ACA's page.
+const ACA_SEARCH = "https://adultchildren.org/wp-json/wsom/v1/meeting-search/";
+const ACA_PAGE = "https://adultchildren.org/meeting-search/";
+const ACA_TAGS = { "Women Only": "Women", "Men Only": "Men", "LGBTQ+": "LGBTQ", "Wheelchair Access": "Wheelchair",
+  Beginners: "Beginners", Newcomers: "Newcomers", Steps: "Step", Discussion: "Discussion", "Fellowship Text (BRB)": "Big Red Book" };
+async function acaSearch(page, query) {
+  const body = new URLSearchParams({ page, countryFromIP: "United States", Timezone: "America/Chicago", SearchText: "",
+    searchLocation: "", radius: "30", I_GID: "", R_GID: "", showEditLink: "false", ...query });
+  const r = await fetch(ACA_SEARCH, { method: "POST", headers: { "User-Agent": CHROME_UA, "Content-Type": "application/x-www-form-urlencoded" },
+    body, signal: AbortSignal.timeout(15000) });
+  if (!r.ok) throw new Error(`aca HTTP ${r.status}`);
+  return r.json();
+}
+async function acaAll(query, maxPages, pause = 0) {
+  const all = [];
+  for (let p = 1, pages = 1; p <= Math.min(pages, maxPages); p++) {
+    const j = await acaSearch(p, query);
+    if (!Array.isArray(j.results)) throw new Error("aca: search answer changed");
+    pages = j.pages || 1;
+    all.push(...j.results);
+    if (pause) await new Promise((ok) => setTimeout(ok, pause));
+  }
+  return all;
+}
+function acaBase(x) {
+  const at = clockToCentral(+x.DayCode_TZ_Adjusted - 1, x.Time_TZ_Adjusted, "America/Chicago");
+  if (!at) return null;
+  // a few groups put a contact email or phone in the name; drop that part
+  const name = cleanText(x.MeetName).replace(/[,;]?[^,;]*(@|https?:|www\.|\d{3}[ .)-]+\d{3}[ .-]\d{4})[^,;]*/gi, "").trim() ||
+    `ACA — ${x.City || "meeting"}`;
+  const tags = `${x.Focus || ""},${x.other_notes || ""},${x.Type || ""}`.split(",").map((t) => ACA_TAGS[t.trim()]).filter(Boolean);
+  return { cat: "ACA", name: /aca|acoa|adult child/i.test(name) ? name : `ACA — ${name}`, ...at, dur: 60,
+    types: [...new Set([{ O: "Open", C: "Closed" }[x.OpenClosed], ...tags].filter(Boolean))], url: ACA_PAGE, live: true, verified: true };
+}
+async function fetchACA() {
+  const out = [];
+  for (const x of await acaAll({ "m_type[]": "meeting", Country: "United States", State: "Minnesota", LangValue: "" }, 5)) {
+    const base = acaBase(x);
+    if (!base || !x.Address) continue;
+    const ll = await censusPin(`${x.Address}, ${x.City}, MN ${x.PostalCode || ""}`).catch(() => null);
+    if (!ll) continue;
+    // "Location" is sometimes a place name, sometimes directions; keep only a place name
+    const place = htmlText(x.Location || "").split(/[\n.,(]/)[0].trim();
+    const room = { ...base, fmt: "in-person", addr: `${x.Address.replace(/,\s*$/, "")}, ${x.City}`,
+      loc: place.length <= 50 && /church|alano|club|center|centre|hall|society|library|chapel|temple|hospital|building|unitarian/i.test(place) ? place : base.name,
+      lat: +ll[0].toFixed(5), lng: +ll[1].toFixed(5) };
+    if (inMetro(room)) out.push(room);
+  }
+  return out;
+}
+async function fetchACAOnline() {
+  const rows = await acaAll({ "m_type[]": "online", LangValue: "English", Country: "", State: "" }, 60, 1500);
+  return onlineOnly(rows.filter((x) => NA_ZONES.test(x.Timezone || "")).map(acaBase).filter(Boolean)
+    .map((x) => ({ ...x, fmt: "online", notes: "Join details are on ACA's meeting search." })));
+}
+let ACA_ONLINE_SAVED = { listed: "", rows: [] };
+try { ACA_ONLINE_SAVED = require("./_aca-online.json"); } catch {}
+
 // SLAA's finder is a Caspio search form: plain HTML that posts back to itself.
 // Send the form's own fields with State = Minnesota and read each result's
 // "Sunday 1:00 PM CT | name | Location | Address" block (contacts left out).
@@ -1528,7 +1590,7 @@ module.exports = async (req, res) => {
 
   // start the newer feeds alongside the main ones, not after them
   const extrasP = Promise.allSettled(EXTRA_TSML.map((f) => getJSON(f.url)));
-  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), fetchCAOnline(), fetchMA(), fetchDA(), fetchGamAnon(), fetchHA(), fetchDRA(), fetchCROnline(), fetchSLAA(), fetchPA(), fetchRI(), fetchSAnon(), fetchNAVirtual(), fetchOIAA(), fetchAlAnonOnline(), ...TSML_ONLINE.map(fetchTSMLOnline), ...PATHMINDER.map(pathminderOrSaved)]);
+  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), fetchCAOnline(), fetchMA(), fetchDA(), fetchGamAnon(), fetchHA(), fetchDRA(), fetchCROnline(), fetchSLAA(), fetchPA(), fetchRI(), fetchSAnon(), fetchNAVirtual(), fetchOIAA(), fetchAlAnonOnline(), fetchACA(), ...TSML_ONLINE.map(fetchTSMLOnline), ...PATHMINDER.map(pathminderOrSaved)]);
   const [aa, na, aamn, alanon, dharma, refuge, buddhist] = await Promise.allSettled([
     getJSON(AA_URL),
     getJSON(NA_URL),
@@ -1539,7 +1601,7 @@ module.exports = async (req, res) => {
     getJSON(BUDDHIST_URL),
   ]);
   const extras = await extrasP;
-  const [sa, soba, saa, ga, naranon, ea, caOnline, ma, da, gamanon, ha, dra, crOnline, slaa, pa, ri, sanon, naVirtual, oiaa, afgOnline, rca, sia, wa, ...pm] = await moreP;
+  const [sa, soba, saa, ga, naranon, ea, caOnline, ma, da, gamanon, ha, dra, crOnline, slaa, pa, ri, sanon, naVirtual, oiaa, afgOnline, aca, rca, sia, wa, ...pm] = await moreP;
 
   function take(label, result, list) {
     if (result.status === "fulfilled" && Array.isArray(result.value)) {
@@ -1636,12 +1698,18 @@ module.exports = async (req, res) => {
   take("NA online (virtual-na.org)", naVirtual, naVirtual.status === "fulfilled" ? naVirtual.value : []);
   take("AA online (aa-intergroup.org)", oiaa, oiaa.status === "fulfilled" ? oiaa.value : []);
   take("Al-Anon online (al-anon.org)", afgOnline, afgOnline.status === "fulfilled" ? afgOnline.value : []);
+  take("ACA (adultchildren.org)", aca, aca.status === "fulfilled" ? aca.value : []);
+  take(`ACA online (copied ${ACA_ONLINE_SAVED.listed || "—"})`, { status: ACA_ONLINE_SAVED.rows.length ? "fulfilled" : "rejected",
+    value: ACA_ONLINE_SAVED.rows, reason: new Error("api/_aca-online.json missing") }, ACA_ONLINE_SAVED.rows);
   take("Pills Anonymous", pa, pa.status === "fulfilled" ? pa.value.filter((x) => x.fmt === "online" || inMetro(x)) : []);
   PATHMINDER.forEach((site, i) => take(site.label, pm[i], pm[i].status === "fulfilled" ? pm[i].value : []));
+  // SobaSearch copies ACA's own list; keep only its ACA rooms ACA didn't return
+  const acaKeys = new Set(aca.status === "fulfilled" ? aca.value.map((x) => `${x.name.toLowerCase()}|${x.day}|${x.time}`) : []);
+  const acaSame = (x) => x.cat === "ACA" && acaKeys.has(`${x.name.toLowerCase()}|${x.day}|${x.time}`);
   // SMART's own list has real addresses; SobaSearch's SMART copies are only a fallback
   const smartRooms = PATHMINDER.some((site, i) => site.cat === "SMART" && pm[i].status === "fulfilled" && pm[i].value.some((x) => x.fmt !== "online"));
   take("SobaSearch (OA, CoDA, ACA, SMART, CR, MA, EDA)", soba,
-    soba.status === "fulfilled" ? soba.value.filter((x) => inMetro(x) && !(smartRooms && x.cat === "SMART")) : []);
+    soba.status === "fulfilled" ? soba.value.filter((x) => inMetro(x) && !(smartRooms && x.cat === "SMART") && !acaSame(x)) : []);
 
   const before = meetings.length;
   meetings = dedupeMeetings(meetings);
@@ -1661,4 +1729,4 @@ module.exports = async (req, res) => {
 
 // for scripts/backup-blocked.cjs
 module.exports.backupFetchers = { [SAA_LABEL]: fetchSAA };
-module.exports.savedLists = { "_nica.json": fetchNicA, "_smart.json": () => fetchPathminder(PATHMINDER.find((s) => s.cat === "SMART")) };
+module.exports.savedLists = { "_nica.json": fetchNicA, "_aca-online.json": fetchACAOnline, "_smart.json": () => fetchPathminder(PATHMINDER.find((s) => s.cat === "SMART")) };
