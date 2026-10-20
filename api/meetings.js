@@ -251,6 +251,71 @@ async function fetchNarAnon() {
   return out;
 }
 
+// Emotions Anonymous: a site search widget. Its settings (ajax URL + tokens) are
+// a JSON blob on the page; the list has city/day/time, the street address is on
+// each meeting's own page, and the pin comes from the Census geocoder.
+const EA_PAGE = "https://emotionsanonymous.org/find-an-ea-meeting/usa-database/search-tool.html";
+
+async function fetchEA() {
+  const page = await fetch(EA_PAGE, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(10000) });
+  if (!page.ok) throw new Error(`ea page HTTP ${page.status}`);
+  const cfgM = (await page.text()).match(/fdpUserProfileSearch\((\{[\s\S]*?\})\);/);
+  if (!cfgM) throw new Error("ea search settings not found");
+  const cfg = JSON.parse(cfgM[1]);
+  const r = await fetch(new URL(cfg.ajaxUrl, EA_PAGE), {
+    method: "POST",
+    headers: {
+      "User-Agent": UA,
+      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+      "X-Requested-With": "XMLHttpRequest",
+      Referer: EA_PAGE,
+    },
+    body: new URLSearchParams({ page: 1, ...cfg.params, query: "", qtype: "" }),
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!r.ok) throw new Error(`ea list HTTP ${r.status}`);
+  const mn = ((await r.json()).data || []).filter((x) => /\(MN\)/.test(x.profile?.["13647360"]?.value || ""));
+  const field = (html, label) => {
+    const m = html.match(new RegExp(`<strong>${label}[^<]*</strong>\\s*</div>\\s*<div class="info-row__content">([\\s\\S]*?)</div>`));
+    return m ? cleanText(m[1]).replace(/&#0*39;/g, "'").replace(/&amp;/g, "&") : "";
+  };
+  const rows = await Promise.all(
+    mn.slice(0, 20).map(async (x) => {
+      const url = `${EA_PAGE}?get_id=${x.detailsGetId}`;
+      const html = await (await fetch(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(10000) })).text();
+      const addr = field(html, "Meeting Location Address");
+      if (!/\b55[0-5]\d\d\b/.test(addr + " " + field(html, "Zip Code"))) return null; // metro ZIPs only
+      const day = WEEKDAYS.indexOf((field(html, "Meeting Day").match(/\w+day/i) || [""])[0].toLowerCase());
+      const tm = field(html, "Meeting Time").match(/(\d{1,2}):(\d{2})\s*(AM|PM)(?:[^\d]+(\d{1,2}):(\d{2})\s*(AM|PM))?/i);
+      if (day < 0 || !tm || !addr) return null;
+      const h = (+tm[1] % 12) + (/pm/i.test(tm[3]) ? 12 : 0);
+      const end = tm[4] ? ((+tm[4] % 12) + (/pm/i.test(tm[6]) ? 12 : 0)) * 60 + +tm[5] : 0;
+      const ll = await censusPin(addr).catch(() => null);
+      if (!ll) return null;
+      const online = /^yes/i.test(field(html, "Is Internet Required"));
+      const notes = field(html, "Additional Meeting Information");
+      return {
+        cat: "EA",
+        name: `Emotions Anonymous — ${field(html, "City")}`,
+        day,
+        time: String(h).padStart(2, "0") + ":" + tm[2],
+        dur: end > h * 60 + +tm[2] ? end - h * 60 - +tm[2] : 60,
+        fmt: online ? "online" : "in-person",
+        loc: field(html, "Name of Location Where the Meeting is Held") || "EA Group",
+        addr: addr.replace(/,?\s*(?:MN|Minnesota)\s+\d{5}(?:-\d{4})?$/i, ""),
+        lat: +ll[0].toFixed(5),
+        lng: +ll[1].toFixed(5),
+        types: [],
+        notes: notes || undefined,
+        url,
+        live: true,
+        verified: true,
+      };
+    })
+  );
+  return rows.filter(Boolean);
+}
+
 async function fetchAAMinnesota() {
   const r = await fetch(AA_MN_PAGE, { headers: { "User-Agent": UA } });
   if (!r.ok) throw new Error(`tsml page HTTP ${r.status}`);
@@ -742,7 +807,7 @@ module.exports = async (req, res) => {
 
   // start the newer feeds alongside the main ones, not after them
   const extrasP = Promise.allSettled(EXTRA_TSML.map((f) => getJSON(f.url)));
-  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), fetchSAA(), fetchGA(), fetchNarAnon()]);
+  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), fetchSAA(), fetchGA(), fetchNarAnon(), fetchEA()]);
   const [aa, na, aamn, alanon, dharma, refuge, buddhist] = await Promise.allSettled([
     getJSON(AA_URL),
     getJSON(NA_URL),
@@ -753,7 +818,7 @@ module.exports = async (req, res) => {
     getJSON(BUDDHIST_URL),
   ]);
   const extras = await extrasP;
-  const [sa, soba, saa, ga, naranon] = await moreP;
+  const [sa, soba, saa, ga, naranon, ea] = await moreP;
 
   function take(label, result, list) {
     if (result.status === "fulfilled" && Array.isArray(result.value)) {
@@ -826,6 +891,8 @@ module.exports = async (req, res) => {
     ga.status === "fulfilled" ? ga.value.filter((x) => inMetro(x)) : []);
   take("Nar-Anon", naranon,
     naranon.status === "fulfilled" ? naranon.value.filter((x) => inMetro(x)) : []);
+  take("Emotions Anonymous", ea,
+    ea.status === "fulfilled" ? ea.value.filter((x) => inMetro(x)) : []);
   take("SobaSearch (OA, CoDA, ACA, SMART, CR, MA, EDA)", soba,
     soba.status === "fulfilled" ? soba.value.filter((x) => inMetro(x)) : []);
 

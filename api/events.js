@@ -51,7 +51,8 @@ const SOURCES = [
   { type: "tribe", name: "American Swedish Institute", base: "https://asimn.org", lat: 44.9552, lng: -93.2659, addr: "2600 Park Ave, Minneapolis", fallback: "Art" },
   { type: "tribe", name: "DanceMN", base: "https://dancemn.org", lat: 44.9778, lng: -93.2650, addr: "Twin Cities", fallback: "Music" },
   { type: "tribe", name: "Quatrefoil Library", base: "https://qlibrary.org", lat: 44.9482, lng: -93.2575, addr: "1220 E Lake St, Minneapolis", fallback: "Books" },
-  { type: "tribe", name: "The Meditation Center", base: "https://themeditationcenter.org", lat: 44.9954, lng: -93.2611, addr: "631 University Ave NE, Minneapolis", fallback: "Zen" },
+  // Dropped The Events Calendar for a Mindbody schedule widget (2026-10)
+  { type: "mindbody", name: "The Meditation Center", url: "https://brandedweb-next.mindbodyonline.com/components/widgets/schedules/view/78548450e43/schedule", base: "https://themeditationcenter.org/calendar/", lat: 44.9954, lng: -93.2611, addr: "631 University Ave NE, Minneapolis", fallback: "Zen" },
   { type: "tribe", name: "Northern Clay Center", base: "https://northernclaycenter.org", lat: 44.9620, lng: -93.2336, addr: "2424 E Franklin Ave, Minneapolis", fallback: "Art" },
   { type: "tribe", name: "Minnesota Museum of American Art", base: "https://mmaa.org", lat: 44.9487, lng: -93.0895, addr: "350 Robert St N, St Paul", fallback: "Art" },
   // NE brewery with regular trivia / social nights (confirmed tribe feed)
@@ -1360,6 +1361,38 @@ async function fromJsonLd(src) {
   return out;
 }
 
+// Mindbody branded-web schedule: a Next.js page whose streamed data holds this
+// week's class sessions as JSON ({"id":"cinst_…","name",…,"startDateTime" UTC,"duration"})
+async function fromMindbody(src) {
+  const html = await getText(src.url, 15000);
+  let flight = "";
+  for (const m of html.matchAll(/self\.__next_f\.push\(\[1,("(?:[^"\\]|\\.)*")\]\)/g)) {
+    try { flight += JSON.parse(m[1]); } catch {}
+  }
+  const out = [];
+  const seen = new Set();
+  const re = /\{"id":"cinst_[^"]+","name":"((?:[^"\\]|\\.)*)"[\s\S]*?"startDateTime":"([^"]+)","duration":(\d+)/g;
+  for (const m of flight.matchAll(re)) {
+    let title;
+    try { title = decode(JSON.parse(`"${m[1]}"`)).replace(/\s+/g, " ").trim(); } catch { continue; }
+    const ms = Date.parse(m[2].replace(/\.\d+Z$/, "Z"));
+    if (!isFinite(ms)) continue;
+    // hybrid classes are listed twice (room + Zoom section) — keep the room one
+    const online = /\bzoom\b/i.test(title) && !/in[- ]person/i.test(title);
+    const key = ms + "|" + online;
+    if (seen.has(key) || (online && seen.has(ms + "|false"))) continue;
+    seen.add(key);
+    const p = chicagoParts(ms);
+    const time = String(p.h).padStart(2, "0") + ":" + String(p.mi).padStart(2, "0");
+    const name = title.replace(/\s*-\s*(?:In Person|Zoom)\s+Hybrid\s+Sec\.?\s*\d+\s*-?\s*/i, " — ").replace(/\s{2,}/g, " ");
+    const row = eventRow(src, { title: name, p, time, url: src.base, types: [], cat: classify(name) || src.fallback, loc: src.name });
+    row.dur = +m[3];
+    if (online) { row.fmt = "online"; row.loc = `Online · ${src.name}`; }
+    out.push(row);
+  }
+  return out;
+}
+
 // GriefShare / DivorceCare finder: one server-rendered page, every group's pin,
 // weekday, session dates and Central time in data- attributes
 async function fromChurchFinder(src) {
@@ -1607,6 +1640,7 @@ module.exports = async (req, res) => {
       else if (src.type === "standing") list = fromStanding(src);
       else if (src.type === "jsonld") list = await fromJsonLd(src);
       else if (src.type === "churchfinder") list = await fromChurchFinder(src);
+      else if (src.type === "mindbody") list = await fromMindbody(src);
       else list = await fromTribe(src, startISO, endISO);
       return { src, list };
     }))
