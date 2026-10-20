@@ -16,6 +16,11 @@ const DHARMA_URL = "https://recoverydharma.org/wp-admin/admin-ajax.php?action=me
 // not MN) — kept via looksCentralTime() on the meeting name instead of geo.
 const REFUGE_URL = "https://refugerecoverymeetings.org/wp-admin/admin-ajax.php?action=meetings";
 const BUDDHIST_URL = "https://buddhistrecovery.org/wp-admin/admin-ajax.php?action=meetings";
+// More fellowships that publish a public TSML feed. Each one is optional: a
+// feed that fails just shows as a failed source, the rest still load.
+const EXTRA_TSML = [
+  { cat: "CMA", label: "Crystal Meth Anonymous", url: "https://www.crystalmeth.org/wp-admin/admin-ajax.php?action=meetings" },
+];
 
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Gather/1.0";
@@ -406,6 +411,7 @@ module.exports = async (req, res) => {
     getJSON(REFUGE_URL),
     getJSON(BUDDHIST_URL),
   ]);
+  const extras = await Promise.allSettled(EXTRA_TSML.map((f) => getJSON(f.url)));
 
   function take(label, result, list) {
     if (result.status === "fulfilled" && Array.isArray(result.value)) {
@@ -458,6 +464,13 @@ module.exports = async (req, res) => {
     );
     take("Buddhist Recovery Network", buddhist, list);
   } else take("Buddhist Recovery Network", buddhist, []);
+
+  EXTRA_TSML.forEach((f, i) => {
+    const r = extras[i];
+    const ok = r.status === "fulfilled" && Array.isArray(r.value);
+    const list = ok ? normalizeAA(r.value, f.cat).filter((x) => x.lat && x.lng && inMetro(x)) : [];
+    take(f.label, r, list);
+  });
 
   const before = meetings.length;
   meetings = dedupeMeetings(meetings);

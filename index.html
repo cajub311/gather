@@ -200,6 +200,7 @@
     border-right:1px solid var(--line);min-height:0;background:var(--surface);
   }
   #map{flex:1;min-height:0;background:#d5dce6;position:relative}
+  .osm-soft{filter:saturate(.45) brightness(1.04) contrast(.92)}
 
   /* Activities = single-column dayboard */
   .mode-activities main{display:block;overflow:auto;background:
@@ -956,6 +957,8 @@ const FELLOWSHIPS = {
   CA:{name:"Cocaine Anonymous",color:"#fca5a5"},
   MA:{name:"Marijuana Anonymous",color:"#bef264"},
   DDA:{name:"Dual Diagnosis Anonymous",color:"#fda4af"},
+  CMA:{name:"CMA (Crystal Meth Anonymous)",color:"#e879f9"},
+  Group:{name:"Support group (grief, mental health, caregivers)",color:"#5eead4"},
 };
 // Official meeting finders per program — powers the "verify" button.
 const FINDERS={
@@ -979,6 +982,8 @@ const FINDERS={
   CA:"https://ca.org/meetings/",
   MA:"https://www.marijuana-anonymous.org/meetings/",
   DDA:"https://draonline.org/",
+  CMA:"https://www.crystalmeth.org/find-a-meeting/",
+  Group:"https://www.211.org/",
 };
 function finderFor(m){return (m.url)||FINDERS[m.cat]||"https://www.211.org/";}
 const SUPPORT = [
@@ -1029,7 +1034,7 @@ const ACTIVITIES = {
   Outdoors:{name:"Hiking & Outdoors",color:"#84cc16"},
   Books:{name:"Book Clubs & Authors",color:"#fbbf24"},
   Art:{name:"Art, Craft & Film",color:"#f472b6"},
-  Music:{name:"Music & Jam",color:"#38bdf8"},
+  Music:{name:"Music & shows",color:"#38bdf8"},
   Social:{name:"Social & Meetup",color:"#fb923c"},
   Volunteer:{name:"Volunteering",color:"#34d399"},
   Fitness:{name:"Fitness & Sports",color:"#f87171"},
@@ -1362,8 +1367,14 @@ function inTod(time,tod){if(!tod)return true;const h=parseInt(time.split(":")[0]
 // made-up times we can't verify — worse than none for a real meeting-seeker.
 // Programs without feeds get official-finder links (#programScout) instead.
 // Curated rows remain solely as an offline/dev fallback.
+// Grief, mental health and caregiver groups arrive inside venue and library
+// calendars (api/events.js tags them `support`). They belong here, not in
+// the things-to-do feed.
+function eventSupportGroups(){
+  return LIVE_EVENTS.filter(e=>e.support).map(e=>({...e,cat:"Group",types:[e.support,...(e.types||[]).filter(t=>t!==e.support)]}));
+}
 function supportMeetings(){
-  if(LIVE.length)return [...LIVE];
+  if(LIVE.length)return [...LIVE,...eventSupportGroups()];
   return SUPPORT.map(m=>({...m,verified:false}));
 }
 // Soft evening default: after 4pm Central, "Today" is mostly about tonight
@@ -1373,7 +1384,7 @@ function defaultSupportTod(){return "";}
 // Activities = live venue/calendar events (verified) + curated sample groups (unverified)
 function activityItems(){
   const curated=PLAY.map(m=>({...m,verified:false}));
-  return LIVE_EVENTS.length?LIVE_EVENTS:curated;
+  return LIVE_EVENTS.length?LIVE_EVENTS.filter(e=>!e.support):curated;
 }
 let map,markers,userMarker,activeId=null,markerById=new Map(),lastFilteredList=[];
 
@@ -1838,9 +1849,17 @@ function buildQuickFilters(){
   if(state.mode==="support"){
     // Which program first — it's the question people actually arrive with;
     // the area chips scroll in right after it.
-    [["AA","AA"],["NA","NA"],["Al-Anon","Al-Anon"],["Dharma","🧘 Meditation"],["Refuge","Refuge"],["Buddhist","Buddhist"]].forEach(([k,lbl])=>{
-      // only show chips for fellowships we actually have rows for
-      if(!DATA.some(m=>m.cat===k)&&!state.cat.has(k))return;
+    // One chip per program we actually have rows for: the big three first,
+    // then the rest by how many meetings they have.
+    const counts={};DATA.forEach(m=>{counts[m.cat]=(counts[m.cat]||0)+1;});
+    const LABEL={Dharma:"🧘 Recovery Dharma",Group:"💬 Support groups"};
+    const FIRST=["AA","NA","Al-Anon"];
+    const cats=[...new Set([...Object.keys(counts),...state.cat])].sort((a,b)=>{
+      const fa=FIRST.indexOf(a),fb=FIRST.indexOf(b);
+      if(fa>=0||fb>=0)return (fa<0?99:fa)-(fb<0?99:fb);
+      return (counts[b]||0)-(counts[a]||0);
+    });
+    cats.map(k=>[k,LABEL[k]||k]).forEach(([k,lbl])=>{
       const b=document.createElement("button");
       b.type="button";b.className="qchip"+(state.cat.has(k)?" on":"");
       b.setAttribute("aria-pressed",state.cat.has(k)?"true":"false");
@@ -2558,12 +2577,16 @@ async function loadEvents(){
   finally{
     EVENTS_LOADING=false;
     refreshAfterLive("activities");
+    if(LIVE_EVENTS.some(e=>e.support))refreshAfterLive("support");
   }
 }
 
 function init(){
   map=L.map("map",{zoomControl:true}).setView(TC_CENTER,11);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",{attribution:"© OpenStreetMap © CARTO",maxZoom:19}).addTo(map);
+  // CARTO's free basemaps started answering every tile with an "API KEY
+  // REQUIRED" picture (found 2026-10-19). OSM's own tiles need no key; the
+  // .osm-soft filter tones them down to the old light look.
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',maxZoom:19,className:"osm-soft"}).addTo(map);
   markers=L.markerClusterGroup({
     chunkedLoading:true,
     maxClusterRadius:42,

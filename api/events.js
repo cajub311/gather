@@ -192,6 +192,41 @@ function isNoise(title) {
   return false;
 }
 
+// Real listings that still aren't a thing to go do (found in the 2026-10-19
+// feed): library service hours, member logistics, students-only campus
+// errands, casting calls, out-of-state trips, and Eventbrite SEO spam.
+const JUNK = [
+  // services and help desks
+  /\b(career services|job (?:club|search assistance)|employer of the day|homework (?:help|center)|community resource advocates?|early voting|voter registration|drop-in (?:computer lab|business consultations?|health and vaccine clinic)|business consultations?|small business support|public health in public places|immunization clinic|vaccine clinic|lactation lounge|community health services|library community hours|tax (?:help|prep(?:aration)?)|legal clinic|mobile market|foodmobile)\b/i,
+  // member logistics and notices
+  /\b((?<!sexual )orientation|check[- ]?out training|maintenance night|budget (?:approval )?meeting|monthly meeting|staff meeting|applications? (?:are )?open|open for registration|registration (?:is )?open|bisqueware|zendo in use|practice period ends|please disregard|free shuttle|teacher tuesdays|shred day|birth center tour|audience sign[- ]?up|class of (?:19|20)\d\d)\b/i,
+  /^suspended\b|^full\s*[-–—]|\btbd\b.*\bbreak\b|seeks .*\b(?:extras?|roles|actors)\b|\bdealer\b.*\btraining\b|barista training/i,
+  // students-only campus errands
+  /\b(admissions|undergraduate research|urop|zotero|preparing to publish|data snack|study (?:day|break|skills)|snack & study|writing lab)\b|^paws\s*[-–—(]|paws (?:study break|new location)/i,
+  // trips somewhere else, not a night out here
+  /\b(moab|zion|bryce|smoky mountains?|grand canyon|yellowstone|glamping)\b/i,
+  // spam and sales pitches
+  /strip clubs?|strippers?\b|male revue|psychic fair|psychic readings?|soul adventure seminar|secrets of spiritual healing|fabletics/i,
+];
+function isJunk(title) {
+  const t = title || "";
+  return JUNK.some((re) => re.test(t));
+}
+
+// Support groups that venue and library calendars mix in with concerts. The
+// page moves these to Support meetings, where someone looking for them is.
+const SUPPORT_KINDS = [
+  [/\b(grief|griev|bereave|loss of a loved|widow)/i, "Grief"],
+  [/\b(twelve steps|12[- ]?steps?|sobriety|sober support|recovery (?:meeting|group|circle))\b/i, "Recovery"],
+  [/\b(depression|anxiety|bipolar|ocd|ptsd|trauma)\b.*\b(group|support|circle)\b|\bmental health (?:professional|support|in the community)\b|\bnami\b|\bpeer (?:support|network)\b/i, "Mental health"],
+  [/\b(caregiver|dementia|alzheimer|stroke|cancer|parkinson|chronic (?:pain|illness))\b.*\b(support|alone|group)/i, "Health"],
+  [/\bsupport group\b|\bsurvivors? (?:support|group)\b/i, "Support group"],
+];
+function supportKind(title) {
+  const hit = SUPPORT_KINDS.find(([re]) => re.test(title || ""));
+  return hit ? hit[1] : null;
+}
+
 function isUnavailableTitle(title) {
   return /^\s*\(?(?:canceled|cancelled|sold out)\)?\s*[:—-]?/i.test(title || "");
 }
@@ -229,6 +264,9 @@ function classify(text, catNames) {
   const t = ((text || "") + " " + cats).toLowerCase();
   const has = (re) => re.test(t);
   if (has(/trivia|quiz night|\bbingo\b|board game|tabletop|chess|d&d|dungeons|magic the|euchre|card game|crokinole|jigsaw|puzzl|pinball|arcade|karaoke|game night|clocktower/)) return "Games";
+  // Hands-on craft classes: their blurbs mention "build", "beginners" or
+  // "skills" and landed in Fitness or Music.
+  if (has(/ceramic|pottery|bookmaking|stained glass|woodwork|woodturn|letterpress|weaving|glassblow|jewelry making|hand-building|wheel throwing/)) return "Art";
   if (has(/music|concert|\bband\b|\bjam\b|\bdj\b|open mic|singer|songwriter|orchestra|jazz|acoustic|hip[- ]?hop|\bpunk\b|\bmetal\b|indie|bluegrass|\bchoir\b|recital|honky tonk|\bfest\b|on stage|\blive at\b|\btrio\b|quartet|quintet|\bduo\b|\bvinyl\b|communion|\bedm\b|techno|house music|dance party|dance church|rave|nightclub|live show|comedy|stand[- ]?up/)) return "Music";
   // board games / trivia often land as "Social" without this
   if (has(/trivia|quiz night|\bbingo\b|board game|tabletop|game night|mario kart|canasta|euchre|d&d|dungeons/)) return "Games";
@@ -1461,7 +1499,11 @@ module.exports = async (req, res) => {
       // noise + metro checks run here too: not every adapter screens titles,
       // and a Squarespace or Eventbrite pin can land in New York or Mankato
       const list = r.value.list.filter((e) => e.date >= todayStr && e.date <= endStr &&
-        inMetro(e.lat, e.lng) && !isNoise(e.name) && !isUnavailableTitle(e.name));
+        inMetro(e.lat, e.lng) && !isNoise(e.name) && !isUnavailableTitle(e.name) && !isJunk(e.name));
+      for (const e of list) {
+        const kind = supportKind(e.name);
+        if (kind) e.support = kind;
+      }
       events = events.concat(list);
       sources.push({ name: src.name, count: list.length, ok: true });
     } else {
