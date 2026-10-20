@@ -1107,6 +1107,23 @@ const ACTIVITIES = {
 // A new feed category should degrade to a plain label, not a blank page.
 const FALLBACK_META={name:"Other",color:"#94a3b8"};
 function meta(cat){return META[cat]||FALLBACK_META;}
+// Plain words people search with ("gambling", "drugs", "depression") that a
+// program's name doesn't contain, so a topic search finds its meetings too.
+const TOPIC_WORDS={
+  AA:"alcohol drinking sober",NA:"drugs drug addiction opioids heroin pills sober","Al-Anon":"family friends alcohol drinking",
+  ACA:"family childhood trauma dysfunctional",EA:"emotions depression anxiety mental health",CoDA:"codependency relationships",
+  OA:"food eating overeating binge",GA:"gambling betting casino",SMART:"alcohol drugs addiction sober",
+  Dharma:"alcohol drugs addiction meditation",Refuge:"alcohol drugs addiction meditation",Buddhist:"addiction meditation",
+  LifeRing:"alcohol drugs addiction sober",WFS:"alcohol drinking sober",Wellbriety:"alcohol drugs addiction",
+  CR:"addiction hurts habits christian",CA:"cocaine crack drugs",MA:"marijuana weed cannabis drugs",
+  DDA:"mental health drugs alcohol dual diagnosis",CMA:"meth methamphetamine drugs",SA:"sex porn lust",
+  EDA:"food eating disorder anorexia bulimia",SAA:"sex porn",SLAA:"sex love relationships porn",DA:"debt money spending",
+  "Nar-Anon":"family friends drugs addiction","Gam-Anon":"family friends gambling",FA:"family drugs addiction",
+  HA:"heroin opioids drugs",PA:"pills opioids prescription drugs",NicA:"nicotine smoking vaping tobacco",
+  RCA:"couples marriage relationships",SIA:"incest abuse trauma",WA:"work workaholism burnout",
+  RI:"mental health anxiety depression","S-Anon":"family friends sex porn",NAMI:"mental health mental illness",
+  DBSA:"depression bipolar mental health",MHMN:"mental health depression anxiety",GriefShare:"grief loss",TCF:"grief loss child",
+};
 const PLAY = [
   {cat:"Games",name:"Twin Cities Board Game Night",day:1,time:"18:00",dur:180,fmt:"in-person",loc:"Fantasy Flight Games Center",addr:"1995 W County Rd B2, Roseville",lat:45.0119,lng:-93.1760,types:["All ages","Free"]},
   {cat:"Games",name:"D&D Adventurers League",day:3,time:"18:30",dur:180,fmt:"in-person",loc:"The Source Comics & Games",addr:"2057 Snelling Ave N, Roseville",lat:45.0150,lng:-93.1670,types:["Beginners welcome"]},
@@ -1896,7 +1913,7 @@ function filtered(opts={}){
       }
     }
     if(state.q){
-      const h=(m.name+" "+m.loc+" "+m.addr+" "+(m.region||"")+" "+(m.door||"")+" "+(m.notes||"")+" "+(m.desc||"")+" "+(m.source||"")+" "+(m.free?"free ":"")+(m.types||[]).join(" ")+" "+(m.flags||[]).join(" ")+" "+meta(m.cat).name).toLowerCase();
+      const h=(m.name+" "+m.loc+" "+m.addr+" "+(m.region||"")+" "+(m.door||"")+" "+(m.notes||"")+" "+(m.desc||"")+" "+(m.source||"")+" "+(m.free?"free ":"")+(m.types||[]).join(" ")+" "+(m.flags||[]).join(" ")+" "+meta(m.cat).name+" "+(TOPIC_WORDS[m.cat]||"")).toLowerCase();
       // Every word must appear somewhere, not the phrase verbatim: "friday music"
       // and "yoga st paul" matched nothing when this was a single includes().
       if(!qTokens(state.q).every(t=>h.includes(t)))return false;
