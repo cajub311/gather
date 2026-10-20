@@ -398,7 +398,8 @@ const ZONE = { eastern: "America/New_York", est: "America/New_York", edt: "Ameri
   cst: "America/Chicago", cdt: "America/Chicago", mountain: "America/Denver", mst: "America/Denver", mdt: "America/Denver",
   pacific: "America/Los_Angeles", pst: "America/Los_Angeles", pdt: "America/Los_Angeles", az: "America/Phoenix", arizona: "America/Phoenix" };
 const htmlText = (h) => String(h || "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&")
-  .replace(/&apos;|&#0?39;|&#x27;/g, "'").replace(/&#x28;/g, "(").replace(/&#x29;/g, ")").replace(/\s+/g, " ").trim();
+  .replace(/&apos;|&#x27;/g, "'").replace(/&#x28;/g, "(").replace(/&#x29;/g, ")")
+  .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n)).replace(/\s+/g, " ").trim();
 const wakingCentral = (x) => x.time >= "06:00" && x.time <= "22:00";
 // "7:00 PM" on day 4 in zone tz -> Central day + "HH:MM"
 function clockToCentral(day, clock, tz) {
@@ -525,6 +526,58 @@ async function fetchHA() {
     out.push({ cat: "HA", name: td[0], ...at, dur: 60, fmt: "online", types: [], url: HA_URL, live: true, verified: true });
   }
   return onlineOnly(out);
+}
+
+// Dual Recovery Anonymous (dual diagnosis): ~30 US groups in a WordPress API,
+// none in Minnesota, so only the ones you can join online. "about" text can
+// hold Zoom passcodes and phone numbers; only name, day and time are kept.
+const DRA_API = "https://draonline.org/wp-json/wp/v2";
+const STATE_TZ = Object.fromEntries([
+  ["America/New_York", "ct connecticut ma massachusetts pa pennsylvania vt vermont ny new-york nj new-jersey oh ohio nc north-carolina va virginia md maryland fl florida ga georgia me maine nh new-hampshire mi michigan"],
+  ["America/Chicago", "il illinois mn minnesota wi wisconsin mo missouri ne nebraska tx texas ia iowa tn tennessee"],
+  ["America/Denver", "ut utah co colorado"],
+  ["America/Los_Angeles", "ca california wa washington or oregon"],
+].flatMap(([tz, list]) => list.split(" ").map((st) => [st.replace("-", " "), tz])));
+async function fetchDRA() {
+  const [rows, days, kinds] = await Promise.all(["meetings", "day-of-meeting", "f2f-or-online"]
+    .map((t) => getJSON(`${DRA_API}/${t}?per_page=100`)));
+  const name = (list, ids) => (ids || []).map((id) => (list.find((x) => x.id === id) || {}).name || "");
+  const out = [];
+  for (const r of rows) {
+    const d = name(days, r["day-of-meeting"]);
+    const kind = name(kinds, r["f2f-or-online"]).join(" ");
+    if (d.length !== 1 || !/online/i.test(kind)) continue; // skips the "display your meeting here" sample
+    const meta = r.meta || {};
+    const about = htmlText(meta["about-meeting"]);
+    const st = String(meta["state-or-county"] || "").trim().toLowerCase();
+    const zoneWord = (about.match(/\b([ECMP][SD]T)\b/) || [])[1];
+    const tz = zoneWord ? ZONE[zoneWord.toLowerCase()] : STATE_TZ[st] || (/massclubs/.test(about) ? "America/New_York" : null);
+    const [h, mi] = String(meta["time-of-meeting"] || "").split(":");
+    const at = tz && h ? clockToCentral(WEEKDAYS.indexOf(d[0].toLowerCase()), `${+h % 12 || 12}:${mi} ${+h >= 12 ? "pm" : "am"}`, tz) : null;
+    if (!at) continue;
+    const city = /hybrid/i.test(kind) && meta.city ? ` (${htmlText(meta.city).replace(/\b\w+/g, (w) => w[0].toUpperCase() + w.slice(1).toLowerCase())}, also in person)` : "";
+    out.push({
+      cat: "DDA", name: htmlText(r.title && r.title.rendered) + city, ...at, dur: 60, fmt: "online",
+      types: ["Dual Recovery Anonymous", "Dual diagnosis", ...(/ASL/.test(about) ? ["ASL"] : [])], url: r.link, live: true, verified: true,
+    });
+  }
+  return onlineOnly(out);
+}
+
+// Celebrate Recovery's national Zoom group; the page says when it meets and
+// hands out the link after an email sign-up
+const CR_ONLINE_URL = "https://celebraterecovery.com/weekly-online-recovery-meetings/";
+async function fetchCROnline() {
+  const t = htmlText(await getText(CR_ONLINE_URL));
+  const m = t.match(/every (\w+day) at (\d{1,2})(?::(\d\d))? ?([ap]m) ([ECMP][SD]T)/i);
+  if (!m) throw new Error("cr online: meeting time not found on page");
+  const at = clockToCentral(WEEKDAYS.indexOf(m[1].toLowerCase()), `${m[2]}:${m[3] || "00"} ${m[4]}`, ZONE[m[5].toLowerCase()]);
+  if (!at) throw new Error("cr online: bad time");
+  return [{
+    cat: "CR", name: "Celebrate Recovery online group", ...at, dur: 60, fmt: "online", approx: true, lat: null, lng: null,
+    loc: "Online meeting · Celebrate Recovery national", addr: "Online", types: ["Open", "Christian"],
+    notes: "Sign up with your email on the page to get the Zoom link.", url: CR_ONLINE_URL, live: true, verified: true,
+  }];
 }
 
 async function fetchAAMinnesota() {
@@ -1035,7 +1088,7 @@ module.exports = async (req, res) => {
 
   // start the newer feeds alongside the main ones, not after them
   const extrasP = Promise.allSettled(EXTRA_TSML.map((f) => getJSON(f.url)));
-  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), fetchCAOnline(), fetchMA(), fetchDA(), fetchGamAnon(), fetchHA(), ...PATHMINDER.map(fetchPathminder)]);
+  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), fetchCAOnline(), fetchMA(), fetchDA(), fetchGamAnon(), fetchHA(), fetchDRA(), fetchCROnline(), ...PATHMINDER.map(fetchPathminder)]);
   const [aa, na, aamn, alanon, dharma, refuge, buddhist] = await Promise.allSettled([
     getJSON(AA_URL),
     getJSON(NA_URL),
@@ -1046,7 +1099,7 @@ module.exports = async (req, res) => {
     getJSON(BUDDHIST_URL),
   ]);
   const extras = await extrasP;
-  const [sa, soba, saa, ga, naranon, ea, caOnline, ma, da, gamanon, ha, ...pm] = await moreP;
+  const [sa, soba, saa, ga, naranon, ea, caOnline, ma, da, gamanon, ha, dra, crOnline, ...pm] = await moreP;
 
   function take(label, result, list) {
     if (result.status === "fulfilled" && Array.isArray(result.value)) {
@@ -1126,6 +1179,8 @@ module.exports = async (req, res) => {
   take("Debtors Anonymous", da, da.status === "fulfilled" ? da.value : []);
   take("Gam-Anon (online)", gamanon, gamanon.status === "fulfilled" ? gamanon.value : []);
   take("Heroin Anonymous (online)", ha, ha.status === "fulfilled" ? ha.value : []);
+  take("Dual Recovery Anonymous (online)", dra, dra.status === "fulfilled" ? dra.value : []);
+  take("Celebrate Recovery (online)", crOnline, crOnline.status === "fulfilled" ? crOnline.value : []);
   PATHMINDER.forEach((site, i) => take(site.label, pm[i], pm[i].status === "fulfilled" ? pm[i].value : []));
   take("SobaSearch (OA, CoDA, ACA, SMART, CR, MA, EDA)", soba,
     soba.status === "fulfilled" ? soba.value.filter((x) => inMetro(x)) : []);
