@@ -132,6 +132,47 @@ async function fetchSAA() {
   return out;
 }
 
+// SAA's online and phone meetings, English only: one search per weekday, 20 a
+// page (~30 pages in all), so scripts/refresh-saved-lists.cjs saves them to
+// api/_saa-online.json. Each card carries its UTC start; dial-in numbers,
+// passcodes and links stay on SAA's page for the meeting.
+const SAA_ONLINE_URL = "https://saa-recovery.org/meetings?field_type_target_id%5B%5D=43&field_type_target_id%5B%5D=56&field_language_primary_target_id%5B%5D=10&meeting_day_of_week_views_filter%5B%5D=";
+async function fetchSAAOnline() {
+  const out = [], seen = new Set();
+  const txt = (block, cls) => cleanText((block.match(new RegExp(`class="[^"]*${cls}[^"]*"[^>]*>([\\s\\S]*?)</div>`)) || [])[1]);
+  for (const code of SAA_DAYS) {
+    for (let page = 0, last = 0; page <= last && page < 10; page++) {
+      const r = await fetch(`${SAA_ONLINE_URL}${code}&page=${page}`, { headers: { "User-Agent": CHROME_UA }, signal: AbortSignal.timeout(15000) });
+      if (!r.ok) throw new Error(`saa online HTTP ${r.status}`);
+      const html = await r.text();
+      if (page === 0) last = Math.ceil(+((html.match(/of (\d+) results/) || [])[1] || 0) / 20) - 1;
+      for (const block of html.split(/class="views-row"/).slice(1)) {
+        const link = block.match(/<a href="(\/meetings\/[^"]+)"[^>]*>([^<]+)<\/a>/);
+        const utc = (block.match(/meeting-time-utc">([^<]+)</) || [])[1];
+        const recur = txt(block, "field--field-recurrence");
+        if (!link || !utc || (recur && !/weekly/i.test(recur))) continue;
+        const at = utcToCentral(utc);
+        const key = `${link[1]}|${at.day}|${at.time}`;
+        if (at.day < 0 || seen.has(key)) continue;
+        seen.add(key);
+        const access = txt(block, "field--field-access"), gender = txt(block, "field--field-gender");
+        const phone = /telemeeting/i.test(txt(block, "field--field-platform"));
+        out.push({
+          cat: "SAA", name: cleanText(link[2]).replace(/&#0*39;|&apos;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&"), ...at, dur: 60, fmt: "online",
+          types: [/open/i.test(access) ? "Open" : /seeking help/i.test(access) ? "Closed" : "", /^men/i.test(gender) ? "Men" : /^women/i.test(gender) ? "Women" : "",
+            phone ? "Phone" : ""].filter(Boolean),
+          notes: `${phone ? "Phone meeting. " : ""}Join details are on SAA's page for this meeting.`,
+          url: "https://saa-recovery.org" + link[1], live: true, verified: true,
+        });
+      }
+      await new Promise((ok) => setTimeout(ok, 800)); // be gentle with their server
+    }
+  }
+  return onlineOnly(out);
+}
+let SAA_ONLINE_SAVED = { listed: "", rows: [] };
+try { SAA_ONLINE_SAVED = require("./_saa-online.json"); } catch {}
+
 // Gamblers Anonymous national list: plain HTML pages, street address but no pin.
 // Pins below come from the US Census geocoder (2026-10-19), keyed "house# zip";
 // a new metro address is looked up live the same way.
@@ -1761,6 +1802,8 @@ module.exports = async (req, res) => {
     value: ACA_ONLINE_SAVED.rows, reason: new Error("api/_aca-online.json missing") }, ACA_ONLINE_SAVED.rows);
   take(`Gamblers Anonymous online (copied ${GA_ONLINE_SAVED.listed || "—"})`, { status: GA_ONLINE_SAVED.rows.length ? "fulfilled" : "rejected",
     value: GA_ONLINE_SAVED.rows, reason: new Error("api/_ga-online.json missing") }, GA_ONLINE_SAVED.rows);
+  take(`SAA online (copied ${SAA_ONLINE_SAVED.listed || "—"})`, { status: SAA_ONLINE_SAVED.rows.length ? "fulfilled" : "rejected",
+    value: SAA_ONLINE_SAVED.rows, reason: new Error("api/_saa-online.json missing") }, SAA_ONLINE_SAVED.rows);
   take("Pills Anonymous", pa, pa.status === "fulfilled" ? pa.value.filter((x) => x.fmt === "online" || inMetro(x)) : []);
   PATHMINDER.forEach((site, i) => take(site.label, pm[i], pm[i].status === "fulfilled" ? pm[i].value : []));
   // SobaSearch copies ACA's own list; keep only its ACA rooms ACA didn't return
@@ -1789,4 +1832,4 @@ module.exports = async (req, res) => {
 
 // for scripts/backup-blocked.cjs
 module.exports.backupFetchers = { [SAA_LABEL]: fetchSAA };
-module.exports.savedLists = { "_nica.json": fetchNicA, "_aca-online.json": fetchACAOnline, "_ga-online.json": fetchGAOnline, "_smart.json": () => fetchPathminder(PATHMINDER.find((s) => s.cat === "SMART")) };
+module.exports.savedLists = { "_nica.json": fetchNicA, "_aca-online.json": fetchACAOnline, "_ga-online.json": fetchGAOnline, "_saa-online.json": fetchSAAOnline, "_smart.json": () => fetchPathminder(PATHMINDER.find((s) => s.cat === "SMART")) };
