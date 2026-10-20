@@ -599,6 +599,15 @@ function clockToCentral(day, clock, tz) {
   if (mins >= 1440) { mins -= 1440; day = (day + 1) % 7; }
   return { day, time: String(Math.floor(mins / 60)).padStart(2, "0") + ":" + String(mins % 60).padStart(2, "0") };
 }
+// TSML online and hybrid meetings elsewhere in US/Canada zones, English only;
+// their Zoom links, phones and emails are dropped so each links to the feed's own page
+function awayOnline(rows, cat, label) {
+  const away = (m) => /^(online|hybrid)$/.test(m.attendance_option) && NA_ZONES.test(m.timezone || "") &&
+    !(m.types || []).includes("S") && !(+m.latitude && inMetro({ lat: +m.latitude, lng: +m.longitude }));
+  return onlineOnly(normalizeAA(rows.filter(away).map(({ conference_url, conference_url_notes, conference_phone,
+    conference_phone_notes, email, entity_email, entity_phone, location_notes, ...m }) => ({ ...m, attendance_option: "online" })), cat))
+    .map((x) => ({ ...x, notes: `Join details are on the ${label} meeting page.` }));
+}
 // every online row says "Online meeting"; dedupe would fold different meetings
 // at the same hour into one, so each gets its own loc
 function onlineOnly(list) {
@@ -622,7 +631,7 @@ async function fetchMA() {
   return [
     ...normalizeAA(rows, "MA").filter((x) => x.fmt !== "online" && x.lat && x.lng && inMetro(x))
       .map((x) => ({ ...x, loc: x.loc.split(" - ").pop(), region: undefined })), // region is just "United States"
-    ...onlineOnly(normalizeAA(rows.filter((r) => r.timezone === "America/Chicago"), "MA")),
+    ...awayOnline(rows, "MA", "Marijuana Anonymous"),
   ];
 }
 
@@ -1780,13 +1789,7 @@ module.exports = async (req, res) => {
     const r = extras[i];
     const ok = r.status === "fulfilled" && Array.isArray(r.value);
     const list = ok ? normalizeAA(r.value, f.cat).filter((x) => x.lat && x.lng && inMetro(x)) : [];
-    // online and hybrid meetings elsewhere in US/Canada zones, English only; their
-    // Zoom links, phones and emails are dropped so each links to the feed's own page
-    const away = (m) => /^(online|hybrid)$/.test(m.attendance_option) && NA_ZONES.test(m.timezone || "") &&
-      !(m.types || []).includes("S") && !(+m.latitude && inMetro({ lat: +m.latitude, lng: +m.longitude }));
-    const online = ok ? onlineOnly(normalizeAA(r.value.filter(away).map(({ conference_url, conference_url_notes, conference_phone,
-      conference_phone_notes, email, entity_email, entity_phone, location_notes, ...m }) => ({ ...m, attendance_option: "online" })), f.cat))
-      .map((x) => ({ ...x, notes: `Join details are on the ${f.label} meeting page.` })) : [];
+    const online = ok ? awayOnline(r.value, f.cat, f.label) : [];
     take(f.label, r, [...list, ...online]);
   });
 
