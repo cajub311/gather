@@ -1945,7 +1945,9 @@ function buildQuickFilters(){
     // One chip per program we actually have rows for: the big three first,
     // then the rest by how many meetings they have.
     const counts={};DATA.forEach(m=>{counts[m.cat]=(counts[m.cat]||0)+1;});
-    const LABEL={Dharma:"🧘 Recovery Dharma",Group:"💬 Support groups",CR:"Celebrate Recovery",MA:"Marijuana Anon.",EDA:"Eating disorders",OA:"OA (food)",CoDA:"CoDA (relationships)",ACA:"ACA (adult children)",SA:"SA (sex addiction)",CMA:"CMA (crystal meth)",SMART:"SMART Recovery"};
+    const LABEL={Dharma:"🧘 Recovery Dharma",Group:"💬 Support groups",CR:"Celebrate Recovery",MA:"Marijuana Anon.",EDA:"Eating disorders",OA:"OA (food)",CoDA:"CoDA (relationships)",ACA:"ACA (adult children)",SA:"SA (sex addiction)",CMA:"CMA (crystal meth)",SMART:"SMART Recovery",
+      // plain-English hint on every short name, so people can find their program
+      GA:"GA (gambling)",SAA:"SAA (sex addicts)",SLAA:"SLAA (sex & love)",EA:"EA (emotions)",CA:"CA (cocaine)",HA:"HA (heroin)",PA:"PA (pills)",NicA:"NicA (nicotine)",DA:"DA (debt)",WA:"WA (workaholics)",FA:"FA (families)",RCA:"RCA (couples)",RI:"RI (mental health)",SIA:"SIA (incest survivors)",DDA:"DDA (dual diagnosis)",WFS:"Women for Sobriety",LifeRing:"LifeRing (secular)",Refuge:"Refuge (Buddhist)",Wellbriety:"Wellbriety (Native)","Nar-Anon":"Nar-Anon (family)","Gam-Anon":"Gam-Anon (family)","S-Anon":"S-Anon (family)",NAMI:"NAMI (mental illness)",DBSA:"DBSA (depression)",GriefShare:"GriefShare (grief)",TCF:"Compassionate Friends"};
     const FIRST=["AA","NA","Al-Anon"];
     const cats=[...new Set([...Object.keys(counts),...state.cat])].sort((a,b)=>{
       const fa=FIRST.indexOf(a),fb=FIRST.indexOf(b);
@@ -2155,12 +2157,31 @@ function onlineHits(){
   if(state.mode!=="support"||state.fmt!=="in-person"||effectiveFmt()!=="in-person"||state.savedOnly)return 0;
   state.fmt="online";try{return filtered().length;}finally{state.fmt="in-person";}
 }
+// The first later weekday (within a week) that has a match with the same filters,
+// so "no CA meeting today" can say when the next one is.
+function nextDayHit(anyFmt){
+  if(state.mode!=="support"||state.q||state.daySet||state.day==null||state.savedOnly)return null;
+  const cur=state.day,fmt=state.fmt;
+  if(anyFmt)state.fmt=null;
+  try{
+    for(let i=1;i<7;i++){state.day=(cur+i)%7;const n=filtered().length;if(n)return{day:state.day,n};}
+  }finally{state.day=cur;state.fmt=fmt;}
+  return null;
+}
+// Picked programs that have no in-person rooms in our lists at all (CA, HA, WA…)
+function onlineOnlyPick(){
+  return state.mode==="support"&&state.cat.size>0&&effectiveFmt()==="in-person"&&
+    !DATA.some(m=>state.cat.has(m.cat)&&m.fmt!=="online");
+}
 function renderEmpty(el){
   // A search only looks a week ahead; offer the rest of the feed
   const weekHits=laterSearchHits(0);
   // LifeRing, WFS and many groups meet only online, which is hidden by default
   const onlineN=onlineHits();
-  const tips=state.mode==="support"
+  const onlyOnline=onlineOnlyPick();
+  const tips=onlyOnline
+    ?"None of these meet in person in our Twin Cities lists — they meet online."
+    :state.mode==="support"
     ?"Try Tonight, Open, a different area, or turn on Online only."
     :(state.vibe==="social"
       ?"No For You picks on this day — try Tonight, or switch to Everything."
@@ -2169,12 +2190,16 @@ function renderEmpty(el){
   const onlineBtn=onlineN?`<button type="button" class="btn" data-empty="online">Show ${onlineN} online meeting${onlineN===1?"":"s"}</button>`:"";
   // late at night "today" is all over; Today/Tonight then lead nowhere
   const nextDay=(todayDay()+1)%7;
-  const tomorrowBtn=!state.q&&!state.daySet&&state.day===todayDay()?`<button type="button" class="btn" data-empty="tomorrow">Tomorrow (${DAYS[nextDay]})</button>`:"";
+  // online-only programs with nothing online today: point at the next day they meet online
+  const next=onlyOnline?(onlineN?null:nextDayHit(true)):nextDayHit();
+  // skip Tomorrow when the look-ahead already found it empty
+  const tomorrowBtn=!onlyOnline&&!(next&&next.day!==nextDay)&&!state.q&&!state.daySet&&state.day===todayDay()?`<button type="button" class="btn" data-empty="tomorrow">Tomorrow (${DAYS[nextDay]})</button>`:"";
+  const nextBtn=next&&!(tomorrowBtn&&next.day===nextDay)?`<button type="button" class="btn" data-empty="next">Next ${onlyOnline?"online ":""}one: ${DAYS[next.day]}</button>`:"";
   el.innerHTML=`<div class="empty">
     <div class="empty-title">No ${onlineN?"in-person ":""}matches ${state.q?"in the next "+(state.qAhead>6?"6 weeks":"7 days"):"for "+dayViewLabel()}</div>
     ${esc(tips)}<br>
     <div class="empty-actions">
-      ${tomorrowBtn}${onlineBtn}${weekBtn}
+      ${nextBtn}${tomorrowBtn}${onlineBtn}${weekBtn}
       <button type="button" class="btn" data-empty="today">Today</button>
       <button type="button" class="btn" data-empty="tonight">Tonight</button>
       ${state.mode==="activities"&&state.vibe==="social"?`<button type="button" class="btn" data-empty="all">Everything</button>`:""}
@@ -2183,6 +2208,7 @@ function renderEmpty(el){
   el.querySelector('[data-empty="online"]')?.addEventListener("click",()=>{state.fmt=null;syncFmtUI();render();});
   el.querySelector('[data-empty="week"]')?.addEventListener("click",()=>{state.qAhead=44;render();});
   el.querySelector('[data-empty="tomorrow"]')?.addEventListener("click",()=>setViewDay(nextDay));
+  if(next)el.querySelector('[data-empty="next"]')?.addEventListener("click",()=>{if(onlyOnline){state.fmt=null;syncFmtUI();}setViewDay(next.day);});
   el.querySelector('[data-empty="today"]')?.addEventListener("click",()=>applyPreset("today"));
   el.querySelector('[data-empty="tonight"]')?.addEventListener("click",()=>applyPreset("tonight"));
   el.querySelector('[data-empty="all"]')?.addEventListener("click",()=>setVibe("all"));
