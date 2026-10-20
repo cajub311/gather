@@ -374,7 +374,7 @@ const PATHMINDER = [
   { cat: "LifeRing", label: "LifeRing Secular Recovery", base: "https://meetings.lifering.org", types: ["Secular"] },
   { cat: "WFS", label: "Women for Sobriety", base: "https://meetings.womenforsobriety.org", types: ["Women", "Secular"] },
   // SMART's list stays empty until a city is searched (50 miles; online = ones run from nearby)
-  { cat: "SMART", label: "SMART Recovery", base: "https://meetings.smartrecovery.org", types: [], near: "Minneapolis, MN",
+  { cat: "SMART", label: "SMART Recovery", base: "https://meetings.smartrecovery.org", types: [], near: "Minneapolis, MN", ua: CHROME_UA,
     // same names as SobaSearch's copies, so the two merge instead of doubling
     name: (x, city) => (/family/i.test(x.title) ? "SMART Family & Friends" : "SMART Recovery") + (city ? ` – ${city}` : " online") },
 ];
@@ -386,7 +386,7 @@ async function fetchPathminder(site) {
   const plain = (h) => String(h || "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&")
     .replace(/&#x27;|&#39;/g, "'").replace(/\s+/g, " ").trim();
   const get = async (path) => {
-    const r = await fetch(site.base + path, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(12000) });
+    const r = await fetch(site.base + path, { headers: { "User-Agent": site.ua || UA }, signal: AbortSignal.timeout(12000) });
     if (!r.ok) throw new Error(`${site.cat} HTTP ${r.status}`);
     return r.text();
   };
