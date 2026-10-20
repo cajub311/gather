@@ -949,6 +949,31 @@ async function fetchOIAA() {
     .map((x) => ({ ...x, notes: "Join details are on the Online Intergroup of AA's page." }));
 }
 
+// Al-Anon's world office lists its electronic meetings in the JSON its own finder
+// loads. Kept: English meetings set in US/Canada zones, at waking hours here.
+// Zoom links, phone numbers and passcodes stay on Al-Anon's page.
+const AFG_ONLINE_URL = "https://meetings.al-anon.org/apps/meeting-finder/meetings.json";
+const AFG_ONLINE_PAGE = "https://meetings.al-anon.org/electronic-meeting-page/";
+const AFG_TAGS = { "Families and Friends Only": "Closed", "Families, Friends, and Observers Welcome": "Open", Beginners: "Beginners",
+  Women: "Women", Men: "Men", "LGBTQIA+": "LGBTQ", "Young Adults": "Young People", "Adult Children": "Adult Children",
+  "Parents of Alcoholics": "Parents", "People of Color": "People of Color" };
+async function fetchAlAnonOnline() {
+  const out = [];
+  for (const r of await getJSON(AFG_ONLINE_URL)) {
+    const when = String(r.times || "").match(/^(\w+day) (\d\d?:\d\d [AP]M)$/i);
+    if (r.languages !== "English" || !when || !NA_ZONES.test(r.timezone || "")) continue;
+    const at = clockToCentral(WEEKDAYS.indexOf(when[1].toLowerCase()), when[2], r.timezone);
+    if (!at) continue;
+    out.push({
+      cat: "Al-Anon", name: cleanText(r.name) || "Al-Anon Meeting", ...at, dur: 60, fmt: "online",
+      types: [...new Set((r.types || []).map((t) => AFG_TAGS[t]).filter(Boolean))],
+      notes: `${r.formats ? r.formats + " meeting. " : ""}Join details are on Al-Anon's electronic meeting list.`,
+      url: AFG_ONLINE_PAGE, live: true, verified: true,
+    });
+  }
+  return onlineOnly(out);
+}
+
 // SLAA's finder is a Caspio search form: plain HTML that posts back to itself.
 // Send the form's own fields with State = Minnesota and read each result's
 // "Sunday 1:00 PM CT | name | Location | Address" block (contacts left out).
@@ -1503,7 +1528,7 @@ module.exports = async (req, res) => {
 
   // start the newer feeds alongside the main ones, not after them
   const extrasP = Promise.allSettled(EXTRA_TSML.map((f) => getJSON(f.url)));
-  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), fetchCAOnline(), fetchMA(), fetchDA(), fetchGamAnon(), fetchHA(), fetchDRA(), fetchCROnline(), fetchSLAA(), fetchPA(), fetchRI(), fetchSAnon(), fetchNAVirtual(), fetchOIAA(), ...TSML_ONLINE.map(fetchTSMLOnline), ...PATHMINDER.map(pathminderOrSaved)]);
+  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), fetchCAOnline(), fetchMA(), fetchDA(), fetchGamAnon(), fetchHA(), fetchDRA(), fetchCROnline(), fetchSLAA(), fetchPA(), fetchRI(), fetchSAnon(), fetchNAVirtual(), fetchOIAA(), fetchAlAnonOnline(), ...TSML_ONLINE.map(fetchTSMLOnline), ...PATHMINDER.map(pathminderOrSaved)]);
   const [aa, na, aamn, alanon, dharma, refuge, buddhist] = await Promise.allSettled([
     getJSON(AA_URL),
     getJSON(NA_URL),
@@ -1514,7 +1539,7 @@ module.exports = async (req, res) => {
     getJSON(BUDDHIST_URL),
   ]);
   const extras = await extrasP;
-  const [sa, soba, saa, ga, naranon, ea, caOnline, ma, da, gamanon, ha, dra, crOnline, slaa, pa, ri, sanon, naVirtual, oiaa, rca, sia, wa, ...pm] = await moreP;
+  const [sa, soba, saa, ga, naranon, ea, caOnline, ma, da, gamanon, ha, dra, crOnline, slaa, pa, ri, sanon, naVirtual, oiaa, afgOnline, rca, sia, wa, ...pm] = await moreP;
 
   function take(label, result, list) {
     if (result.status === "fulfilled" && Array.isArray(result.value)) {
@@ -1610,6 +1635,7 @@ module.exports = async (req, res) => {
   take("S-Anon", sanon, sanon.status === "fulfilled" ? sanon.value : []);
   take("NA online (virtual-na.org)", naVirtual, naVirtual.status === "fulfilled" ? naVirtual.value : []);
   take("AA online (aa-intergroup.org)", oiaa, oiaa.status === "fulfilled" ? oiaa.value : []);
+  take("Al-Anon online (al-anon.org)", afgOnline, afgOnline.status === "fulfilled" ? afgOnline.value : []);
   take("Pills Anonymous", pa, pa.status === "fulfilled" ? pa.value.filter((x) => x.fmt === "online" || inMetro(x)) : []);
   PATHMINDER.forEach((site, i) => take(site.label, pm[i], pm[i].status === "fulfilled" ? pm[i].value : []));
   // SMART's own list has real addresses; SobaSearch's SMART copies are only a fallback
