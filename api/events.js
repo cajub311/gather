@@ -207,7 +207,7 @@ const JUNK = [
   // students-only campus errands
   /\b(admissions|undergraduate research|urop|zotero|preparing to publish|data snack|study (?:day|break|skills)|snack & study|writing lab)\b|^paws\s*[-–—(]|paws (?:study break|new location)/i,
   // members-only tool sign-offs, chores, hours and drink specials
-  /\(ad hoc\)|\bbasic training\b|quarterly cleanup|closing at \d|featured beer|\$\d+ (?:per )?pints?\b|info(?:rmation)? session|\bsymposium\b/i,
+  /\(ad hoc\)|\bbasic training\b|quarterly cleanup|closing at \d|featured beer|\$\d+ (?:per )?pints?\b|info(?:rmation)? session|\bsymposium\b|game day specials|business networking|\(BNI\)/i,
   // trips somewhere else, not a night out here
   /\b(moab|zion|bryce|smoky mountains?|grand canyon|yellowstone|glamping)\b/i,
   // events in other cities that a metro venue lists
@@ -235,7 +235,8 @@ function supportKind(title) {
 }
 
 function isUnavailableTitle(title) {
-  return /^\s*\(?(?:canceled|cancelled|sold out)\)?\s*[:—-]?/i.test(title || "");
+  // "❗SOLD OUT❗ Bill Callahan" — skip leading emoji/punctuation before the word
+  return /^[^\p{L}\p{N}]*(?:canceled|cancelled|sold out)\b/iu.test(title || "");
 }
 
 // Venue categories that mean "this row is logistics, not an event". Only drops a
