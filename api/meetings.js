@@ -628,6 +628,27 @@ async function fetchCROnline() {
   }];
 }
 
+// SLAA's online list only fills in inside a real browser, so it is copied on the
+// Mac by scripts/refresh-slaa-online.mjs into api/_slaa-online.json as
+// [day, clock, zone letter, name, platform, tags, SLAA listing ID]. Times are
+// turned into Central here so daylight saving stays right.
+const SLAA_ZONES = { E: "America/New_York", C: "America/Chicago", M: "America/Denver", P: "America/Los_Angeles",
+  U: "UTC", L: "Europe/London", X: "Europe/Paris" };
+const SLAA_TAGS = { O: "Open", C: "Closed", W: "Women", M: "Men", L: "LGBTQ", N: "Newcomer" };
+let SLAA_SAVED = { listed: "", rows: [] };
+try { SLAA_SAVED = require("./_slaa-online.json"); } catch {}
+function slaaOnline() {
+  return SLAA_SAVED.rows.map(([day, clock, zone, name, platform, tags, id]) => {
+    const at = SLAA_ZONES[zone] && clockToCentral(day, clock, SLAA_ZONES[zone]);
+    return at && {
+      cat: "SLAA", name: `SLAA — ${name.replace(/^S\.?L\.?A\.?A\.?\s*[-—:]?\s+(?=\S)/i, "")} (${platform})`, ...at, dur: 60, fmt: "online",
+      types: [...tags].map((t) => SLAA_TAGS[t]).filter(Boolean),
+      notes: `Join details: search listing ID ${id} on SLAA's online meetings page.`,
+      url: "https://slaafws.org/onlinemeetings/", listed: SLAA_SAVED.listed, live: true, verified: true,
+    };
+  }).filter(Boolean);
+}
+
 // Pills Anonymous lists meetings as plain text on two Wix pages: blocks of
 // "ST - City / Day 7:00PM / Meeting Code: O / "Name" / ...". Rooms are kept in
 // Minnesota; US online meetings are kept with their state's clock turned into
@@ -1339,6 +1360,8 @@ module.exports = async (req, res) => {
   take("Dual Recovery Anonymous (online)", dra, dra.status === "fulfilled" ? dra.value : []);
   take("Celebrate Recovery (online)", crOnline, crOnline.status === "fulfilled" ? crOnline.value : []);
   take("SLAA (Sex and Love Addicts Anonymous)", slaa, slaa.status === "fulfilled" ? slaa.value.filter((x) => inMetro(x)) : []);
+  const slaaOn = slaaOnline();
+  take(`SLAA online (copied ${SLAA_SAVED.listed || "—"})`, { status: slaaOn.length ? "fulfilled" : "rejected", value: slaaOn, reason: new Error("api/_slaa-online.json missing") }, onlineOnly(slaaOn));
   take("Pills Anonymous", pa, pa.status === "fulfilled" ? pa.value.filter((x) => x.fmt === "online" || inMetro(x)) : []);
   PATHMINDER.forEach((site, i) => take(site.label, pm[i], pm[i].status === "fulfilled" ? pm[i].value : []));
   take("SobaSearch (OA, CoDA, ACA, SMART, CR, MA, EDA)", soba,
