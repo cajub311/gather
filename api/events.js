@@ -64,6 +64,8 @@ const SOURCES = [
   { type: "churchfinder", name: "DivorceCare", url: "https://find.divorcecare.org/find?address=Minneapolis%2C+MN", support: "Divorce", group: "DivorceCare divorce & separation support group", desc: "Church-run support group (Christian) for separation and divorce, meets weekly through the session. Check the page for the street address." },
   { type: "tribe", name: "NAMI Minnesota", base: "https://namimn.org", lat: 44.9778, lng: -93.2650, addr: "Online or call NAMI Minnesota", fallback: "Zen", support: "Mental health", skipCats: /advocacy|training/i,
     skipTitle: /for professionals|agricultural|candidate forum|presenter training/i, metroZips: true },
+  // peer-run "All Recovery" meetings (any path, any substance) + naloxone trainings
+  { type: "tribe", name: "Minnesota Recovery Connection", base: "https://minnesotarecovery.org", lat: 44.9480, lng: -93.1660, addr: "Online or call Minnesota Recovery Connection", fallback: "Zen", support: "Recovery", metroZips: true },
   { type: "tribe", name: "Loppet Foundation", base: "https://www.loppet.org", lat: 44.9880, lng: -93.3230, addr: "1221 Theodore Wirth Pkwy, Minneapolis", fallback: "Outdoors" },
 
   // --- UMN public calendar (LiveWhale JSON) — lectures, arboretum, concerts ---
@@ -164,6 +166,10 @@ const SOURCES = [
   { type: "eventbrite", name: "Eventbrite Fitness", url: "https://www.eventbrite.com/d/mn--minneapolis/sports-and-fitness--events--this-week/", cat: "Fitness" },
   { type: "eventbrite", name: "Eventbrite Community", url: "https://www.eventbrite.com/d/mn--minneapolis/community--events--this-week/", cat: "Social" },
   { type: "eventbrite", name: "Eventbrite Charity", url: "https://www.eventbrite.com/d/mn--minneapolis/charity-and-causes--events--this-week/", cat: "Volunteer" },
+  // support-group searches: only rows the support tagger recognises are kept
+  { type: "eventbrite", name: "Eventbrite Support Groups", url: "https://www.eventbrite.com/d/mn--minneapolis/support-group/", supportOnly: true },
+  { type: "eventbrite", name: "Eventbrite Caregiver Support", url: "https://www.eventbrite.com/d/mn--minneapolis/caregiver-support/", supportOnly: true },
+  { type: "eventbrite", name: "Eventbrite Recovery", url: "https://www.eventbrite.com/d/mn--minneapolis/recovery/", supportOnly: true },
   { type: "eventbrite", name: "Eventbrite Health", url: "https://www.eventbrite.com/d/mn--minneapolis/health--events--this-week/", cat: "Fitness" },
   // No "this-weekend" pages: probed, they return the same rows as the today /
   // this-week pages above, and every extra request to this host is what pushes
@@ -228,9 +234,10 @@ function isJunk(title) {
 // page moves these to Support meetings, where someone looking for them is.
 const SUPPORT_KINDS = [
   [/\b(grief|griev|bereave|loss of a loved|widow)/i, "Grief"],
-  [/\b(twelve steps|12[- ]?steps?|sobriety|sober support|recovery (?:meeting|group|circle))\b/i, "Recovery"],
+  [/\b(twelve steps|12[- ]?steps?|sobriety|sober support|recovery (?:meeting|group|circle|resource)|naloxone|narcan|substance use)\b/i, "Recovery"],
   [/\b(depression|anxiety|bipolar|ocd|ptsd|trauma)\b.*\b(group|support|circle)\b|\bmental health (?:professional|support|in the community)\b|\bnami\b|\bpeer (?:support|network)\b/i, "Mental health"],
-  [/\b(caregiver|dementia|alzheimer|stroke|cancer|parkinson|chronic (?:pain|illness))\b.*\b(support|alone|group)/i, "Health"],
+  [/\b(caregiver|dementia|alzheimer|stroke|cancer|parkinson|chronic (?:pain|illness))\b.*\b(support|alone|group|klatch)/i, "Health"],
+  [/\b(care partners|spinal cord injury|brain injury)\b.*\b(support|peer|group)\b/i, "Health"],
   [/\bsupport group\b|\bsurvivors? (?:support|group)\b/i, "Support group"],
 ];
 function supportKind(title) {
@@ -1670,7 +1677,7 @@ module.exports = async (req, res) => {
     if (r.status === "fulfilled") {
       // noise + metro checks run here too: not every adapter screens titles,
       // and a Squarespace or Eventbrite pin can land in New York or Mankato
-      const list = r.value.list.filter((e) => e.date >= todayStr && e.date <= endStr &&
+      let list = r.value.list.filter((e) => e.date >= todayStr && e.date <= endStr &&
         inMetro(e.lat, e.lng) && !isNoise(e.name) && !isUnavailableTitle(e.name) && !isJunk(e.name));
       for (const e of list) {
         const kind = e.support || supportKind(e.name);
@@ -1679,6 +1686,7 @@ module.exports = async (req, res) => {
         // "… - Zoom only" listed at the venue's address isn't somewhere to walk in
         if (/\b(?:zoom|online|virtual)[- ]only\b/i.test(e.name)) e.fmt = "online";
       }
+      if (src.supportOnly) list = list.filter((e) => e.support);
       events = events.concat(list);
       sources.push({ name: src.name, count: list.length, ok: true, ...(r.value.backup ? { backup: r.value.backup } : {}) });
     } else {
