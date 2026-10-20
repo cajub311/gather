@@ -294,10 +294,10 @@ function classify(text, catNames) {
   if (has(/trivia|quiz night|\bbingo\b|board game|tabletop|chess|d&d|dungeons|magic the|euchre|card game|crokinole|jigsaw|puzzl|pinball|arcade|karaoke|game night|clocktower|free pool|pool (?:league|tournament|night)|billiards|\bdarts?\b|cribbage|mah ?jongg?|shuffleboard|skee-?ball|\bkubb\b/)) return "Games";
   // Hands-on craft classes: their blurbs mention "build", "beginners" or
   // "skills" and landed in Fitness or Music.
-  if (has(/ceramic|pottery|bookmaking|stained glass|woodwork|woodturn|letterpress|weaving|glassblow|jewelry making|hand-building|wheel throwing/)) return "Art";
-  if (has(/music|concert|\bband\b|\bjam\b|\bdj\b|open mic|singer|songwriter|orchestra|jazz|acoustic|hip[- ]?hop|\bpunk\b|\bmetal\b|indie|bluegrass|\bchoir\b|recital|honky tonk|\bfest\b|on stage|\blive at\b|\btrio\b|quartet|quintet|\bduo\b|\bvinyl\b|communion|\bedm\b|techno|house music|dance party|dance church|rave|nightclub|live show|comedy|stand[- ]?up/)) return "Music";
+  if (has(/ceramic|pottery|bookmaking|stained glass|woodwork|woodturn|letterpress|weaving|glassblow|jewelry making|hand-building|wheel throwing|laser (?:engrav|cut)|engraving|3d print/)) return "Art";
+  if (has(/music|concert|\bband\b|\bjam\b|\bdj\b|open mic|singer|songwriter|orchestra|jazz|acoustic|hip[- ]?hop|\bpunk\b|\bmetal\b|indie|bluegrass|\bchoir\b|recital|trumpet|organist|symphon|violin|\bcello|pianist|saxophon|honky tonk|\bfest\b|on stage|\blive at\b|\btrio\b|quartet|quintet|\bduo\b|\bvinyl\b|communion|\bedm\b|techno|house music|dance party|dance church|\brave(?!n|l)|nightclub|live show|comedy|stand[- ]?up/)) return "Music";
   // board games / trivia often land as "Social" without this
-  if (has(/trivia|quiz night|\bbingo\b|board game|tabletop|game night|mario kart|canasta|euchre|d&d|dungeons/)) return "Games";
+  if (has(/trivia|quiz night|\bbingo\b|board game|tabletop|game night|mario kart|canasta|euchre|d&d|dungeons|domino|scrabble/)) return "Games";
   if (has(/meditat|mindful|sound bath|breathwork|yin yoga|restorative|reiki|sangha|zazen|dharma/)) return "Zen";
   if (has(/storytime|story time|toddler|preschool|\bkids?\b|children|\bfamily\b|all ages|\bbabies?\b|\bteens?\b|puppet|face paint|\blego\b|zookeeper|gorilla|polar bear|tiger talk|giraffe|penguin|sea lion|petting|little explorer|sea stories|dinosaur/)) return "Family";
   if (has(/\brun(?:ning|s)?\b|\b(?:5|10)k\b|marathon|fitness|workout|yoga|pilates|volleyball|pickleball|table tennis|ping pong|climb|cycling|bike ride|bike night|\bsports?\b|softball|basketball|\bswim|skate|zumba|\bbarre\b|crossfit/)) return "Fitness";
@@ -307,7 +307,7 @@ function classify(text, catNames) {
   // bare "trail" matched "training" (Salesforce Admin Training → Outdoors). Use trails? word.
   if (has(/hike|\btrails?\b|nature walk|birding|\bbirders?\b|kayak|paddle|canoe|garden|\bpark\b|cleanup|prairie|arboretum|pollinator|\btrek|\bflower|\bbloom|meadow/)) return "Outdoors";
   if (has(/tasting|brunch|\bdinner\b|beer release|cocktail|\bwine\b|farmers market|cooking|\bbake|\bchef\b|barbecue|\bbbq\b|ice cream|pizza night|brewer/)) return "Food";
-  if (has(/language|spanish|french|german|conversation table|\besl\b|somali|hmong|\basl\b|sign language/)) return "Language";
+  if (has(/language|spanish|french|german|conversation table|\bnorsk\b|språk|conversation(?:al)? (?:skills|club|practice|group|circle)|\besl\b|somali|hmong|\basl\b|sign language/)) return "Language";
   if (has(/\bclass\b|workshop|lecture|seminar|\bpanel\b|\btalk\b|\b101\b|intro to|how to|tech help|resume|job fair|info session|\bdemo\b|symposium|colloquium|training/)) return "Learn";
   if (has(/watch party|singles mixer|meet new|networking|happy hour|\bmixer\b|block party|\bsocial\b|meetup/)) return "Social";
   return null;
