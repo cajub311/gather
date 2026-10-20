@@ -591,6 +591,50 @@ async function fetchCROnline() {
   }];
 }
 
+// SLAA's finder is a Caspio search form: plain HTML that posts back to itself.
+// Send the form's own fields with State = Minnesota and read each result's
+// "Sunday 1:00 PM CT | name | Location | Address" block (contacts left out).
+const SLAA_FORM = "https://c3gaf515.caspio.com/dp/54ce4000ebf69838cd594d3698e5";
+async function fetchSLAA() {
+  const form = await getText(SLAA_FORM);
+  const body = new URLSearchParams();
+  for (const [tag] of form.matchAll(/<input[^>]*>/g)) {
+    const n = (tag.match(/name="([^"]+)"/) || [])[1];
+    if (n && n !== "searchID") body.set(n, htmlText((tag.match(/value="([^"]*)"/) || [, ""])[1]));
+  }
+  if (!body.get("AppKey")) throw new Error("slaa: search form not found");
+  body.set("Value2_1", "United States");
+  body.set("Value3_1", "Minnesota");
+  body.set("cbParamVirtual2", "Minnesota");
+  body.set("searchID", "Search");
+  const r = await fetch(SLAA_FORM, {
+    method: "POST",
+    headers: { "User-Agent": UA, "Content-Type": "application/x-www-form-urlencoded", Referer: "https://slaafws.org/meetings/" },
+    body,
+    signal: AbortSignal.timeout(12000),
+  });
+  if (!r.ok) throw new Error(`slaa HTTP ${r.status}`);
+  const out = [];
+  for (const rec of (await r.text()).split(/data-cb-name="DataCtnr"/).slice(1)) {
+    const block = (rec.match(/gi == 'Group'\) \{\s*document[^=]*= '([\s\S]*?)';/) || [])[1];
+    if (!block) continue; // intergroup rows are links to other lists
+    const t = htmlText(block);
+    const v = t.match(/(\w+day) (\d{1,2})(?::(\d\d))? ?([ap])m (?:CT|CST|CDT|Central)\b.*?MEETING \| (.+?) \(edit\) Location: (.+?) Address: (.+?),? Minnesota (\d{5})/i);
+    if (!v) continue;
+    const at = clockToCentral(WEEKDAYS.indexOf(v[1].toLowerCase()), `${v[2]}:${v[3] || "00"} ${v[4]}m`, "America/Chicago");
+    const ll = await censusPin(`${v[7]} MN ${v[8]}`).catch(() => null);
+    if (!at || !ll) continue;
+    const head = rec.slice(0, 4000);
+    out.push({
+      cat: "SLAA", name: v[5], ...at, dur: 60, fmt: "in-person",
+      loc: v[6], addr: v[7].replace(/\s+(Minneapolis|St\.? Paul|Eagan)$/i, ", $1"), lat: +ll[0].toFixed(5), lng: +ll[1].toFixed(5),
+      types: [/Open Meeting \(/.test(head) ? "Open" : "Closed", /Women Only/.test(head) ? "Women" : ""].filter(Boolean),
+      url: "https://slaafws.org/meetings/", live: true, verified: true,
+    });
+  }
+  return out;
+}
+
 async function fetchAAMinnesota() {
   const r = await fetch(AA_MN_PAGE, { headers: { "User-Agent": UA } });
   if (!r.ok) throw new Error(`tsml page HTTP ${r.status}`);
@@ -1099,7 +1143,7 @@ module.exports = async (req, res) => {
 
   // start the newer feeds alongside the main ones, not after them
   const extrasP = Promise.allSettled(EXTRA_TSML.map((f) => getJSON(f.url)));
-  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), fetchCAOnline(), fetchMA(), fetchDA(), fetchGamAnon(), fetchHA(), fetchDRA(), fetchCROnline(), ...PATHMINDER.map(fetchPathminder)]);
+  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), fetchCAOnline(), fetchMA(), fetchDA(), fetchGamAnon(), fetchHA(), fetchDRA(), fetchCROnline(), fetchSLAA(), ...PATHMINDER.map(fetchPathminder)]);
   const [aa, na, aamn, alanon, dharma, refuge, buddhist] = await Promise.allSettled([
     getJSON(AA_URL),
     getJSON(NA_URL),
@@ -1110,7 +1154,7 @@ module.exports = async (req, res) => {
     getJSON(BUDDHIST_URL),
   ]);
   const extras = await extrasP;
-  const [sa, soba, saa, ga, naranon, ea, caOnline, ma, da, gamanon, ha, dra, crOnline, ...pm] = await moreP;
+  const [sa, soba, saa, ga, naranon, ea, caOnline, ma, da, gamanon, ha, dra, crOnline, slaa, ...pm] = await moreP;
 
   function take(label, result, list) {
     if (result.status === "fulfilled" && Array.isArray(result.value)) {
@@ -1193,6 +1237,7 @@ module.exports = async (req, res) => {
   take("Families Anonymous (directory 2026-10-15)", { status: "fulfilled", value: FA_ROOMS }, FA_ROOMS);
   take("Dual Recovery Anonymous (online)", dra, dra.status === "fulfilled" ? dra.value : []);
   take("Celebrate Recovery (online)", crOnline, crOnline.status === "fulfilled" ? crOnline.value : []);
+  take("SLAA (Sex and Love Addicts Anonymous)", slaa, slaa.status === "fulfilled" ? slaa.value.filter((x) => inMetro(x)) : []);
   PATHMINDER.forEach((site, i) => take(site.label, pm[i], pm[i].status === "fulfilled" ? pm[i].value : []));
   take("SobaSearch (OA, CoDA, ACA, SMART, CR, MA, EDA)", soba,
     soba.status === "fulfilled" ? soba.value.filter((x) => inMetro(x)) : []);
