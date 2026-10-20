@@ -1663,7 +1663,14 @@ module.exports = async (req, res) => {
     const r = extras[i];
     const ok = r.status === "fulfilled" && Array.isArray(r.value);
     const list = ok ? normalizeAA(r.value, f.cat).filter((x) => x.lat && x.lng && inMetro(x)) : [];
-    take(f.label, r, list);
+    // online and hybrid meetings elsewhere in US/Canada zones, English only; their
+    // Zoom links, phones and emails are dropped so each links to the feed's own page
+    const away = (m) => /^(online|hybrid)$/.test(m.attendance_option) && NA_ZONES.test(m.timezone || "") &&
+      !(m.types || []).includes("S") && !(+m.latitude && inMetro({ lat: +m.latitude, lng: +m.longitude }));
+    const online = ok ? onlineOnly(normalizeAA(r.value.filter(away).map(({ conference_url, conference_url_notes, conference_phone,
+      conference_phone_notes, email, entity_email, entity_phone, location_notes, ...m }) => ({ ...m, attendance_option: "online" })), f.cat))
+      .map((x) => ({ ...x, notes: `Join details are on the ${f.label} meeting page.` })) : [];
+    take(f.label, r, [...list, ...online]);
   });
 
   take("Sexaholics Anonymous Twin Cities", sa,
