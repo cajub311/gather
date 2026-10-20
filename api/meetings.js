@@ -631,14 +631,25 @@ async function fetchCROnline() {
   }];
 }
 
-// Recovering Couples Anonymous and Survivors of Incest Anonymous share the
-// TSML feed AA uses. Nearly all are online; each row carries its own zone.
+// Recovering Couples Anonymous, Survivors of Incest Anonymous and Workaholics
+// Anonymous (a saved JSON file its finder reads) share the TSML format AA uses. Nearly all are online; each row carries its own zone.
 const TSML_ONLINE = [
   ["RCA", "https://recovering-couples.org/wp-admin/admin-ajax.php?action=meetings"],
   ["SIA", "https://siawso.org/wp-admin/admin-ajax.php?action=meetings"],
+  ["WA", "https://workaholics-anonymous.org/wp-content/meetings/sfdc_transformed_json_n8n_no_unscheduled_FINAL.json", waPrep],
 ];
-async function fetchTSMLOnline([cat, url]) {
-  const rows = normalizeAA(await getJSON(url), cat);
+// WA's file has no attendance field and puts a placeholder pin on virtual
+// meetings, so mark them by their Zoom/phone details; keep English ones only
+const WA_LANGS = /^(S|SP|RUS|HU|SK|POL|DE|FR|WA_Czech|WA_bilingual)$/;
+function waPrep(rows) {
+  return rows
+    .filter((m) => !(m.types || []).some((t) => WA_LANGS.test(t)))
+    .map((m) => (m.conference_url || m.conference_phone)
+      ? { ...m, attendance_option: !m.location || /virtual/i.test(m.location) ? "online" : "hybrid" }
+      : m);
+}
+async function fetchTSMLOnline([cat, url, prep = (r) => r]) {
+  const rows = normalizeAA(prep(await getJSON(url)), cat);
   return [...rows.filter((x) => x.fmt !== "online" && x.lat && x.lng && inMetro(x)), ...onlineOnly(rows)];
 }
 
@@ -770,6 +781,62 @@ async function fetchPA() {
       types: b.types, notes: "Join details are on the Pills Anonymous virtual meeting page.",
       url: `${PA_BASE}/find-a-virtual-meeting`, live: true, verified: true,
     });
+  }
+  return [...out.filter((x) => x.fmt !== "online"), ...onlineOnly(out)];
+}
+
+// Recovery International (mental health self-help, Abraham Low method) keeps
+// its meeting list in a public Google Sheet. Kept: weekly Twin Cities rooms and
+// weekly Zoom/phone meetings open to anyone. Leaders' names, phones and Zoom
+// links stay on RI's list; each row is named by RI's own meeting number.
+const RI_SHEET = "https://docs.google.com/spreadsheets/d/1CxqeIiayBdvmH6Bk3UdjjTnkWLgwbru32ZXXc2gP4lo/export?format=csv";
+const RI_PAGE = "https://www.recoveryinternational.org/meetings/";
+function csvRows(text) {
+  const rows = [[]];
+  let f = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"' && text[i + 1] === '"') { f += '"'; i++; } else if (c === '"') q = false; else f += c; }
+    else if (c === '"') q = true;
+    else if (c === ",") { rows[rows.length - 1].push(f); f = ""; }
+    else if (c === "\n") { rows[rows.length - 1].push(f); f = ""; rows.push([]); }
+    else if (c !== "\r") f += c;
+  }
+  rows[rows.length - 1].push(f);
+  return rows;
+}
+async function fetchRI() {
+  const [head, ...rows] = csvRows(await getText(RI_SHEET));
+  const col = (name) => head.findIndex((h) => h.trim().toLowerCase().startsWith(name));
+  const [ID, TYPE, DAY, START, ZN, OFTEN, ADDR] = ["leader ref", "mtg type", "meeting day", "start time", "time zone", "occurrence", "address"].map(col);
+  if ([ID, TYPE, DAY, START, ZN].some((i) => i < 0)) throw new Error("ri: sheet columns changed");
+  const out = [];
+  for (const r of rows) {
+    const type = (r[TYPE] || "").replace(/\s+/g, " ").trim();
+    if (!/^weekly$/i.test((r[OFTEN] || "").trim()) || /membership|chat/i.test(type)) continue;
+    const clock = (r[START] || "").trim().replace(/^(\d{1,2})\s*([ap])/i, "$1:00$2");
+    const tz = ZONE[(r[ZN] || "").trim().toLowerCase()];
+    const at = tz && clockToCentral(WEEKDAYS.indexOf((r[DAY] || "").trim().toLowerCase()), clock, tz);
+    if (!at) continue;
+    const id = (r[ID] || "").trim();
+    if (/zoom|phone/i.test(type)) {
+      const how = /phone/i.test(type) ? "phone" : "Zoom";
+      out.push({
+        cat: "RI", name: `Recovery International — ${/newcomer/i.test(type) ? "newcomers' " : ""}${how} meeting ${id}`, ...at, dur: 90,
+        fmt: "online", types: /literature/i.test(type) ? ["Literature"] : [],
+        notes: "Join details are on Recovery International's meeting list.", url: RI_PAGE, live: true, verified: true,
+      });
+    } else if (/, MN\b/.test(r[ADDR] || "")) {
+      const lines = r[ADDR].split("\n").map((l) => l.trim()).filter(Boolean);
+      const ll = await censusPin(lines.slice(1).join(", ")).catch(() => null);
+      const pin = ll || ZIP_PINS[(r[ADDR].match(/\b\d{5}\b/) || [])[0]];
+      if (!pin || !inMetro({ lat: pin[0], lng: pin[1] })) continue;
+      out.push({
+        cat: "RI", name: `Recovery International — ${lines[0]}`, ...at, dur: 90, fmt: "in-person", loc: lines[0],
+        addr: lines.slice(1).join(", ").replace(/,? MN \d{5}.*/, ""), approx: ll ? undefined : true,
+        lat: +pin[0].toFixed(5), lng: +pin[1].toFixed(5), types: [], url: RI_PAGE, live: true, verified: true,
+      });
+    }
   }
   return [...out.filter((x) => x.fmt !== "online"), ...onlineOnly(out)];
 }
@@ -1326,7 +1393,7 @@ module.exports = async (req, res) => {
 
   // start the newer feeds alongside the main ones, not after them
   const extrasP = Promise.allSettled(EXTRA_TSML.map((f) => getJSON(f.url)));
-  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), fetchCAOnline(), fetchMA(), fetchDA(), fetchGamAnon(), fetchHA(), fetchDRA(), fetchCROnline(), fetchSLAA(), fetchPA(), ...TSML_ONLINE.map(fetchTSMLOnline), ...PATHMINDER.map(fetchPathminder)]);
+  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), fetchCAOnline(), fetchMA(), fetchDA(), fetchGamAnon(), fetchHA(), fetchDRA(), fetchCROnline(), fetchSLAA(), fetchPA(), fetchRI(), ...TSML_ONLINE.map(fetchTSMLOnline), ...PATHMINDER.map(fetchPathminder)]);
   const [aa, na, aamn, alanon, dharma, refuge, buddhist] = await Promise.allSettled([
     getJSON(AA_URL),
     getJSON(NA_URL),
@@ -1337,7 +1404,7 @@ module.exports = async (req, res) => {
     getJSON(BUDDHIST_URL),
   ]);
   const extras = await extrasP;
-  const [sa, soba, saa, ga, naranon, ea, caOnline, ma, da, gamanon, ha, dra, crOnline, slaa, pa, rca, sia, ...pm] = await moreP;
+  const [sa, soba, saa, ga, naranon, ea, caOnline, ma, da, gamanon, ha, dra, crOnline, slaa, pa, ri, rca, sia, wa, ...pm] = await moreP;
 
   function take(label, result, list) {
     if (result.status === "fulfilled" && Array.isArray(result.value)) {
@@ -1428,6 +1495,8 @@ module.exports = async (req, res) => {
     value: NICA_SAVED.rows, reason: new Error("api/_nica.json missing") }, NICA_SAVED.rows);
   take("Recovering Couples Anonymous", rca, rca.status === "fulfilled" ? rca.value : []);
   take("Survivors of Incest Anonymous (online)", sia, sia.status === "fulfilled" ? sia.value : []);
+  take("Workaholics Anonymous (online)", wa, wa.status === "fulfilled" ? wa.value : []);
+  take("Recovery International", ri, ri.status === "fulfilled" ? ri.value : []);
   take("Pills Anonymous", pa, pa.status === "fulfilled" ? pa.value.filter((x) => x.fmt === "online" || inMetro(x)) : []);
   PATHMINDER.forEach((site, i) => take(site.label, pm[i], pm[i].status === "fulfilled" ? pm[i].value : []));
   take("SobaSearch (OA, CoDA, ACA, SMART, CR, MA, EDA)", soba,

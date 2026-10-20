@@ -973,6 +973,8 @@ const FELLOWSHIPS = {
   NicA:{name:"Nicotine Anonymous",color:"#e7e5e4"},
   RCA:{name:"Recovering Couples Anonymous",color:"#fecdd3"},
   SIA:{name:"Survivors of Incest Anonymous",color:"#ddd6fe"},
+  WA:{name:"Workaholics Anonymous",color:"#bae6fd"},
+  RI:{name:"Recovery International (mental health)",color:"#a7f3d0"},
   NAMI:{name:"NAMI Minnesota (mental illness support)",color:"#99f6e4"},
   DBSA:{name:"DBSA (depression & bipolar groups)",color:"#bae6fd"},
   MHMN:{name:"Mental Health Minnesota",color:"#a7f3d0"},
@@ -1023,6 +1025,8 @@ const FINDERS={
   NicA:"https://nicotine-anonymous.org/find-a-meeting/",
   RCA:"https://recovering-couples.org/rca-meetings/",
   SIA:"https://siawso.org/meetings/",
+  WA:"https://workaholics-anonymous.org/meetings/",
+  RI:"https://www.recoveryinternational.org/meetings/",
   NAMI:"https://namimn.org/",
   DBSA:"https://www.dbsalliance.org/",
   MHMN:"https://mentalhealthmn.org/",
@@ -2593,9 +2597,9 @@ function updateFooter(){
     // grouped by what someone is dealing with; AA/NA/Al-Anon live feeds cover those
     const groups=[
       ["Drinking & drugs",["MRC","CMA","CA","MA","HA","PA","DDA","SMART","LifeRing","WFS","Refuge","Dharma","Buddhist","CR","Wellbriety","NicA"]],
-      ["Gambling, food, sex, money",["GA","OA","EDA","SA","SAA","SLAA","DA"]],
+      ["Gambling, food, sex, money, work",["GA","OA","EDA","SA","SAA","SLAA","DA","WA"]],
       ["Family & friends of someone struggling",["Nar-Anon","Gam-Anon","FA","ACA","CoDA","RCA"]],
-      ["Mental health, grief & divorce",["NAMI","DBSA","MHMN","EA","SIA","GriefShare","TCF","POMC","DivorceCare","Group"]],
+      ["Mental health, grief & divorce",["NAMI","DBSA","MHMN","EA","RI","SIA","GriefShare","TCF","POMC","DivorceCare","Group"]],
       ["Illness, injury & caregivers",["Gilda","ALZ","PD","Stroke","BIA"]],
     ];
     const placed=new Set(groups.flatMap(g=>g[1]));
