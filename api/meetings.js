@@ -895,6 +895,28 @@ async function fetchSAnon() {
   return [...out.filter((x) => x.fmt !== "online"), ...onlineOnly(out)];
 }
 
+// NA's online meetings live on their own BMLT server (virtual-na.org). Each row
+// has its own zone; kept: English meetings set in US/Canada zones, at waking
+// hours here. Phone numbers and access codes stay on virtual-na.org.
+const NA_VIRTUAL = "https://bmlt.virtual-na.org/main_server/client_interface/json/?switcher=GetSearchResults" +
+  "&data_field_key=id_bigint,meeting_name,weekday_tinyint,start_time,duration_time,time_zone,lang_enum,venue_type";
+const NA_ZONES = /^(America\/(New_York|Chicago|Denver|Phoenix|Los_Angeles|Anchorage|Toronto|Vancouver|Edmonton|Winnipeg|Regina|Halifax|Detroit|Boise|Indiana\/.+|Kentucky\/.+)|Pacific\/Honolulu)$/;
+async function fetchNAVirtual() {
+  const out = [];
+  for (const r of await getJSON(NA_VIRTUAL)) {
+    if (r.lang_enum !== "en" || r.venue_type !== "2" || !NA_ZONES.test(r.time_zone)) continue;
+    const [h, mm] = String(r.start_time).split(":").map(Number);
+    const at = clockToCentral((+r.weekday_tinyint + 6) % 7, `${h % 12 || 12}:${String(mm).padStart(2, "0")} ${h < 12 ? "am" : "pm"}`, r.time_zone);
+    if (!at) continue;
+    out.push({
+      cat: "NA", name: cleanText(r.meeting_name) || "NA Meeting", ...at,
+      dur: r.duration_time ? durMins("00:00", hhmm(r.duration_time)) || 60 : 60, fmt: "online", types: [],
+      notes: "Join details are on NA's virtual meeting list.", url: "https://virtual-na.org/meetings/", live: true, verified: true,
+    });
+  }
+  return onlineOnly(out);
+}
+
 // SLAA's finder is a Caspio search form: plain HTML that posts back to itself.
 // Send the form's own fields with State = Minnesota and read each result's
 // "Sunday 1:00 PM CT | name | Location | Address" block (contacts left out).
@@ -1447,7 +1469,7 @@ module.exports = async (req, res) => {
 
   // start the newer feeds alongside the main ones, not after them
   const extrasP = Promise.allSettled(EXTRA_TSML.map((f) => getJSON(f.url)));
-  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), fetchCAOnline(), fetchMA(), fetchDA(), fetchGamAnon(), fetchHA(), fetchDRA(), fetchCROnline(), fetchSLAA(), fetchPA(), fetchRI(), fetchSAnon(), ...TSML_ONLINE.map(fetchTSMLOnline), ...PATHMINDER.map(fetchPathminder)]);
+  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), fetchCAOnline(), fetchMA(), fetchDA(), fetchGamAnon(), fetchHA(), fetchDRA(), fetchCROnline(), fetchSLAA(), fetchPA(), fetchRI(), fetchSAnon(), fetchNAVirtual(), ...TSML_ONLINE.map(fetchTSMLOnline), ...PATHMINDER.map(fetchPathminder)]);
   const [aa, na, aamn, alanon, dharma, refuge, buddhist] = await Promise.allSettled([
     getJSON(AA_URL),
     getJSON(NA_URL),
@@ -1458,7 +1480,7 @@ module.exports = async (req, res) => {
     getJSON(BUDDHIST_URL),
   ]);
   const extras = await extrasP;
-  const [sa, soba, saa, ga, naranon, ea, caOnline, ma, da, gamanon, ha, dra, crOnline, slaa, pa, ri, sanon, rca, sia, wa, ...pm] = await moreP;
+  const [sa, soba, saa, ga, naranon, ea, caOnline, ma, da, gamanon, ha, dra, crOnline, slaa, pa, ri, sanon, naVirtual, rca, sia, wa, ...pm] = await moreP;
 
   function take(label, result, list) {
     if (result.status === "fulfilled" && Array.isArray(result.value)) {
@@ -1552,6 +1574,7 @@ module.exports = async (req, res) => {
   take("Workaholics Anonymous (online)", wa, wa.status === "fulfilled" ? wa.value : []);
   take("Recovery International", ri, ri.status === "fulfilled" ? ri.value : []);
   take("S-Anon", sanon, sanon.status === "fulfilled" ? sanon.value : []);
+  take("NA online (virtual-na.org)", naVirtual, naVirtual.status === "fulfilled" ? naVirtual.value : []);
   take("Pills Anonymous", pa, pa.status === "fulfilled" ? pa.value.filter((x) => x.fmt === "online" || inMetro(x)) : []);
   PATHMINDER.forEach((site, i) => take(site.label, pm[i], pm[i].status === "fulfilled" ? pm[i].value : []));
   take("SobaSearch (OA, CoDA, ACA, SMART, CR, MA, EDA)", soba,

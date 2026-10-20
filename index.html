@@ -2150,11 +2150,14 @@ function renderEmpty(el){
       :"Try another day, turn off a filter, or search All week.");
   const weekBtn=weekHits?`<button type="button" class="btn" data-empty="week">Show ${weekHits} later match${weekHits===1?"":"es"}</button>`:"";
   const onlineBtn=onlineN?`<button type="button" class="btn" data-empty="online">Show ${onlineN} online meeting${onlineN===1?"":"s"}</button>`:"";
+  // late at night "today" is all over; Today/Tonight then lead nowhere
+  const nextDay=(todayDay()+1)%7;
+  const tomorrowBtn=!state.q&&!state.daySet&&state.day===todayDay()?`<button type="button" class="btn" data-empty="tomorrow">Tomorrow (${DAYS[nextDay]})</button>`:"";
   el.innerHTML=`<div class="empty">
     <div class="empty-title">No ${onlineN?"in-person ":""}matches ${state.q?"in the next "+(state.qAhead>6?"6 weeks":"7 days"):"for "+dayViewLabel()}</div>
     ${esc(tips)}<br>
     <div class="empty-actions">
-      ${onlineBtn}${weekBtn}
+      ${tomorrowBtn}${onlineBtn}${weekBtn}
       <button type="button" class="btn" data-empty="today">Today</button>
       <button type="button" class="btn" data-empty="tonight">Tonight</button>
       ${state.mode==="activities"&&state.vibe==="social"?`<button type="button" class="btn" data-empty="all">Everything</button>`:""}
@@ -2162,6 +2165,7 @@ function renderEmpty(el){
     </div></div>`;
   el.querySelector('[data-empty="online"]')?.addEventListener("click",()=>{state.fmt=null;syncFmtUI();render();});
   el.querySelector('[data-empty="week"]')?.addEventListener("click",()=>{state.qAhead=44;render();});
+  el.querySelector('[data-empty="tomorrow"]')?.addEventListener("click",()=>setViewDay(nextDay));
   el.querySelector('[data-empty="today"]')?.addEventListener("click",()=>applyPreset("today"));
   el.querySelector('[data-empty="tonight"]')?.addEventListener("click",()=>applyPreset("tonight"));
   el.querySelector('[data-empty="all"]')?.addEventListener("click",()=>setVibe("all"));
