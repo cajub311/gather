@@ -1150,7 +1150,7 @@ try{const v=localStorage.getItem("gather-vibe");if(v==="all"||v==="social")_vibe
 // Things to do open most-popular-first; Soonest is one tap away and sticks.
 let _sortStored="popular";
 try{const v=localStorage.getItem("gather-sort");if(v==="soon"||v==="near")_sortStored=v;}catch(e){}
-const state={mode:"activities",cat:new Set(),day:null,daySet:null,fmt:null,tod:"",nowOnly:false,q:"",near:null,nearGps:false,quick:new Set(),savedOnly:false,preset:"",area:"",horizon:6,radius:0,hideSeries:false,soonOnly:false,flag:"",hideEnded:true,vibe:_vibeStored,sort:_sortStored,limit:80};
+const state={qAhead:6,mode:"activities",cat:new Set(),day:null,daySet:null,fmt:null,tod:"",nowOnly:false,q:"",near:null,nearGps:false,quick:new Set(),savedOnly:false,preset:"",area:"",horizon:6,radius:0,hideSeries:false,soonOnly:false,flag:"",hideEnded:true,vibe:_vibeStored,sort:_sortStored,limit:80};
 let _urlTimer=null;
 function todayDay(){return nowInfo().day;}
 function dayViewLabel(){
@@ -1658,7 +1658,7 @@ function smartSort(list){
 function sortHint(){
   // Plain and short — the old version stacked day · For You · by time · two
   // "hidden" notes into one unreadable line.
-  const parts=[state.q?"next 7 days":dayViewLabel()];
+  const parts=[state.q?(state.qAhead>6?"next 6 weeks":"next 7 days"):dayViewLabel()];
   if(popularMode())parts.push("most popular first");
   if(closestMode())parts.push("closest first");
   else if(state.near)parts.push(state.mode==="activities"?"near you":"closest to you");
@@ -1808,7 +1808,7 @@ function matchesDayView(m){
   if(state.q&&!state.savedOnly){
     if(!m.date)return true;
     const o=dateOffset(m.date);
-    return o>=0&&o<=6;
+    return o>=0&&o<=state.qAhead;
   }
   if(!m.date){
     if(state.daySet)return state.daySet.has(m.day);
@@ -2101,23 +2101,22 @@ function alsoLine(m){
   const noun=m.sport?`more ${m.sport} home game${more.length===1?"":"s"}`:"more";
   return `<div class="event-also">Also ${esc(bits.join(" · "))}${rest>0?` · +${rest} ${esc(noun)}`:""}</div>`;
 }
+function laterSearchHits(now){
+  if(!state.q||state.savedOnly||state.qAhead>6)return 0;
+  state.qAhead=44;
+  try{return Math.max(0,filtered().length-now);}finally{state.qAhead=6;}
+}
 function renderEmpty(el){
-  // If search has hits outside "today", offer to expand the day window
-  let weekHits=0;
-  if(state.q&&state.day!==null&&!state.daySet){
-    const keepDay=state.day,keepSet=state.daySet,keepHoriz=state.horizon;
-    state.day=null;state.daySet=null;state.horizon=30;
-    weekHits=filtered().length;
-    state.day=keepDay;state.daySet=keepSet;state.horizon=keepHoriz;
-  }
+  // A search only looks a week ahead; offer the rest of the feed
+  const weekHits=laterSearchHits(0);
   const tips=state.mode==="support"
     ?"Try Tonight, Open, a different area, or turn on Online only."
     :(state.vibe==="social"
       ?"No For You picks on this day — try Tonight, or switch to Everything."
       :"Try another day, turn off a filter, or search All week.");
-  const weekBtn=weekHits?`<button type="button" class="btn" data-empty="week">Show ${weekHits} match${weekHits===1?"":"es"} this month</button>`:"";
+  const weekBtn=weekHits?`<button type="button" class="btn" data-empty="week">Show ${weekHits} later match${weekHits===1?"":"es"}</button>`:"";
   el.innerHTML=`<div class="empty">
-    <div class="empty-title">No matches for ${dayViewLabel()}</div>
+    <div class="empty-title">No matches ${state.q?"in the next "+(state.qAhead>6?"6 weeks":"7 days"):"for "+dayViewLabel()}</div>
     ${esc(tips)}<br>
     <div class="empty-actions">
       ${weekBtn}
@@ -2126,10 +2125,7 @@ function renderEmpty(el){
       ${state.mode==="activities"&&state.vibe==="social"?`<button type="button" class="btn" data-empty="all">Everything</button>`:""}
       <button type="button" class="btn" data-empty="clear">Clear filters</button>
     </div></div>`;
-  el.querySelector('[data-empty="week"]')?.addEventListener("click",()=>{
-    state.day=null;state.daySet=null;state.horizon=30;state.preset="";
-    syncDayUI();buildPresets();render();
-  });
+  el.querySelector('[data-empty="week"]')?.addEventListener("click",()=>{state.qAhead=44;render();});
   el.querySelector('[data-empty="today"]')?.addEventListener("click",()=>applyPreset("today"));
   el.querySelector('[data-empty="tonight"]')?.addEventListener("click",()=>applyPreset("tonight"));
   el.querySelector('[data-empty="all"]')?.addEventListener("click",()=>setVibe("all"));
@@ -2308,14 +2304,19 @@ function render(){
   }
   const onlineNote=onlineN?` <span aria-hidden="true">·</span> <button type="button" class="dir" style="border:none;background:none;padding:0;font:inherit;color:var(--muted)" id="countShowOnline">+ ${onlineN} online</button>`:"";
   const endedNote=endedN?` <span aria-hidden="true">·</span> <button type="button" class="dir" style="border:none;background:none;padding:0;font:inherit;color:var(--muted)" id="countShowEnded">show ${endedN} earlier</button>`:"";
+  // A search looks a week ahead; monthly groups (Parkinson's, naloxone
+  // trainings) sit further out and used to look like they didn't exist
+  const laterN=laterSearchHits(list.length);
+  const laterNote=laterN?` <span aria-hidden="true">·</span> <button type="button" class="dir" style="border:none;background:none;padding:0;font:inherit;color:var(--muted)" id="countShowLater">+ ${laterN} later</button>`:"";
   // While live feed is in flight, don't pretend sample rows are the full result
   const countHtml=loadingNow
     ?`<span class="loading"><span class="spin"></span></span> <b>Loading</b> live ${state.mode==="support"?"meetings":"events"}…`
-    :`<b>${list.length}</b> ${formatWords}${resultWord} <span aria-hidden="true">·</span> ${esc(sortPart)}${kidsNote}${onlineNote}${endedNote}`;
+    :`<b>${list.length}</b> ${formatWords}${resultWord} <span aria-hidden="true">·</span> ${esc(sortPart)}${kidsNote}${onlineNote}${laterNote}${endedNote}`;
   document.getElementById("count").innerHTML=countHtml;
   document.getElementById("countShowAll")?.addEventListener("click",()=>setVibe("all"));
   document.getElementById("countShowEnded")?.addEventListener("click",()=>{state.hideEnded=false;render();});
   document.getElementById("countShowOnline")?.addEventListener("click",()=>{state.fmt=null;syncFmtUI();render();});
+  document.getElementById("countShowLater")?.addEventListener("click",()=>{state.qAhead=44;render();});
   updateInsight(list);
   updateMapLegend(list);
   updateFilterUI();
@@ -2717,7 +2718,7 @@ function init(){
   let _qT=null;
   document.getElementById("q").addEventListener("input",e=>{
     clearTimeout(_qT);
-    _qT=setTimeout(()=>{state.q=e.target.value;render();},150);
+    _qT=setTimeout(()=>{state.q=e.target.value;state.qAhead=6;render();},150);
   });
   document.getElementById("btnSaved").onclick=()=>{state.savedOnly=!state.savedOnly;state.preset=state.savedOnly?"saved":"";updateSavedBtn();buildPresets();render();};
   document.getElementById("btnShare").onclick=()=>{
