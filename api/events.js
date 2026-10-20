@@ -90,7 +90,7 @@ const SOURCES = [
   { type: "squarespace", name: "Minnesota Center for Book Arts", base: "https://mnbookarts.org/events", lat: 44.9751, lng: -93.2517, addr: "1011 Washington Ave S, Minneapolis", fallback: "Art" },
 
   // --- Small independent/community calendars not indexed well elsewhere ---
-  { type: "rss", name: "Twin Cities Maker", url: "https://wa.tcmaker.org/widget/Calendar/RSS", loc: "Twin Cities Maker / Hack Factory", lat: 44.9551, lng: -93.2260, addr: "3119 E 26th St, Minneapolis", fallback: "Art" },
+  { type: "rss", name: "Twin Cities Maker", cat: "Art", url: "https://wa.tcmaker.org/widget/Calendar/RSS", loc: "Twin Cities Maker / Hack Factory", lat: 44.9551, lng: -93.2260, addr: "3119 E 26th St, Minneapolis", fallback: "Art" },
   { type: "opendate", name: "The Hook and Ladder", url: "https://r.jina.ai/http://thehookmpls.com/events/", loc: "The Hook and Ladder", lat: 44.9480, lng: -93.2344, addr: "3010 Minnehaha Ave, Minneapolis", fallback: "Music" },
 
   // Meditation centers publish their own calendars but rarely reach city roundups.
@@ -227,6 +227,9 @@ const JUNK = [
   /\b(rochester|duluth|mankato|st\.? cloud|st\.? croix falls|eau claire)\b/i,
   // spam and sales pitches
   /strip clubs?|strippers?\b|male revue|psychic fair|psychic readings?|soul adventure seminar|secrets of spiritual healing|fabletics/i,
+  // Eventbrite ads: exam-prep and manager courses, deal-flow "networking", and
+  // self-guided phone-app city hunts listed for every day of the year
+  /\bexam prep\b|certification\b.*\b(?:bootcamp|exam)\b|\b(?:pmp|capm|six sigma|scrum master)\b|masterclass for (?:new )?managers|leadership excellence|real estate invest|property deals?|passive income|\bforex\b|financial freedom|\b(?:minneapolis|saint paul|st\.? paul)\b.*scavenger hunt|mystery quest|adventure quest|let.?s roam/i,
 ];
 function isJunk(title) {
   const t = title || "";
@@ -275,7 +278,10 @@ function classify(text, catNames) {
   // "Environmental Volunteer Opportunities" — neither is guessable from the name.
   if (cats) {
     if (/trivia|quiz|bingo|game night/.test(cats)) return "Games";
-    if (/on stage|live music|music in the park|concert|dance/.test(cats)) return "Music";
+    // plays are filed under "Theatre & Dance"-style names; bare "dance" also
+    // matched "guidance" and "attendance" in the blurbs some feeds send here
+    if (/theat(?:er|re)\b|\bdrama\b/.test(cats) && !/concert|live music|kid|child|famil|youth|teen|preschool/.test(cats)) return "Art";
+    if (/on stage|live music|music in the park|concert|\bdanc/.test(cats)) return "Music";
     if (/volunteer/.test(cats)) return "Volunteer";
     if (/storytime|story time|kids|children|family|youth|preschool|toddler/.test(cats)) return "Family";
     if (/movie|film|screening/.test(cats)) return "Art";
@@ -296,7 +302,7 @@ function classify(text, catNames) {
   if (has(/storytime|story time|toddler|preschool|\bkids?\b|children|\bfamily\b|all ages|\bbabies?\b|\bteens?\b|puppet|face paint|\blego\b|zookeeper|gorilla|polar bear|tiger talk|giraffe|penguin|sea lion|petting|little explorer|sea stories|dinosaur/)) return "Family";
   if (has(/\brun(?:ning|s)?\b|\b(?:5|10)k\b|marathon|fitness|workout|yoga|pilates|volleyball|pickleball|table tennis|ping pong|climb|cycling|bike ride|bike night|\bsports?\b|softball|basketball|\bswim|skate|zumba|\bbarre\b|crossfit/)) return "Fitness";
   if (has(/volunteer|food shelf|fundrais|charity|blood drive|buckthorn|invasive plant|litter pick/)) return "Volunteer";
-  if (has(/book club|\bauthor\b|\bread(?:ing|s)?\b|poetry|writers|book sale|lit crawl/)) return "Books";
+  if (has(/book club|book circle|book group|book discussion|\bauthor\b|\bread(?:ing|s)?\b|poetry|writers|book sale|lit crawl/)) return "Books";
   if (has(/\barts?\b|craft|paint|pottery|knit|maker|\bdraw|ceramic|\bprint|gallery|exhibit|quilt|\bsew\b|collage|photograph|mural|\bmovie|\bfilm\b|screening/)) return "Art";
   // bare "trail" matched "training" (Salesforce Admin Training → Outdoors). Use trails? word.
   if (has(/hike|\btrails?\b|nature walk|birding|\bbirders?\b|kayak|paddle|canoe|garden|\bpark\b|cleanup|prairie|arboretum|pollinator|\btrek|\bflower|\bbloom|meadow/)) return "Outdoors";
@@ -671,7 +677,7 @@ async function fromRSS(src) {
       url: decode(field("link")) || src.url,
       types: [],
       desc: short(decode(field("description"))),
-      cat: classify(title, [decode(field("description"))]) || src.fallback,
+      cat: src.cat || classify(title, [decode(field("description"))]) || src.fallback,
     }));
   }
   return out;
