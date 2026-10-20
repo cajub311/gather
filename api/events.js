@@ -58,6 +58,9 @@ const SOURCES = [
   { type: "jsonld", name: "Wooden Hill Brewing", url: "https://woodenhillbrewing.com/events/", lat: 44.8653, lng: -93.3748, addr: "7421 Bush Lake Rd, Edina", cat: "Games" },
   { type: "tribe", name: "Friends of St Paul Library", base: "https://www.thefriends.org", lat: 44.9445, lng: -93.0977, addr: "St Paul", fallback: "Books" },
   // mostly online family + peer classes; every row is a support listing
+  // Church-run weekly groups (13-week sessions you can join any week) + one-off workshops
+  { type: "churchfinder", name: "GriefShare", url: "https://find.griefshare.org/find?address=Minneapolis%2C+MN", support: "Grief", group: "GriefShare grief support group", desc: "Church-run grief support group (Christian), meets weekly through the session. Check the page for the street address." },
+  { type: "churchfinder", name: "DivorceCare", url: "https://find.divorcecare.org/find?address=Minneapolis%2C+MN", support: "Divorce", group: "DivorceCare divorce & separation support group", desc: "Church-run support group (Christian) for separation and divorce, meets weekly through the session. Check the page for the street address." },
   { type: "tribe", name: "NAMI Minnesota", base: "https://namimn.org", lat: 44.9778, lng: -93.2650, addr: "Online or call NAMI Minnesota", fallback: "Zen", support: "Mental health", skipCats: /advocacy|training/i,
     skipTitle: /for professionals|agricultural|candidate forum|presenter training/i, metroZips: true },
   { type: "tribe", name: "Loppet Foundation", base: "https://www.loppet.org", lat: 44.9880, lng: -93.3230, addr: "1221 Theodore Wirth Pkwy, Minneapolis", fallback: "Outdoors" },
@@ -1357,6 +1360,65 @@ async function fromJsonLd(src) {
   return out;
 }
 
+// GriefShare / DivorceCare finder: one server-rendered page, every group's pin,
+// weekday, session dates and Central time in data- attributes
+async function fromChurchFinder(src) {
+  const html = await getText(src.url, 15000);
+  const today = chicagoParts(Date.now());
+  const t0 = new Date(today.y, today.mo - 1, today.d);
+  const MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
+  const toDate = (str, yearHint) => {
+    const m = String(str).match(/([A-Za-z]+)\s+(\d{1,2})(?:,\s*(\d{4}))?/);
+    if (!m) return null;
+    const mo = MONTHS.indexOf(m[1].toLowerCase());
+    if (mo < 0) return null;
+    return new Date(+(m[3] || yearHint), mo, +m[2]);
+  };
+  // "5–6:30pm CT", "10am–12pm CT", "11–12:30pm CT"
+  const clock = (str) => {
+    const m = String(str).replace(/\s/g, "").match(/^(\d{1,2})(?::(\d\d))?(am|pm)?[–-](\d{1,2})(?::(\d\d))?(am|pm)/i);
+    if (!m) return null;
+    const h24 = (h, ap) => (+h % 12) + (/pm/i.test(ap) ? 12 : 0);
+    const end = h24(m[4], m[6]) * 60 + +(m[5] || 0);
+    let start = h24(m[1], m[3] || m[6]) * 60 + +(m[2] || 0);
+    if (!m[3] && start > end) start -= 720;
+    return { start, dur: Math.max(30, end - start) };
+  };
+  const out = [];
+  const base = new URL(src.url).origin + "/";
+  for (const m of html.matchAll(/<div class="group-search-result[^"]*"([^>]*)>\s*<a[^>]*href="([^"]*)"/g)) {
+    const d = Object.fromEntries([...m[1].matchAll(/data-([\w-]+)="([^"]*)"/g)].map((x) => [x[1], decode(x[2])]));
+    const lat = parseFloat(d.lat), lng = parseFloat(d.lng);
+    const t = clock(d.time);
+    if (!t || !isFinite(lat)) continue;
+    // next-meeting has no year: it is the first date on or after today
+    let next = toDate(d["next-meeting"], today.y);
+    if (!next) continue;
+    if (next < t0) next.setFullYear(next.getFullYear() + 1);
+    const oneTime = d["is-event"] === "true" || /one-time/i.test(d["date-range"] || "");
+    let last = next;
+    if (!oneTime) {
+      // "September 15–December  8, 2026" or "October 10, 2026–January 23, 2027"
+      const [a, b] = String(d["date-range"] || "").split(/[–-]/);
+      const endYear = (String(b).match(/\d{4}/) || [])[0] || next.getFullYear();
+      last = toDate(b && /[A-Za-z]/.test(b) ? b : `${(a || "").match(/[A-Za-z]+/)?.[0]} ${b}`, endYear) || next;
+    }
+    const horizon = new Date(t0.getTime() + 42 * 864e5);
+    const label = oneTime ? d["event-label"].replace(/\s+Event$/i, "") : src.group;
+    for (let day = new Date(next); day <= last && day <= horizon; day.setDate(day.getDate() + 7)) {
+      const p = { y: day.getFullYear(), mo: day.getMonth() + 1, d: day.getDate(), h: Math.floor(t.start / 60), mi: t.start % 60 };
+      const time = String(p.h).padStart(2, "0") + ":" + String(p.mi).padStart(2, "0");
+      const row = eventRow(src, { title: label, p, time, url: base + m[2].replace(/^\//, ""), types: [], cat: "Learn", desc: src.desc, loc: d["church-name"], addr: d["location-line"], lat, lng });
+      row.dur = t.dur;
+      row.support = src.support;
+      if (d["delivery-method"] === "online") { row.fmt = "online"; row.loc = `Online · ${src.name}`; }
+      out.push(row);
+      if (oneTime) break;
+    }
+  }
+  return out;
+}
+
 function fromStanding(src) {
   const out = [];
   const now = new Date();
@@ -1544,6 +1606,7 @@ module.exports = async (req, res) => {
       else if (src.type === "sports") list = await fromSports(src);
       else if (src.type === "standing") list = fromStanding(src);
       else if (src.type === "jsonld") list = await fromJsonLd(src);
+      else if (src.type === "churchfinder") list = await fromChurchFinder(src);
       else list = await fromTribe(src, startISO, endISO);
       return { src, list };
     }))

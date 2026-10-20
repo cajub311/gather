@@ -71,6 +71,186 @@ async function getJSON(url, ms = 25000) {
   return r.json();
 }
 
+// Sex Addicts Anonymous national site (Drupal). The day filter only honours one
+// value per request, so ask once per weekday. Only the map-view blocks are
+// real rooms — the teaser list mixes in Zoom groups wearing a default address.
+const SAA_URL =
+  "https://saa-recovery.org/meetings?field_geolocation_proximity_center%5Bcoordinates%5D%5Blat%5D=44.9778&field_geolocation_proximity_center%5Bcoordinates%5D%5Blng%5D=-93.265&field_geolocation_proximity=50&meeting_day_of_week_views_filter%5B%5D=";
+const SAA_DAYS = [32, 22, 30, 18, 28, 24, 26]; // Sun..Sat
+
+async function fetchSAA() {
+  const pages = await Promise.all(
+    SAA_DAYS.map(async (code, day) => {
+      const r = await fetch(SAA_URL + code, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(12000) });
+      if (!r.ok) throw new Error(`saa HTTP ${r.status}`);
+      return { day, html: await r.text() };
+    })
+  );
+  const out = [];
+  const seen = new Set();
+  const unent = (s) => s.replace(/&#0*39;|&apos;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+  const txt = (block, cls) => {
+    const m = block.match(new RegExp(`class="[^"]*${cls}[^"]*"[^>]*>([\\s\\S]*?)</(?:div|span|li|a)>`));
+    return m ? unent(cleanText(m[1])) : "";
+  };
+  for (const { day, html } of pages) {
+    for (const block of html.split(/class="geolocation-location\b/).slice(1)) {
+      const lat = parseFloat((block.match(/data-lat="([-\d.]+)"/) || [])[1]);
+      const lng = parseFloat((block.match(/data-lng="([-\d.]+)"/) || [])[1]);
+      const link = block.match(/<a href="(\/meetings\/[^"]+)"[^>]*>([^<]+)<\/a>/);
+      const tm = block.match(/meeting-time-time">\s*(\d{1,2}):(\d{2})\s*(am|pm)\s*C[DS]?T/i);
+      if (!link || !tm || !isFinite(lat)) continue;
+      const key = link[1] + "|" + day;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const h = (+tm[1] % 12) + (/pm/i.test(tm[3]) ? 12 : 0);
+      const street = txt(block, "address-line1");
+      const city = txt(block, "locality");
+      const access = txt(block, "field--field-access");
+      const gender = txt(block, "field--field-gender");
+      const types = [/open/i.test(access) ? "Open" : /closed/i.test(access) ? "Closed" : "", /^men/i.test(gender) ? "Men" : /^women/i.test(gender) ? "Women" : ""].filter(Boolean);
+      out.push({
+        cat: "SAA",
+        name: unent(cleanText(link[2])),
+        day,
+        time: String(h).padStart(2, "0") + ":" + tm[2],
+        dur: 60,
+        fmt: "in-person",
+        loc: txt(block, "field--field-facility-name") || "SAA Group",
+        addr: [street, city].filter(Boolean).join(", ") || "Twin Cities",
+        lat,
+        lng,
+        types,
+        url: "https://saa-recovery.org" + link[1],
+        live: true,
+        verified: true,
+      });
+    }
+  }
+  return out;
+}
+
+// Gamblers Anonymous national list: plain HTML pages, street address but no pin.
+// Pins below come from the US Census geocoder (2026-10-19), keyed "house# zip";
+// a new metro address is looked up live the same way.
+const GA_URL = "https://gamblersanonymous.org/usa-meetings/?state=Minnesota&term=147&paged=";
+const GA_PINS = {
+  "850 55303": [45.19036, -93.37565], "1701 55431": [44.82637, -93.30216],
+  "4938 55429": [45.04471, -93.31966], "2051 55313": [45.22309, -93.84662],
+  "11100 55337": [44.80185, -93.23138], "305 55008": [45.57481, -93.23323],
+  "3837 55421": [45.03667, -93.24713], "6875 55016": [44.84853, -92.92164],
+  "2180 55122": [44.80118, -93.21961], "6716 55439": [44.88091, -93.38213],
+  "715 55343": [44.93093, -93.40852], "1390 55113": [44.99195, -93.04302],
+  "7550 55428": [45.05474, -93.37555], "5011 55417": [44.91246, -93.22706],
+  "509 55063": [45.82665, -92.96972], "3920 55126": [45.06027, -93.13126],
+  "520 55101": [44.95142, -93.09462], "253 55107": [44.93823, -93.07758],
+  "7380 55125": [44.92335, -92.95614],
+};
+const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+
+async function censusPin(addr) {
+  const u = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?benchmark=Public_AR_Current&format=json&address=" + encodeURIComponent(addr);
+  const j = await getJSON(u, 6000);
+  const m = j?.result?.addressMatches?.[0];
+  return m ? [m.coordinates.y, m.coordinates.x] : null;
+}
+
+async function fetchGA() {
+  const pages = await Promise.all(
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(async (n) => {
+      const r = await fetch(GA_URL + n, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(12000) });
+      if (!r.ok) throw new Error(`ga HTTP ${r.status}`);
+      return r.text();
+    })
+  );
+  const rows = [];
+  const seen = new Set();
+  const unent = (s) => s.replace(/&#0*39;|&#8217;|&apos;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+  for (const html of pages) {
+    const re = /<a href='([^']+)'><div[^>]*><h4>([^<]+)<\/h4>\s*<p[^>]*>Location:\s*([^<]+)<\/p>\s*<p[^>]*>Time:\s*(\d{1,2}):(\d{2})\s*(AM|PM)<\/p>\s*<div>([\s\S]*?)<\/div><\/div><\/a>/gi;
+    for (const m of html.matchAll(re)) {
+      if (seen.has(m[1])) continue;
+      seen.add(m[1]);
+      const title = unent(m[2]).trim();
+      const day = WEEKDAYS.indexOf((title.match(/-\s*(\w+day)\s*$/i) || [])[1]?.toLowerCase());
+      const addr = unent(m[3]).replace(/,?\s*United States/i, "").trim();
+      const zip = (addr.match(/\b(55[0-5]\d\d)\b/) || [])[1];
+      if (day < 0 || !zip) continue; // 55000-55599 = the metro side of the state
+      // first <p> is the place name, the rest is door / room notes
+      const paras = [...m[7].matchAll(/<p[^>]*>([\s\S]*?)<\/p>/g)].map((p) => unent(cleanText(p[1]))).filter(Boolean);
+      const place = paras[0] && !/^(?:open|closed) meeting/i.test(paras[0]) ? paras.shift() : "";
+      const notes = paras.join(" · ");
+      const h = (+m[4] % 12) + (/pm/i.test(m[6]) ? 12 : 0);
+      rows.push({
+        cat: "GA",
+        name: title.replace(/\s*-\s*\w+day\s*$/i, ""),
+        day,
+        time: String(h).padStart(2, "0") + ":" + m[5],
+        dur: 90,
+        fmt: "in-person",
+        loc: place || "GA Group",
+        addr: addr.replace(/,?\s*Minnesota,?\s*\d{5}$/i, "").replace(/\s+Minnesota\s+\d{5}$/i, ""),
+        key: (addr.match(/^\d+/) || [""])[0] + " " + zip,
+        full: addr,
+        types: [/open meeting/i.test(notes) ? "Open" : /closed meeting/i.test(notes) ? "Closed" : ""].filter(Boolean),
+        notes: notes.replace(/\b(?:open|closed) meeting;?\s*(?:·\s*)?/gi, "").replace(/[\s·]+$/, "") || undefined,
+        url: m[1],
+        live: true,
+        verified: true,
+      });
+    }
+  }
+  const missing = [...new Set(rows.filter((r) => !GA_PINS[r.key]).map((r) => r.full))].slice(0, 8);
+  const found = {};
+  await Promise.all(missing.map(async (a) => { try { found[a] = await censusPin(a); } catch {} }));
+  return rows
+    .map(({ key, full, ...r }) => {
+      const ll = GA_PINS[key] || found[full];
+      return ll ? { ...r, lat: ll[0], lng: ll[1] } : null;
+    })
+    .filter(Boolean);
+}
+
+// Nar-Anon world service runs on Knack; its public map view takes a "near ZIP" filter
+const NARANON_URL =
+  "https://api.knack.com/v1/pages/scene_5/views/view_7/records?rows_per_page=200&filters=" +
+  encodeURIComponent(JSON.stringify([{ field: "field_1", operator: "near", value: "55401", range: "50" }]));
+
+async function fetchNarAnon() {
+  const r = await fetch(NARANON_URL, {
+    headers: { "User-Agent": UA, "X-Knack-Application-Id": "54dd0787f294e1891969b4db", "X-Knack-REST-API-Key": "knack" },
+    signal: AbortSignal.timeout(12000),
+  });
+  if (!r.ok) throw new Error(`nar-anon HTTP ${r.status}`);
+  const out = [];
+  for (const x of (await r.json()).records || []) {
+    const a = x.field_1_raw || {};
+    const day = WEEKDAYS.indexOf((String(x.field_6).match(/\w+day/i) || [""])[0].toLowerCase());
+    const tm = String(x.field_82).match(/(\d{1,2}):(\d{2})\s*(am|pm)/i);
+    if (day < 0 || !tm || !isFinite(a.latitude) || /disband|inactive/i.test(x.field_67)) continue;
+    const h = (+tm[1] % 12) + (/pm/i.test(tm[3]) ? 12 : 0);
+    out.push({
+      cat: "Nar-Anon",
+      name: `Nar-Anon at ${cleanText(x.field_5) || a.city}`,
+      day,
+      time: String(h).padStart(2, "0") + ":" + tm[2],
+      dur: 60,
+      fmt: "in-person",
+      loc: cleanText(x.field_5) || "Nar-Anon Group",
+      addr: [a.street, a.city].filter(Boolean).join(", "),
+      lat: a.latitude,
+      lng: a.longitude,
+      types: [],
+      notes: [/of the month/i.test(x.field_6) ? "Meets once a month — check the day with the group" : "",
+        /virtual/i.test(x.field_4) ? "Also has an online option" : ""].filter(Boolean).join(" · ") || undefined,
+      url: "https://www.nar-anon.org/find-a-meeting",
+      live: true,
+      verified: true,
+    });
+  }
+  return out;
+}
+
 async function fetchAAMinnesota() {
   const r = await fetch(AA_MN_PAGE, { headers: { "User-Agent": UA } });
   if (!r.ok) throw new Error(`tsml page HTTP ${r.status}`);
@@ -562,7 +742,7 @@ module.exports = async (req, res) => {
 
   // start the newer feeds alongside the main ones, not after them
   const extrasP = Promise.allSettled(EXTRA_TSML.map((f) => getJSON(f.url)));
-  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba()]);
+  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), fetchSAA(), fetchGA(), fetchNarAnon()]);
   const [aa, na, aamn, alanon, dharma, refuge, buddhist] = await Promise.allSettled([
     getJSON(AA_URL),
     getJSON(NA_URL),
@@ -573,7 +753,7 @@ module.exports = async (req, res) => {
     getJSON(BUDDHIST_URL),
   ]);
   const extras = await extrasP;
-  const [sa, soba] = await moreP;
+  const [sa, soba, saa, ga, naranon] = await moreP;
 
   function take(label, result, list) {
     if (result.status === "fulfilled" && Array.isArray(result.value)) {
@@ -640,6 +820,12 @@ module.exports = async (req, res) => {
 
   take("Sexaholics Anonymous Twin Cities", sa,
     sa.status === "fulfilled" ? normalizeSA(sa.value).filter((x) => x.lat && x.lng && inMetro(x)) : []);
+  take("Sex Addicts Anonymous (SAA)", saa,
+    saa.status === "fulfilled" ? saa.value.filter((x) => inMetro(x)) : []);
+  take("Gamblers Anonymous", ga,
+    ga.status === "fulfilled" ? ga.value.filter((x) => inMetro(x)) : []);
+  take("Nar-Anon", naranon,
+    naranon.status === "fulfilled" ? naranon.value.filter((x) => inMetro(x)) : []);
   take("SobaSearch (OA, CoDA, ACA, SMART, CR, MA, EDA)", soba,
     soba.status === "fulfilled" ? soba.value.filter((x) => inMetro(x)) : []);
 
