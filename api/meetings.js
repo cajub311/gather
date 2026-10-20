@@ -376,8 +376,16 @@ const PATHMINDER = [
   // SMART's list stays empty until a city is searched (50 miles; online = ones run from nearby)
   { cat: "SMART", label: "SMART Recovery", base: "https://meetings.smartrecovery.org", types: [], near: "Minneapolis, MN", ua: CHROME_UA,
     // same names as SobaSearch's copies, so the two merge instead of doubling
-    name: (x, city) => (/family/i.test(x.title) ? "SMART Family & Friends" : "SMART Recovery") + (city ? ` – ${city}` : " online") },
+    name: (x, city) => (/family/i.test(x.title) ? "SMART Family & Friends" : "SMART Recovery") + (city ? ` – ${city}` : " online"),
+    // it refuses Vercel (HTTP 403), so the site uses the copy refresh-saved-lists.cjs makes on a Mac
+    saved: () => SMART_SAVED.rows },
 ];
+let SMART_SAVED = { listed: "", rows: [] };
+try { SMART_SAVED = require("./_smart.json"); } catch {}
+const pathminderOrSaved = (site) => fetchPathminder(site).catch((e) => {
+  if (site.saved?.().length) return site.saved();
+  throw e;
+});
 // ZIP centers (OpenStreetMap) for rooms with no street number to geocode
 const ZIP_PINS = { 55105: [44.935, -93.1666], 55305: [44.9529, -93.4264], 55391: [44.9741, -93.5066] };
 
@@ -1484,7 +1492,7 @@ module.exports = async (req, res) => {
 
   // start the newer feeds alongside the main ones, not after them
   const extrasP = Promise.allSettled(EXTRA_TSML.map((f) => getJSON(f.url)));
-  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), fetchCAOnline(), fetchMA(), fetchDA(), fetchGamAnon(), fetchHA(), fetchDRA(), fetchCROnline(), fetchSLAA(), fetchPA(), fetchRI(), fetchSAnon(), fetchNAVirtual(), ...TSML_ONLINE.map(fetchTSMLOnline), ...PATHMINDER.map(fetchPathminder)]);
+  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), fetchCAOnline(), fetchMA(), fetchDA(), fetchGamAnon(), fetchHA(), fetchDRA(), fetchCROnline(), fetchSLAA(), fetchPA(), fetchRI(), fetchSAnon(), fetchNAVirtual(), ...TSML_ONLINE.map(fetchTSMLOnline), ...PATHMINDER.map(pathminderOrSaved)]);
   const [aa, na, aamn, alanon, dharma, refuge, buddhist] = await Promise.allSettled([
     getJSON(AA_URL),
     getJSON(NA_URL),
@@ -1615,4 +1623,4 @@ module.exports = async (req, res) => {
 
 // for scripts/backup-blocked.cjs
 module.exports.backupFetchers = { [SAA_LABEL]: fetchSAA };
-module.exports.savedLists = { "_nica.json": fetchNicA };
+module.exports.savedLists = { "_nica.json": fetchNicA, "_smart.json": () => fetchPathminder(PATHMINDER.find((s) => s.cat === "SMART")) };

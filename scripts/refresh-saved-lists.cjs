@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Makes the api/_*.json lists that are too slow to read on every page load
-// (now: Nicotine Anonymous, ~10 slow pages). Run from a Mac every couple of
-// months:  node scripts/refresh-saved-lists.cjs   then commit the JSON files.
+// or that refuse Vercel (now: Nicotine Anonymous, ~10 slow pages; SMART
+// Recovery, HTTP 403). Run from a Mac every couple of months:
+//   node scripts/refresh-saved-lists.cjs   then commit the JSON files.
 const fs = require("fs");
 const path = require("path");
 const meetings = require("../api/meetings.js");
