@@ -938,6 +938,17 @@ async function fetchNAVirtual() {
   return onlineOnly(out);
 }
 
+// AA's Online Intergroup (aa-intergroup.org) lists ~7,900 online meetings in the
+// public feed its own finder loads. Kept, like MA and DA: English meetings run on
+// Central Time. Links go to OIAA's page for each meeting; Zoom links, phones and
+// emails are dropped before anything else sees the row.
+const OIAA_URL = "https://data.aa-intergroup.org/6436f5a3f03fdecef8459055.json";
+async function fetchOIAA() {
+  const rows = (await getJSON(OIAA_URL)).filter((r) => r.timezone === "America/Chicago" && r.types?.includes("EN"));
+  return onlineOnly(normalizeAA(rows.map(({ conference_url, conference_phone, email, ...r }) => ({ ...r, attendance_option: "online" })), "AA"))
+    .map((x) => ({ ...x, notes: "Join details are on the Online Intergroup of AA's page." }));
+}
+
 // SLAA's finder is a Caspio search form: plain HTML that posts back to itself.
 // Send the form's own fields with State = Minnesota and read each result's
 // "Sunday 1:00 PM CT | name | Location | Address" block (contacts left out).
@@ -1492,7 +1503,7 @@ module.exports = async (req, res) => {
 
   // start the newer feeds alongside the main ones, not after them
   const extrasP = Promise.allSettled(EXTRA_TSML.map((f) => getJSON(f.url)));
-  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), fetchCAOnline(), fetchMA(), fetchDA(), fetchGamAnon(), fetchHA(), fetchDRA(), fetchCROnline(), fetchSLAA(), fetchPA(), fetchRI(), fetchSAnon(), fetchNAVirtual(), ...TSML_ONLINE.map(fetchTSMLOnline), ...PATHMINDER.map(pathminderOrSaved)]);
+  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), fetchCAOnline(), fetchMA(), fetchDA(), fetchGamAnon(), fetchHA(), fetchDRA(), fetchCROnline(), fetchSLAA(), fetchPA(), fetchRI(), fetchSAnon(), fetchNAVirtual(), fetchOIAA(), ...TSML_ONLINE.map(fetchTSMLOnline), ...PATHMINDER.map(pathminderOrSaved)]);
   const [aa, na, aamn, alanon, dharma, refuge, buddhist] = await Promise.allSettled([
     getJSON(AA_URL),
     getJSON(NA_URL),
@@ -1503,7 +1514,7 @@ module.exports = async (req, res) => {
     getJSON(BUDDHIST_URL),
   ]);
   const extras = await extrasP;
-  const [sa, soba, saa, ga, naranon, ea, caOnline, ma, da, gamanon, ha, dra, crOnline, slaa, pa, ri, sanon, naVirtual, rca, sia, wa, ...pm] = await moreP;
+  const [sa, soba, saa, ga, naranon, ea, caOnline, ma, da, gamanon, ha, dra, crOnline, slaa, pa, ri, sanon, naVirtual, oiaa, rca, sia, wa, ...pm] = await moreP;
 
   function take(label, result, list) {
     if (result.status === "fulfilled" && Array.isArray(result.value)) {
@@ -1598,6 +1609,7 @@ module.exports = async (req, res) => {
   take("Recovery International", ri, ri.status === "fulfilled" ? ri.value : []);
   take("S-Anon", sanon, sanon.status === "fulfilled" ? sanon.value : []);
   take("NA online (virtual-na.org)", naVirtual, naVirtual.status === "fulfilled" ? naVirtual.value : []);
+  take("AA online (aa-intergroup.org)", oiaa, oiaa.status === "fulfilled" ? oiaa.value : []);
   take("Pills Anonymous", pa, pa.status === "fulfilled" ? pa.value.filter((x) => x.fmt === "online" || inMetro(x)) : []);
   PATHMINDER.forEach((site, i) => take(site.label, pm[i], pm[i].status === "fulfilled" ? pm[i].value : []));
   // SMART's own list has real addresses; SobaSearch's SMART copies are only a fallback
