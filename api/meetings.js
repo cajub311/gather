@@ -253,6 +253,57 @@ async function fetchNarAnon() {
   return out;
 }
 
+// GA's virtual meeting list: 5 meetings a page, ~60 pages for the US, so
+// scripts/refresh-saved-lists.cjs saves it to api/_ga-online.json. Each card is
+// "City, State, Country - Day" and a local time; the zone comes from the card's
+// own words when it names one, else from the state. Zoom IDs, access codes and
+// links stay on GA's page for each meeting.
+const GA_ONLINE_URL = "https://gamblersanonymous.org/virtual-meetings/?city=&country=United+States&weekday=&term=133&paged=";
+const GA_STATE_ZONES = [
+  [/^(connecticut|delaware|district|florida|georgia|indiana|kentucky|maine|maryland|massachuset|michigan|new hampshire|new jersey|new york|north carolina|ohio|pennsylvania|rhode|south carolina|vermont|virginia|west virginia)/, "America/New_York"],
+  [/^(alabama|arkansas|illinois|iowa|kansas|louisiana|minnesota|mississippi|missouri|nebraska|north dakota|oklahoma|south dakota|tennessee|texas|wisconsin)/, "America/Chicago"],
+  [/^(colorado|idaho|montana|new mexico|utah|wyoming)/, "America/Denver"], [/^arizona/, "America/Phoenix"],
+  [/^(california|nevada|oregon|washington)/, "America/Los_Angeles"], [/^alaska/, "America/Anchorage"], [/^hawaii/, "Pacific/Honolulu"],
+];
+async function fetchGAOnline() {
+  const page = async (n) => {
+    const r = await fetch(GA_ONLINE_URL + n, { headers: { "User-Agent": CHROME_UA }, signal: AbortSignal.timeout(15000) });
+    if (!r.ok) throw new Error(`ga online HTTP ${r.status}`);
+    return r.text();
+  };
+  const first = await page(1);
+  const last = Math.min(80, Math.max(1, ...[...first.matchAll(/paged=(\d+)/g)].map((m) => +m[1])));
+  const out = [], seen = new Set();
+  for (let n = 1; n <= last; n++) {
+    const html = n === 1 ? first : await page(n);
+    for (const m of html.matchAll(/<a href='([^']+)'><div[^>]*><h4>([^<]+)<\/h4>\s*<p>Time:\s*([^<]+)<\/p>\s*<div>([\s\S]*?)<\/div><\/div><\/a>/g)) {
+      if (seen.has(m[1])) continue;
+      seen.add(m[1]);
+      const [where, dayName] = htmlText(m[2]).split(/\s+-\s+(?=\w+day\s*$)/);
+      const [city, state] = (where || "").split(",").map((x) => x.trim());
+      const body = htmlText(m[4]);
+      if (!state || /spanish|espa[nñ]ol/i.test(body + where)) continue;
+      const word = `${m[3]} ${body}`.match(/\b(eastern|central|mountain|pacific|arizona)\b/i)?.[1] || `${m[3]} ${body}`.match(/\b([ECMP])[SD]?T\b/)?.[1];
+      const tz = word ? ZONE[word.toLowerCase()] || { e: "America/New_York", c: "America/Chicago", m: "America/Denver", p: "America/Los_Angeles" }[word.toLowerCase()]
+        : GA_STATE_ZONES.find(([re]) => re.test(state.toLowerCase()))?.[1];
+      const t = m[3].match(/(\d{1,2}:\d{2}\s*[AP]M)(?:\s*-\s*(\d{1,2}:\d{2}\s*[AP]M))?/i);
+      const at = tz && t && clockToCentral(WEEKDAYS.indexOf(String(dayName).trim().toLowerCase()), t[1], tz);
+      if (!at) continue;
+      const end = t[2] && clockToCentral(0, t[2], tz);
+      const dur = end ? ((+end.time.slice(0, 2) * 60 + +end.time.slice(3)) - (+at.time.slice(0, 2) * 60 + +at.time.slice(3)) + 1440) % 1440 : 90;
+      out.push({
+        cat: "GA", name: `GA online — ${city}, ${state}`, ...at, dur: dur > 0 && dur <= 180 ? dur : 90, fmt: "online",
+        types: [/open meeting/i.test(body) ? "Open" : /closed meeting/i.test(body) ? "Closed" : "", /women/i.test(body) ? "Women" : ""].filter(Boolean),
+        notes: "Join details are on Gamblers Anonymous's page for this meeting.", url: m[1], live: true, verified: true,
+      });
+    }
+    if (n > 1) await new Promise((ok) => setTimeout(ok, 1000)); // be gentle with their server
+  }
+  return onlineOnly(out);
+}
+let GA_ONLINE_SAVED = { listed: "", rows: [] };
+try { GA_ONLINE_SAVED = require("./_ga-online.json"); } catch {}
+
 // Emotions Anonymous: a site search widget. Its settings (ajax URL + tokens) are
 // a JSON blob on the page; the list has city/day/time, the street address is on
 // each meeting's own page, and the pin comes from the Census geocoder.
@@ -1708,6 +1759,8 @@ module.exports = async (req, res) => {
   take("ACA (adultchildren.org)", aca, aca.status === "fulfilled" ? aca.value : []);
   take(`ACA online (copied ${ACA_ONLINE_SAVED.listed || "—"})`, { status: ACA_ONLINE_SAVED.rows.length ? "fulfilled" : "rejected",
     value: ACA_ONLINE_SAVED.rows, reason: new Error("api/_aca-online.json missing") }, ACA_ONLINE_SAVED.rows);
+  take(`Gamblers Anonymous online (copied ${GA_ONLINE_SAVED.listed || "—"})`, { status: GA_ONLINE_SAVED.rows.length ? "fulfilled" : "rejected",
+    value: GA_ONLINE_SAVED.rows, reason: new Error("api/_ga-online.json missing") }, GA_ONLINE_SAVED.rows);
   take("Pills Anonymous", pa, pa.status === "fulfilled" ? pa.value.filter((x) => x.fmt === "online" || inMetro(x)) : []);
   PATHMINDER.forEach((site, i) => take(site.label, pm[i], pm[i].status === "fulfilled" ? pm[i].value : []));
   // SobaSearch copies ACA's own list; keep only its ACA rooms ACA didn't return
@@ -1736,4 +1789,4 @@ module.exports = async (req, res) => {
 
 // for scripts/backup-blocked.cjs
 module.exports.backupFetchers = { [SAA_LABEL]: fetchSAA };
-module.exports.savedLists = { "_nica.json": fetchNicA, "_aca-online.json": fetchACAOnline, "_smart.json": () => fetchPathminder(PATHMINDER.find((s) => s.cat === "SMART")) };
+module.exports.savedLists = { "_nica.json": fetchNicA, "_aca-online.json": fetchACAOnline, "_ga-online.json": fetchGAOnline, "_smart.json": () => fetchPathminder(PATHMINDER.find((s) => s.cat === "SMART")) };
