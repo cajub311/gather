@@ -976,6 +976,14 @@ const FELLOWSHIPS = {
   GriefShare:{name:"GriefShare (grief groups)",color:"#e9d5ff"},
   TCF:{name:"Compassionate Friends (loss of a child)",color:"#fbcfe8"},
   Group:{name:"Support group (grief, mental health, caregivers)",color:"#5eead4"},
+  MRC:{name:"Minnesota Recovery Connection (any recovery path)",color:"#a5f3fc"},
+  DivorceCare:{name:"DivorceCare (separation & divorce)",color:"#e9d5ff"},
+  POMC:{name:"Parents of Murdered Children",color:"#fbcfe8"},
+  Gilda:{name:"Gilda's Club (cancer support)",color:"#fde68a"},
+  ALZ:{name:"Alzheimer's Association MN (dementia caregivers)",color:"#ddd6fe"},
+  PD:{name:"Parkinson's Foundation helpline",color:"#bfdbfe"},
+  Stroke:{name:"Stroke support groups",color:"#fecaca"},
+  BIA:{name:"Brain Injury Alliance of MN",color:"#d9f99d"},
 };
 // Official meeting finders per program — powers the "verify" button.
 const FINDERS={
@@ -1015,6 +1023,14 @@ const FINDERS={
   GriefShare:"https://www.griefshare.org/",
   TCF:"https://www.compassionatefriends.org/",
   Group:"https://www.211.org/",
+  MRC:"https://minnesotarecovery.org/",
+  DivorceCare:"https://www.divorcecare.org/",
+  POMC:"https://pomc.org/",
+  Gilda:"https://gildasclubmn.org/find-support/",
+  ALZ:"https://www.alz.org/mnnd",
+  PD:"https://www.parkinson.org/resources-support/helpline",
+  Stroke:"https://www.stroke.org/en/stroke-support-groups",
+  BIA:"https://www.braininjurymn.org/",
 };
 function finderFor(m){return (m.url)||FINDERS[m.cat]||"https://www.211.org/";}
 const SUPPORT = [
@@ -2565,10 +2581,11 @@ function updateFooter(){
     pl.dataset.built="1";
     // grouped by what someone is dealing with; AA/NA/Al-Anon live feeds cover those
     const groups=[
-      ["Drinking & drugs",["CMA","CA","MA","HA","PA","DDA","SMART","LifeRing","WFS","Refuge","Dharma","Buddhist","CR","Wellbriety"]],
+      ["Drinking & drugs",["MRC","CMA","CA","MA","HA","PA","DDA","SMART","LifeRing","WFS","Refuge","Dharma","Buddhist","CR","Wellbriety"]],
       ["Gambling, food, sex, money",["GA","OA","EDA","SA","SAA","SLAA","DA"]],
       ["Family & friends of someone struggling",["Nar-Anon","Gam-Anon","FA","ACA","CoDA"]],
-      ["Mental health & grief",["NAMI","DBSA","MHMN","EA","GriefShare","TCF","Group"]],
+      ["Mental health, grief & divorce",["NAMI","DBSA","MHMN","EA","GriefShare","TCF","POMC","DivorceCare","Group"]],
+      ["Illness, injury & caregivers",["Gilda","ALZ","PD","Stroke","BIA"]],
     ];
     const placed=new Set(groups.flatMap(g=>g[1]));
     const rest=Object.keys(FINDERS).filter(k=>!placed.has(k)&&!["AA","NA","Al-Anon"].includes(k));
