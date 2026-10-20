@@ -1375,16 +1375,21 @@ function normalizeSoba(rows, want) {
 async function fetchSoba() {
   const lists = [];
   const stopAt = Date.now() + 12000; // the function has 30s; never spend most of it here
-  for (const [q, want] of SOBA_PROGRAMS) {
-    if (Date.now() > stopAt) break;
-    try {
-      const d = await getJSON(SOBA_URL + encodeURIComponent(q), 5000);
-      lists.push(normalizeSoba(d.data, want));
-    } catch (e) {
-      if (/HTTP 429/.test(e.message)) break; // asked too often: keep what we have
+  let throttled = false;
+  // two lanes side by side, so on a slow day the last programs aren't cut off
+  const lane = async (programs) => {
+    for (const [q, want] of programs) {
+      if (throttled || Date.now() > stopAt) break;
+      try {
+        const d = await getJSON(SOBA_URL + encodeURIComponent(q), 5000);
+        lists.push(normalizeSoba(d.data, want));
+      } catch (e) {
+        if (/HTTP 429/.test(e.message)) throttled = true; // asked too often: keep what we have
+      }
+      await new Promise((r) => setTimeout(r, 250));
     }
-    await new Promise((r) => setTimeout(r, 250));
-  }
+  };
+  await Promise.all([lane(SOBA_PROGRAMS.filter((_, i) => i % 2 === 0)), lane(SOBA_PROGRAMS.filter((_, i) => i % 2 === 1))]);
   if (!lists.length) throw new Error("sobasearch: no answers");
   return lists.flat();
 }
