@@ -43,7 +43,7 @@ const SOURCES = [
   { type: "tribe", name: "Como Zoo & Conservatory", base: "https://comozooconservatory.org", lat: 44.9822, lng: -93.1519, addr: "1225 Estabrook Dr, St Paul", fallback: "Family" },
   { type: "tribe", name: "Summit Brewing", base: "https://www.summitbrewing.com", lat: 44.9160, lng: -93.1360, addr: "910 Montreal Cir, St Paul" },
   { type: "tribe", name: "Utepils Brewing", base: "https://www.utepilsbrewing.com", lat: 44.9790, lng: -93.3080, addr: "225 Thomas Ave N, Minneapolis" },
-  { type: "tribe", name: "White Squirrel Bar", base: "https://whitesquirrelbar.com", lat: 44.9270, lng: -93.1250, addr: "974 W 7th St, St Paul", fallback: "Music" },
+  { type: "tribe", name: "White Squirrel Bar", base: "https://whitesquirrelbar.com", lat: 44.9270, lng: -93.1250, addr: "974 W 7th St, St Paul", cat: "Music" },
   { type: "tribe", name: "Science Museum of MN", base: "https://www.smm.org", lat: 44.9425, lng: -93.0990, addr: "120 W Kellogg Blvd, St Paul", fallback: "Family" },
   { type: "tribe", name: "Malcolm Yards", base: "https://malcolmyards.market", lat: 44.9797, lng: -93.2130, addr: "501 30th Ave SE, Minneapolis" },
   { type: "tribe", name: "Dakota Jazz Club", base: "https://dakotacooks.com", lat: 44.9727, lng: -93.2760, addr: "1010 Nicollet Mall, Minneapolis", cat: "Music" },
@@ -57,6 +57,9 @@ const SOURCES = [
   // NE brewery with regular trivia / social nights (confirmed tribe feed)
   { type: "tribe", name: "Wooden Hill Brewing", base: "https://woodenhillbrewing.com", lat: 45.0139, lng: -93.2475, addr: "2415 Central Ave NE, Minneapolis" },
   { type: "tribe", name: "Friends of St Paul Library", base: "https://www.thefriends.org", lat: 44.9445, lng: -93.0977, addr: "St Paul", fallback: "Books" },
+  // mostly online family + peer classes; every row is a support listing
+  { type: "tribe", name: "NAMI Minnesota", base: "https://namimn.org", lat: 44.9778, lng: -93.2650, addr: "Online or call NAMI Minnesota", fallback: "Zen", support: "Mental health", skipCats: /advocacy|training/i,
+    skipTitle: /for professionals|agricultural|candidate forum|presenter training/i, metroZips: true },
   { type: "tribe", name: "Loppet Foundation", base: "https://www.loppet.org", lat: 44.9880, lng: -93.3230, addr: "1221 Theodore Wirth Pkwy, Minneapolis", fallback: "Outdoors" },
 
   // --- UMN public calendar (LiveWhale JSON) — lectures, arboretum, concerts ---
@@ -203,8 +206,12 @@ const JUNK = [
   /^suspended\b|^full\s*[-–—]|\btbd\b.*\bbreak\b|seeks .*\b(?:extras?|roles|actors)\b|\bdealer\b.*\btraining\b|barista training/i,
   // students-only campus errands
   /\b(admissions|undergraduate research|urop|zotero|preparing to publish|data snack|study (?:day|break|skills)|snack & study|writing lab)\b|^paws\s*[-–—(]|paws (?:study break|new location)/i,
+  // members-only tool sign-offs, chores, hours and drink specials
+  /\(ad hoc\)|\bbasic training\b|quarterly cleanup|closing at \d|featured beer|\$\d+ (?:per )?pints?\b|info(?:rmation)? session|\bsymposium\b/i,
   // trips somewhere else, not a night out here
   /\b(moab|zion|bryce|smoky mountains?|grand canyon|yellowstone|glamping)\b/i,
+  // events in other cities that a metro venue lists
+  /\b(rochester|duluth|mankato|st\.? cloud|st\.? croix falls|eau claire)\b/i,
   // spam and sales pitches
   /strip clubs?|strippers?\b|male revue|psychic fair|psychic readings?|soul adventure seminar|secrets of spiritual healing|fabletics/i,
 ];
@@ -263,7 +270,7 @@ function classify(text, catNames) {
   // title is the better signal. Categories still feed the title pass below.
   const t = ((text || "") + " " + cats).toLowerCase();
   const has = (re) => re.test(t);
-  if (has(/trivia|quiz night|\bbingo\b|board game|tabletop|chess|d&d|dungeons|magic the|euchre|card game|crokinole|jigsaw|puzzl|pinball|arcade|karaoke|game night|clocktower/)) return "Games";
+  if (has(/trivia|quiz night|\bbingo\b|board game|tabletop|chess|d&d|dungeons|magic the|euchre|card game|crokinole|jigsaw|puzzl|pinball|arcade|karaoke|game night|clocktower|free pool|pool (?:league|tournament|night)|billiards|\bdarts?\b|cribbage|mah ?jongg?|shuffleboard|skee-?ball|\bkubb\b/)) return "Games";
   // Hands-on craft classes: their blurbs mention "build", "beginners" or
   // "skills" and landed in Fitness or Music.
   if (has(/ceramic|pottery|bookmaking|stained glass|woodwork|woodturn|letterpress|weaving|glassblow|jewelry making|hand-building|wheel throwing/)) return "Art";
@@ -437,17 +444,23 @@ async function fromTribe(src, startISO, endISO) {
     if (isNoise(title) || isUnavailableTitle(title)) continue;
     const v = Array.isArray(e.venue) ? (e.venue[0] || {}) : (e.venue || {});
     const lat = parseFloat(v.geo_lat), lng = parseFloat(v.geo_lng);
+    const webOnly = /^\s*(online|virtual|zoom)\b/i.test(decode(v.venue || ""));
     const catNames = (e.categories || []).map((c) => decode(c.name)).filter(Boolean);
     if (isFillerOnly(catNames)) continue;
+    if (src.skipCats && catNames.some((c) => src.skipCats.test(c))) continue;
+    if (src.skipTitle && src.skipTitle.test(title)) continue;
+    // statewide calendars give no pins: a Twin Cities ZIP (550xx-555xx) keeps
+    // the row, anything else (St Cloud, Virginia, Moorhead) is out of reach
+    if (src.metroZips && v.zip && !/^55[0-5]/.test(String(v.zip).trim())) continue;
     out.push({
       cat: src.cat || classify(title, catNames) || src.fallback || "Social",
       name: title,
       day: dayKey(p),
       time: `${String(p.h).padStart(2, "0")}:${String(p.mi).padStart(2, "0")}`,
       dur: 120,
-      fmt: e.is_virtual ? "online" : "in-person",
-      loc: decode(v.venue || src.name),
-      addr: decode(v.address ? `${v.address}, ${v.city || ""}`.replace(/, $/, "") : src.addr),
+      fmt: e.is_virtual || webOnly ? "online" : "in-person",
+      loc: webOnly ? `Online · ${src.name}` : decode(v.venue || src.name),
+      addr: webOnly ? "Sign up on the event page for the link" : decode(v.address ? `${v.address}, ${v.city || ""}`.replace(/, $/, "") : src.addr),
       lat: isFinite(lat) ? lat : src.lat,
       lng: isFinite(lng) ? lng : src.lng,
       approx: !(isFinite(lat) && isFinite(lng)) || undefined,
@@ -459,6 +472,7 @@ async function fromTribe(src, startISO, endISO) {
       dateLabel: `${DOW[dayKey(p)]}, ${MON[p.mo - 1]} ${p.d}`,
       source: src.name,
       image: e.image && e.image.url,
+      support: src.support,
       live: true,
       verified: true,
     });
@@ -1501,8 +1515,9 @@ module.exports = async (req, res) => {
       const list = r.value.list.filter((e) => e.date >= todayStr && e.date <= endStr &&
         inMetro(e.lat, e.lng) && !isNoise(e.name) && !isUnavailableTitle(e.name) && !isJunk(e.name));
       for (const e of list) {
-        const kind = supportKind(e.name);
+        const kind = e.support || supportKind(e.name);
         if (kind) e.support = kind;
+        else delete e.support;
       }
       events = events.concat(list);
       sources.push({ name: src.name, count: list.length, ok: true });

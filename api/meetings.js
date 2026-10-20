@@ -388,8 +388,9 @@ function normalizeNA(rows) {
       .join(", ");
     const addr = cleanAddr(street || r.location_municipality || "Minnesota");
     const approx = fmt === "online" || isCityOnlyAddr(addr) || !r.location_street;
-    let loc = r.location_text || r.location_municipality || "NA Group";
-    if (fmt === "online") loc = r.location_text || "Online meeting";
+    const placeText = /^\s*(n\/?a|tbd|none)\s*$/i.test(r.location_text || "") ? "" : r.location_text;
+    let loc = placeText || r.location_street || r.location_municipality || "NA Group";
+    if (fmt === "online") loc = placeText || "Online meeting";
 
     const notes = cleanText(r.comments || r.location_info || "");
 

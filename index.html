@@ -652,6 +652,8 @@
     background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 12px;
   }
   .scout-links a:hover{border-color:var(--accent);color:var(--accent)}
+  .scout-h{margin-top:12px;font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .scout-wrap{flex-wrap:wrap;overflow:visible;-webkit-mask-image:none;mask-image:none;margin-top:6px}
 
   .footer{padding:12px 16px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);line-height:1.5;background:var(--paper)}
   .footer code{font-size:10px;background:#fff;padding:1px 5px;border-radius:4px;border:1px solid var(--line)}
@@ -881,8 +883,8 @@
         <div class="count" id="count" aria-live="polite"></div>
         <div id="list"></div>
         <details class="source-scout" id="programScout">
-        <summary>Other programs — official meeting finders</summary>
-        <div class="scout-links" id="programLinks"></div>
+        <summary>More groups — gambling, grief, mental health, family &amp; more (official finders)</summary>
+        <div id="programLinks"></div>
       </details>
       <details class="source-scout" id="onlineScout">
         <summary>Can't get out? Online meetings run day and night</summary>
@@ -1147,7 +1149,7 @@ let _vibeStored="all";
 try{const v=localStorage.getItem("gather-vibe");if(v==="all"||v==="social")_vibeStored=v;}catch(e){}
 // Things to do open most-popular-first; Soonest is one tap away and sticks.
 let _sortStored="popular";
-try{if(localStorage.getItem("gather-sort")==="soon")_sortStored="soon";}catch(e){}
+try{const v=localStorage.getItem("gather-sort");if(v==="soon"||v==="near")_sortStored=v;}catch(e){}
 const state={mode:"activities",cat:new Set(),day:null,daySet:null,fmt:null,tod:"",nowOnly:false,q:"",near:null,nearGps:false,quick:new Set(),savedOnly:false,preset:"",area:"",horizon:6,radius:0,hideSeries:false,soonOnly:false,flag:"",hideEnded:true,vibe:_vibeStored,sort:_sortStored,limit:80};
 let _urlTimer=null;
 function todayDay(){return nowInfo().day;}
@@ -1277,10 +1279,12 @@ function buildVibeBar(){
   });
   const sw=document.createElement("div");
   sw.className="sortchips";sw.setAttribute("role","group");sw.setAttribute("aria-label","Sort");
-  [["popular","🔥 Popular"],["soon","Soonest"]].forEach(([id,label])=>{
+  // Closest only makes sense once we know where you are
+  [["popular","🔥 Popular"],["soon","Soonest"],...(state.near?[["near","📍 Closest"]]:[])].forEach(([id,label])=>{
     const b=document.createElement("button");
-    b.type="button";b.className="sortchip"+(state.sort===id?" on":"");
-    b.setAttribute("aria-pressed",state.sort===id?"true":"false");
+    const on=sortMode()===id;
+    b.type="button";b.className="sortchip"+(on?" on":"");
+    b.setAttribute("aria-pressed",on?"true":"false");
     b.textContent=label;
     b.onclick=()=>setSort(id);
     sw.appendChild(b);
@@ -1288,11 +1292,14 @@ function buildVibeBar(){
   row.appendChild(sw);
 }
 function setSort(v){
-  state.sort=v==="soon"?"soon":"popular";
+  state.sort=v==="soon"||v==="near"?v:"popular";
   try{localStorage.setItem("gather-sort",state.sort);}catch(e){}
   buildVibeBar();render();
 }
-function popularMode(){return state.mode==="activities"&&state.sort==="popular"&&!state.savedOnly;}
+// "near" falls back to Popular while Near me is off
+function sortMode(){return state.sort==="near"&&!state.near?"popular":state.sort;}
+function popularMode(){return state.mode==="activities"&&sortMode()==="popular"&&!state.savedOnly;}
+function closestMode(){return state.mode==="activities"&&sortMode()==="near"&&!state.savedOnly;}
 function hoodLabel(m){
   if(m.fmt==="online")return "";
   const r=(m.region||"").replace(/,?\s*MN\s*$/i,"").trim();
@@ -1351,7 +1358,7 @@ function pushUrl(){
     if(state.area)p.set("area",state.area);
     if(state.horizon!==6)p.set("days",state.horizon+1);
     if(state.mode==="activities"&&state.vibe!=="social")p.set("vibe","all");
-    if(state.mode==="activities"&&state.sort==="soon")p.set("sort","soon");
+    if(state.mode==="activities"&&state.sort!=="popular")p.set("sort",state.sort);
     if([...state.quick].length)p.set("quick",[...state.quick].join(","));
     if(activeId)p.set("id",activeId);
     history.replaceState(null,"",location.pathname+"?"+p);
@@ -1376,7 +1383,7 @@ function readUrl(){
   if(days>=1&&days<=45)state.horizon=days-1;
   if(p.get("quick"))state.quick=new Set(p.get("quick").split(",").filter(Boolean));
   if(p.get("vibe")==="all"||p.get("vibe")==="social"){state.vibe=p.get("vibe");persistVibe();}
-  if(p.get("sort")==="soon"||p.get("sort")==="popular")state.sort=p.get("sort");
+  if(["soon","popular","near"].includes(p.get("sort")))state.sort=p.get("sort");
   return {id:p.get("id"),hasDayScope};
 }
 // Search terms, deduped. Quoted phrases are kept intact so "open mic" can still
@@ -1496,7 +1503,7 @@ function icsFor(m){
 }
 function pickNextUp(list){
   enrichSort(list);
-  if(popularMode())return list.find(m=>!isOver(m))||null;
+  if(popularMode()||closestMode())return list.find(m=>!isOver(m))||null;
   for(const m of list){if(isNow(m))return m;}
   for(const m of list){if(m._minsUntil>=0&&m._minsUntil<=360)return m;}
   // never feature something that already ended (late-night "Try this first" bug)
@@ -1611,6 +1618,17 @@ function smartSort(list){
     list.forEach(m=>{m._rank=popRank(m,boostSocial,useNear);});
     return list.sort(byRank);
   }
+  if(closestMode()){
+    // nearest first; online and pinless rows go last, ties go to the sooner one
+    const far=m=>m.fmt==="online"||m._sortD==null||m.approx?1e6:m._sortD;
+    return list.sort((a,b)=>{
+      const aOver=isOver(a),bOver=isOver(b);
+      if(aOver!==bOver)return aOver?1:-1;
+      const d=far(a)-far(b);
+      if(Math.abs(d)>0.1)return d;
+      return (a._dayOff-b._dayOff)||(a._minsUntil-b._minsUntil);
+    });
+  }
   list.sort((a,b)=>{
     if(!pin&&!state.daySet&&a._dayOff!==b._dayOff)return a._dayOff-b._dayOff;
     // events that already ended today sink below everything still coming up
@@ -1642,7 +1660,8 @@ function sortHint(){
   // "hidden" notes into one unreadable line.
   const parts=[state.q?"next 7 days":dayViewLabel()];
   if(popularMode())parts.push("most popular first");
-  if(state.near)parts.push("closest to you");
+  if(closestMode())parts.push("closest first");
+  else if(state.near)parts.push(state.mode==="activities"?"near you":"closest to you");
   return parts.join(" · ");
 }
 function syncTodUI(){
@@ -2058,6 +2077,7 @@ function renderFeatured(el,list){
 }
 function featuredEyebrow(m,why){
   if(why.length)return `For You · ${why.join(" · ")}`;
+  if(closestMode())return m._d!=null?`📍 Closest to you · ${m._d<0.1?"right here":m._d.toFixed(1)+" mi"}`:"📍 Closest to you";
   if(!popularMode())return isNow(m)?"Happening now":"Try this first";
   const scope=state.q?"":state.daySet?" this weekend":isAllWeek()?(state.horizon>6?" this month":" this week"):state.day===todayDay()?" today":` on ${DAYS[state.day]}`;
   const reason=(m.popWhy||[])[0];
@@ -2535,13 +2555,27 @@ function updateFooter(){
   const pl=document.getElementById("programLinks");
   if(pl&&!pl.dataset.built){
     pl.dataset.built="1";
-    Object.entries(FINDERS).forEach(([k,u])=>{
-      if(k==="AA"||k==="NA"||k==="Al-Anon")return; // live feeds cover these
-      const a=document.createElement("a");
-      a.href=u;a.target="_blank";a.rel="noopener";
-      // "ACA" or "DDA" alone meant nothing to someone new; say the whole name
-      a.textContent=k==="Group"?"211: any support group":((FELLOWSHIPS[k]||{}).name||k);a.title=a.textContent;
-      pl.appendChild(a);
+    // grouped by what someone is dealing with; AA/NA/Al-Anon live feeds cover those
+    const groups=[
+      ["Drinking & drugs",["CMA","CA","MA","HA","PA","DDA","SMART","LifeRing","WFS","Refuge","Dharma","Buddhist","CR","Wellbriety"]],
+      ["Gambling, food, sex, money",["GA","OA","EDA","SA","SAA","SLAA","DA"]],
+      ["Family & friends of someone struggling",["Nar-Anon","Gam-Anon","FA","ACA","CoDA"]],
+      ["Mental health & grief",["NAMI","DBSA","MHMN","EA","GriefShare","TCF","Group"]],
+    ];
+    const placed=new Set(groups.flatMap(g=>g[1]));
+    const rest=Object.keys(FINDERS).filter(k=>!placed.has(k)&&!["AA","NA","Al-Anon"].includes(k));
+    if(rest.length)groups.push(["Other",rest]);
+    groups.forEach(([title,keys])=>{
+      const h=document.createElement("div");h.className="scout-h";h.textContent=title;
+      const row=document.createElement("div");row.className="scout-links scout-wrap";
+      keys.filter(k=>FINDERS[k]).forEach(k=>{
+        const a=document.createElement("a");
+        a.href=FINDERS[k];a.target="_blank";a.rel="noopener";
+        // "ACA" or "DDA" alone meant nothing to someone new; say the whole name
+        a.textContent=k==="Group"?"211: any support group":((FELLOWSHIPS[k]||{}).name||k);a.title=a.textContent;
+        row.appendChild(a);
+      });
+      if(row.children.length)pl.append(h,row);
     });
   }
   const s=document.getElementById("src");
@@ -2768,7 +2802,7 @@ function applyMyArea(btn){
   setUserMarker();
   map.setView(state.near,state.nearGps?11:10);
   persistNear();
-  buildQuickFilters();
+  buildQuickFilters();buildVibeBar();
   render();
 }
 function requestMyArea(btn,opts={}){
@@ -2801,7 +2835,7 @@ function toggleMyArea(btn){
     btn.classList.remove("on");
     if(userMarker){map.removeLayer(userMarker);userMarker=null;}
     map.setView(TC_CENTER,11);
-    render();
+    buildVibeBar();render();
     return;
   }
   requestMyArea(btn);
