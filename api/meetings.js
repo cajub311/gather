@@ -320,6 +320,17 @@ async function fetchEA() {
 // HTML, 25 per page, each row carrying its next start in UTC. Nearly all are
 // online and open to anyone (kept at waking Central hours); in-person rows are
 // kept only in Minnesota, pinned to their ZIP since the room is shared by email.
+// Families Anonymous lists groups only in PDF directories, so its one Twin
+// Cities group is copied by hand. Source: "1. US In-Person Directory 10.15.26"
+// on familiesanonymous.org/meetings/meeting-directories/ (re-check it when
+// refreshing api/_backup.json).
+const FA_ROOMS = [
+  { cat: "FA", name: "Families Anonymous — Summit Church (group 2188)", day: 3, time: "17:30", dur: 60, fmt: "in-person",
+    loc: "Summit Church", addr: "845 Summit Ave, St Paul", lat: 44.94144, lng: -93.13551, types: ["Open"],
+    door: "Enter via the east parking lot off Summit, Door D. No meeting Thanksgiving week.",
+    url: "https://familiesanonymous.org/meetings/meeting-directories/", listed: "2026-10-15", live: true, verified: true },
+];
+
 const PATHMINDER = [
   { cat: "LifeRing", label: "LifeRing Secular Recovery", base: "https://meetings.lifering.org", types: ["Secular"] },
   { cat: "WFS", label: "Women for Sobriety", base: "https://meetings.womenforsobriety.org", types: ["Women", "Secular"] },
@@ -1179,6 +1190,7 @@ module.exports = async (req, res) => {
   take("Debtors Anonymous", da, da.status === "fulfilled" ? da.value : []);
   take("Gam-Anon (online)", gamanon, gamanon.status === "fulfilled" ? gamanon.value : []);
   take("Heroin Anonymous (online)", ha, ha.status === "fulfilled" ? ha.value : []);
+  take("Families Anonymous (directory 2026-10-15)", { status: "fulfilled", value: FA_ROOMS }, FA_ROOMS);
   take("Dual Recovery Anonymous (online)", dra, dra.status === "fulfilled" ? dra.value : []);
   take("Celebrate Recovery (online)", crOnline, crOnline.status === "fulfilled" ? crOnline.value : []);
   PATHMINDER.forEach((site, i) => take(site.label, pm[i], pm[i].status === "fulfilled" ? pm[i].value : []));
