@@ -55,7 +55,7 @@ const SOURCES = [
   { type: "tribe", name: "Northern Clay Center", base: "https://northernclaycenter.org", lat: 44.9620, lng: -93.2336, addr: "2424 E Franklin Ave, Minneapolis", fallback: "Art" },
   { type: "tribe", name: "Minnesota Museum of American Art", base: "https://mmaa.org", lat: 44.9487, lng: -93.0895, addr: "350 Robert St N, St Paul", fallback: "Art" },
   // NE brewery with regular trivia / social nights (confirmed tribe feed)
-  { type: "tribe", name: "Wooden Hill Brewing", base: "https://woodenhillbrewing.com", lat: 45.0139, lng: -93.2475, addr: "2415 Central Ave NE, Minneapolis" },
+  { type: "jsonld", name: "Wooden Hill Brewing", url: "https://woodenhillbrewing.com/events/", lat: 44.8653, lng: -93.3748, addr: "7421 Bush Lake Rd, Edina", cat: "Games" },
   { type: "tribe", name: "Friends of St Paul Library", base: "https://www.thefriends.org", lat: 44.9445, lng: -93.0977, addr: "St Paul", fallback: "Books" },
   // mostly online family + peer classes; every row is a support listing
   { type: "tribe", name: "NAMI Minnesota", base: "https://namimn.org", lat: 44.9778, lng: -93.2650, addr: "Online or call NAMI Minnesota", fallback: "Zen", support: "Mental health", skipCats: /advocacy|training/i,
@@ -1315,6 +1315,47 @@ async function fromSports(src) {
 }
 
 // Fixed recurring community events with a public published schedule (no API)
+// schema.org Event blocks in the page; weekly ones (eventSchedule.byDay) repeat for ~6 weeks
+async function fromJsonLd(src) {
+  const html = await getText(src.url, 15000);
+  const evs = [];
+  for (const m of html.matchAll(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)) {
+    try {
+      const j = JSON.parse(m[1]);
+      [].concat(j["@graph"] || j).forEach((x) => /Event$/.test(x["@type"] || "") && evs.push(x));
+    } catch {}
+  }
+  const out = [];
+  const today = chicagoParts(Date.now());
+  const todayStr = `${today.y}-${String(today.mo).padStart(2, "0")}-${String(today.d).padStart(2, "0")}`;
+  const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  for (const e of evs) {
+    const sch = e.eventSchedule || {};
+    const byDay = [].concat(sch.byDay || []).map((d) => DAYS.indexOf(String(d).split("/").pop())).filter((d) => d >= 0);
+    const time = sch.startTime || (String(e.startDate).match(/T(\d\d:\d\d)/) || [])[1] || "19:00";
+    const [hh, mm] = time.split(":").map(Number);
+    const dates = [];
+    if (byDay.length && sch.repeatFrequency === "P1W") {
+      for (let i = 0; i < 42; i++) {
+        const dt = new Date(today.y, today.mo - 1, today.d + i);
+        if (byDay.includes(dt.getDay())) dates.push({ y: dt.getFullYear(), mo: dt.getMonth() + 1, d: dt.getDate() });
+      }
+    } else {
+      const d = String(e.startDate || "").match(/^(\d{4})-(\d\d)-(\d\d)/);
+      if (d && d[0] >= todayStr) dates.push({ y: +d[1], mo: +d[2], d: +d[3] });
+    }
+    const title = String(e.name || "").replace(/\s+at\s+.*$/i, "").trim() || src.name;
+    for (const p of dates) {
+      p.h = hh;
+      p.mi = mm;
+      const row = eventRow(src, { title, p, time, url: e.url || src.url, types: [], cat: classify(title) || src.cat, desc: e.description, loc: src.name });
+      if (e.isAccessibleForFree === true) row.free = true;
+      out.push(row);
+    }
+  }
+  return out;
+}
+
 function fromStanding(src) {
   const out = [];
   const now = new Date();
@@ -1501,6 +1542,7 @@ module.exports = async (req, res) => {
       else if (src.type === "firstave") list = await fromFirstAve(src);
       else if (src.type === "sports") list = await fromSports(src);
       else if (src.type === "standing") list = fromStanding(src);
+      else if (src.type === "jsonld") list = await fromJsonLd(src);
       else list = await fromTribe(src, startISO, endISO);
       return { src, list };
     }))
