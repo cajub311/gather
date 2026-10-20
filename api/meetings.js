@@ -1375,21 +1375,21 @@ function normalizeSoba(rows, want) {
 async function fetchSoba() {
   const lists = [];
   const stopAt = Date.now() + 12000; // the function has 30s; never spend most of it here
-  let throttled = false;
-  // two lanes side by side, so on a slow day the last programs aren't cut off
-  const lane = async (programs) => {
-    for (const [q, want] of programs) {
-      if (throttled || Date.now() > stopAt) break;
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  // every program asked side by side, 200ms apart, so on a slow day the last
+  // ones aren't cut off; a slow or "too many requests" answer gets one more try
+  await Promise.all(SOBA_PROGRAMS.map(async ([q, want], i) => {
+    await wait(i * 200);
+    for (let tries = 0; tries < 2 && Date.now() < stopAt; tries++) {
       try {
         const d = await getJSON(SOBA_URL + encodeURIComponent(q), 5000);
         lists.push(normalizeSoba(d.data, want));
+        return;
       } catch (e) {
-        if (/HTTP 429/.test(e.message)) throttled = true; // asked too often: keep what we have
+        if (/HTTP 429/.test(e.message)) await wait(1500);
       }
-      await new Promise((r) => setTimeout(r, 250));
     }
-  };
-  await Promise.all([lane(SOBA_PROGRAMS.filter((_, i) => i % 2 === 0)), lane(SOBA_PROGRAMS.filter((_, i) => i % 2 === 1))]);
+  }));
   if (!lists.length) throw new Error("sobasearch: no answers");
   return lists.flat();
 }
