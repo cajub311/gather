@@ -316,6 +316,75 @@ async function fetchEA() {
   return rows.filter(Boolean);
 }
 
+// LifeRing and Women for Sobriety list meetings on Pathminder sites: server
+// HTML, 25 per page, each row carrying its next start in UTC. Nearly all are
+// online and open to anyone (kept at waking Central hours); in-person rows are
+// kept only in Minnesota, pinned to their ZIP since the room is shared by email.
+const PATHMINDER = [
+  { cat: "LifeRing", label: "LifeRing Secular Recovery", base: "https://meetings.lifering.org", types: ["Secular"] },
+  { cat: "WFS", label: "Women for Sobriety", base: "https://meetings.womenforsobriety.org", types: ["Women", "Secular"] },
+];
+const ZIP_PINS = { 55105: [44.9345, -93.1655] };
+
+async function fetchPathminder(site) {
+  // own cleaner: cleanText splits glued words, and "LifeRing" is one
+  const plain = (h) => String(h || "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&")
+    .replace(/&#x27;|&#39;/g, "'").replace(/\s+/g, " ").trim();
+  const get = async (path) => {
+    const r = await fetch(site.base + path, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(12000) });
+    if (!r.ok) throw new Error(`${site.cat} HTTP ${r.status}`);
+    return r.text();
+  };
+  const scopeRows = async (scope) => {
+    const first = await get(`/meetings/?scope=${scope}`);
+    const n = +((first.match(/Found (\d+) meetings/) || [])[1] || 0);
+    const pages = Math.min(Math.max(1, Math.ceil(n / 25)), 12);
+    const rest = await Promise.all(Array.from({ length: pages - 1 }, (_, i) => get(`/meetings/?scope=${scope}&page=${i + 2}`)));
+    return [first, ...rest].flatMap((t) => t.split(/<a[^>]+href="\/meetings\/(?=\d+\/\?fromlist)/).slice(1).map((b) => b.slice(0, 7000)));
+  };
+  const central = (utc) => {
+    const p = Object.fromEntries(
+      new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", weekday: "long", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+        .formatToParts(new Date(utc)).map((x) => [x.type, x.value])
+    );
+    return { day: WEEKDAYS.indexOf(p.weekday.toLowerCase()), time: `${p.hour}:${p.minute}` };
+  };
+  const parse = (b) => {
+    const utc = (b.match(/data-utc="([^"]+)"/) || [])[1];
+    const md = (b.split(/d-none d-md-block text-center">/)[1] || "").split("</span>")[0];
+    const [title = "", program = "", audience = ""] = md.split(/<br\s*\/?>/).map(plain);
+    if (!utc || !title) return null;
+    return { id: b.match(/^\d+/)[0], ...central(utc), title, program, audience, online: /fa-video/.test(b.slice(0, 2500)) };
+  };
+  const row = (x, extra) => ({
+    cat: site.cat,
+    name: x.title,
+    day: x.day,
+    time: x.time,
+    dur: 60,
+    types: [...site.types, ...x.audience.split(/,\s*/).filter((t) => t && !/^(english|all are welcome)$/i.test(t))],
+    notes: x.program || undefined,
+    url: `${site.base}/meetings/${x.id}/`,
+    live: true,
+    verified: true,
+    ...extra,
+  });
+  // each its own loc: dedupe treats same program + slot + place as one meeting
+  const online = (x) => ({ fmt: "online", approx: true, loc: `${site.label} online #${x.id}`, addr: "Online", lat: null, lng: null });
+  const [global, local] = await Promise.all([scopeRows("only"), scopeRows("hide")]);
+  const out = global.map(parse).filter((x) => x && x.time >= "06:00" && x.time <= "22:00").map((x) => row(x, online(x)));
+  const mn = local.filter((b) => /Minnesota|Twin Cities|,\s*MN\b/.test(b)).map(parse).filter(Boolean);
+  for (const x of mn) {
+    const page = plain(await get(`/meetings/${x.id}/`).catch(() => ""));
+    const zip = (page.match(/Location\s+[^|]*?,\s*MN,\s*(\d{5})/) || [])[1];
+    if (!x.online && ZIP_PINS[zip]) {
+      const city = (page.match(/Location\s+([^,]+),\s*MN/) || [])[1] || "Twin Cities";
+      out.push(row(x, { fmt: "in-person", approx: true, loc: `${city} (room shared by email)`, addr: `${city}, MN ${zip}`, lat: ZIP_PINS[zip][0], lng: ZIP_PINS[zip][1] }));
+    } else if (x.online) out.push(row(x, online(x)));
+  }
+  return out;
+}
+
 async function fetchAAMinnesota() {
   const r = await fetch(AA_MN_PAGE, { headers: { "User-Agent": UA } });
   if (!r.ok) throw new Error(`tsml page HTTP ${r.status}`);
@@ -824,7 +893,7 @@ module.exports = async (req, res) => {
 
   // start the newer feeds alongside the main ones, not after them
   const extrasP = Promise.allSettled(EXTRA_TSML.map((f) => getJSON(f.url)));
-  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA()]);
+  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), ...PATHMINDER.map(fetchPathminder)]);
   const [aa, na, aamn, alanon, dharma, refuge, buddhist] = await Promise.allSettled([
     getJSON(AA_URL),
     getJSON(NA_URL),
@@ -835,7 +904,7 @@ module.exports = async (req, res) => {
     getJSON(BUDDHIST_URL),
   ]);
   const extras = await extrasP;
-  const [sa, soba, saa, ga, naranon, ea] = await moreP;
+  const [sa, soba, saa, ga, naranon, ea, ...pm] = await moreP;
 
   function take(label, result, list) {
     if (result.status === "fulfilled" && Array.isArray(result.value)) {
@@ -910,6 +979,7 @@ module.exports = async (req, res) => {
     naranon.status === "fulfilled" ? naranon.value.filter((x) => inMetro(x)) : []);
   take("Emotions Anonymous", ea,
     ea.status === "fulfilled" ? ea.value.filter((x) => inMetro(x)) : []);
+  PATHMINDER.forEach((site, i) => take(site.label, pm[i], pm[i].status === "fulfilled" ? pm[i].value : []));
   take("SobaSearch (OA, CoDA, ACA, SMART, CR, MA, EDA)", soba,
     soba.status === "fulfilled" ? soba.value.filter((x) => inMetro(x)) : []);
 

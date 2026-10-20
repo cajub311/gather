@@ -2122,25 +2122,33 @@ function laterSearchHits(now){
   state.qAhead=44;
   try{return Math.max(0,filtered().length-now);}finally{state.qAhead=6;}
 }
+function onlineHits(){
+  if(state.mode!=="support"||state.fmt!=="in-person"||effectiveFmt()!=="in-person"||state.savedOnly)return 0;
+  state.fmt="online";try{return filtered().length;}finally{state.fmt="in-person";}
+}
 function renderEmpty(el){
   // A search only looks a week ahead; offer the rest of the feed
   const weekHits=laterSearchHits(0);
+  // LifeRing, WFS and many groups meet only online, which is hidden by default
+  const onlineN=onlineHits();
   const tips=state.mode==="support"
     ?"Try Tonight, Open, a different area, or turn on Online only."
     :(state.vibe==="social"
       ?"No For You picks on this day — try Tonight, or switch to Everything."
       :"Try another day, turn off a filter, or search All week.");
   const weekBtn=weekHits?`<button type="button" class="btn" data-empty="week">Show ${weekHits} later match${weekHits===1?"":"es"}</button>`:"";
+  const onlineBtn=onlineN?`<button type="button" class="btn" data-empty="online">Show ${onlineN} online meeting${onlineN===1?"":"s"}</button>`:"";
   el.innerHTML=`<div class="empty">
-    <div class="empty-title">No matches ${state.q?"in the next "+(state.qAhead>6?"6 weeks":"7 days"):"for "+dayViewLabel()}</div>
+    <div class="empty-title">No ${onlineN?"in-person ":""}matches ${state.q?"in the next "+(state.qAhead>6?"6 weeks":"7 days"):"for "+dayViewLabel()}</div>
     ${esc(tips)}<br>
     <div class="empty-actions">
-      ${weekBtn}
+      ${onlineBtn}${weekBtn}
       <button type="button" class="btn" data-empty="today">Today</button>
       <button type="button" class="btn" data-empty="tonight">Tonight</button>
       ${state.mode==="activities"&&state.vibe==="social"?`<button type="button" class="btn" data-empty="all">Everything</button>`:""}
       <button type="button" class="btn" data-empty="clear">Clear filters</button>
     </div></div>`;
+  el.querySelector('[data-empty="online"]')?.addEventListener("click",()=>{state.fmt=null;syncFmtUI();render();});
   el.querySelector('[data-empty="week"]')?.addEventListener("click",()=>{state.qAhead=44;render();});
   el.querySelector('[data-empty="today"]')?.addEventListener("click",()=>applyPreset("today"));
   el.querySelector('[data-empty="tonight"]')?.addEventListener("click",()=>applyPreset("tonight"));
@@ -2314,10 +2322,7 @@ function render(){
   const kidsHidden=state.mode==="activities"&&state.vibe==="social"?DATA.filter(m=>matchesDayView(m)&&isKidsy(m)).length:0;
   const kidsNote=kidsHidden?` <span aria-hidden="true">·</span> <button type="button" class="dir" style="border:none;background:none;padding:0;font:inherit;color:var(--muted)" id="countShowAll">show everything</button>`:"";
   // In-person is the default; online-only meetings (NAMI classes, Zoom groups) were invisible
-  let onlineN=0;
-  if(state.mode==="support"&&state.fmt==="in-person"&&effectiveFmt()==="in-person"&&!state.savedOnly){
-    state.fmt="online";try{onlineN=filtered().length;}finally{state.fmt="in-person";}
-  }
+  const onlineN=onlineHits();
   const onlineNote=onlineN?` <span aria-hidden="true">·</span> <button type="button" class="dir" style="border:none;background:none;padding:0;font:inherit;color:var(--muted)" id="countShowOnline">+ ${onlineN} online</button>`:"";
   const endedNote=endedN?` <span aria-hidden="true">·</span> <button type="button" class="dir" style="border:none;background:none;padding:0;font:inherit;color:var(--muted)" id="countShowEnded">show ${endedN} earlier</button>`:"";
   // A search looks a week ahead; monthly groups (Parkinson's, naloxone
