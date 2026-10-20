@@ -65,6 +65,9 @@ const SOURCES = [
   { type: "tribe", name: "NAMI Minnesota", base: "https://namimn.org", lat: 44.9778, lng: -93.2650, addr: "Online or call NAMI Minnesota", fallback: "Zen", support: "Mental health", skipCats: /advocacy|training/i,
     skipTitle: /for professionals|agricultural|candidate forum|presenter training/i, metroZips: true },
   // peer-run "All Recovery" meetings (any path, any substance) + naloxone trainings
+  // DBSA's national peer-run online groups (HeyPeers lists the next ~11 sessions)
+  { type: "heypeers", name: "DBSA", url: "https://heypeers.com/organizations/8/scheduled_meetings", support: "Mental health",
+    types: ["Depression", "Bipolar", "Peer support"], lat: 44.9778, lng: -93.2650, addr: "Online (DBSA)", fallback: "Zen" },
   { type: "tribe", name: "Minnesota Recovery Connection", base: "https://minnesotarecovery.org", lat: 44.9480, lng: -93.1660, addr: "Online or call Minnesota Recovery Connection", fallback: "Zen", support: "Recovery", metroZips: true },
   { type: "tribe", name: "Loppet Foundation", base: "https://www.loppet.org", lat: 44.9880, lng: -93.3230, addr: "1221 Theodore Wirth Pkwy, Minneapolis", fallback: "Outdoors" },
 
@@ -1403,6 +1406,38 @@ async function fromMindbody(src) {
   return out;
 }
 
+// HeyPeers organization page: cards with "Tuesday, Oct 20 | 06:00pm CDT" (no
+// year), 10 per page; hosts' names are left out
+async function fromHeyPeers(src) {
+  const MON3 = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+  const today = chicagoParts(Date.now());
+  const out = [];
+  for (let page = 1; page <= 3; page++) {
+    const html = await getText(`${src.url}?page=${page}`, 15000);
+    const cards = html.split(/<div class="w-full bg-white border/).slice(1);
+    for (const c of cards) {
+      const href = (c.match(/href="(\/meetings\/\d+\/details)"/) || [])[1];
+      const title = decode(((c.match(/href="\/meetings\/\d+\/details">([^<]+)</) || [])[1] || "").trim());
+      const desc = decode(((c.match(/<p class="mb-4[^"]*">([^<]+)</) || [])[1] || "").trim());
+      const w = c.match(/\w+day, (\w{3}) (\d{1,2}) \| (\d{1,2}):(\d\d)(am|pm) C[DS]T/i);
+      if (!href || !title || !w) continue;
+      const mo = MON3.indexOf(w[1].toLowerCase()) + 1;
+      if (!mo) continue;
+      // no year: a month before this one means next year
+      const y = mo < today.mo ? today.y + 1 : today.y;
+      const h = (+w[3] % 12) + (/pm/i.test(w[5]) ? 12 : 0);
+      const p = { y, mo, d: +w[2], h, mi: +w[4] };
+      const row = eventRow(src, { title, p, time: String(h).padStart(2, "0") + ":" + w[4], url: "https://heypeers.com" + href, types: src.types || [], cat: "Zen", desc, loc: `Online · ${src.name}`, addr: src.addr });
+      row.dur = 60;
+      row.fmt = "online";
+      row.support = src.support;
+      out.push(row);
+    }
+    if (cards.length < 10) break;
+  }
+  return out;
+}
+
 // GriefShare / DivorceCare finder: one server-rendered page, every group's pin,
 // weekday, session dates and Central time in data- attributes
 async function fromChurchFinder(src) {
@@ -1639,6 +1674,7 @@ async function readSource(src, startISO, endISO) {
   if (src.type === "jsonld") return fromJsonLd(src);
   if (src.type === "churchfinder") return fromChurchFinder(src);
   if (src.type === "mindbody") return fromMindbody(src);
+  if (src.type === "heypeers") return fromHeyPeers(src);
   return fromTribe(src, startISO, endISO);
 }
 

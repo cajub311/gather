@@ -324,7 +324,8 @@ const PATHMINDER = [
   { cat: "LifeRing", label: "LifeRing Secular Recovery", base: "https://meetings.lifering.org", types: ["Secular"] },
   { cat: "WFS", label: "Women for Sobriety", base: "https://meetings.womenforsobriety.org", types: ["Women", "Secular"] },
 ];
-const ZIP_PINS = { 55105: [44.9345, -93.1655] };
+// ZIP centers (OpenStreetMap) for rooms with no street number to geocode
+const ZIP_PINS = { 55105: [44.935, -93.1666], 55305: [44.9529, -93.4264] };
 
 async function fetchPathminder(site) {
   // own cleaner: cleanText splits glued words, and "LifeRing" is one
@@ -383,6 +384,147 @@ async function fetchPathminder(site) {
     } else if (x.online) out.push(row(x, online(x)));
   }
   return out;
+}
+
+// National lists for programs with few or no Twin Cities rooms. Online rows
+// are kept at waking Central hours; programs with hundreds online (DA, MA)
+// keep only the ones run on Central Time, like Refuge/Buddhist above.
+const CA_ONLINE_URL = "https://caws-api.azurewebsites.net/api/v1/meetings-tsml?area=Online";
+const MA_PAGE = "https://marijuana-anonymous.org/meetings/";
+const DA_BASE = "https://debtorsanonymous.org";
+const GAMANON_URL = "https://gam-anon.org/meeting-directory/virtual-meetings";
+const HA_URL = "https://heroinanonymous.org/meetings/";
+const ZONE = { eastern: "America/New_York", est: "America/New_York", edt: "America/New_York", central: "America/Chicago",
+  cst: "America/Chicago", cdt: "America/Chicago", mountain: "America/Denver", mst: "America/Denver", mdt: "America/Denver",
+  pacific: "America/Los_Angeles", pst: "America/Los_Angeles", pdt: "America/Los_Angeles", az: "America/Phoenix", arizona: "America/Phoenix" };
+const htmlText = (h) => String(h || "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&")
+  .replace(/&apos;|&#0?39;|&#x27;/g, "'").replace(/&#x28;/g, "(").replace(/&#x29;/g, ")").replace(/\s+/g, " ").trim();
+const wakingCentral = (x) => x.time >= "06:00" && x.time <= "22:00";
+// "7:00 PM" on day 4 in zone tz -> Central day + "HH:MM"
+function clockToCentral(day, clock, tz) {
+  const m = String(clock).match(/(\d{1,2}):(\d{2})\s*([ap])\.?m/i);
+  if (!m || day < 0) return null;
+  let mins = ((+m[1] % 12) + (/p/i.test(m[3]) ? 12 : 0)) * 60 + +m[2] + hoursToCentral(tz) * 60;
+  if (mins < 0) { mins += 1440; day = (day + 6) % 7; }
+  if (mins >= 1440) { mins -= 1440; day = (day + 1) % 7; }
+  return { day, time: String(Math.floor(mins / 60)).padStart(2, "0") + ":" + String(mins % 60).padStart(2, "0") };
+}
+// every online row says "Online meeting"; dedupe would fold different meetings
+// at the same hour into one, so each gets its own loc
+function onlineOnly(list) {
+  return list.filter((x) => x.fmt === "online" && wakingCentral(x))
+    .map((x) => ({ ...x, approx: true, lat: null, lng: null, loc: `Online meeting · ${x.name}`, addr: "Online" }));
+}
+const getText = async (url) => {
+  const r = await fetch(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(12000) });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.text();
+};
+
+async function fetchCAOnline() {
+  return onlineOnly(normalizeAA(await getJSON(CA_ONLINE_URL), "CA"));
+}
+
+async function fetchMA() {
+  const m = (await getText(MA_PAGE)).match(/data-src=['"]([^'"]+)/);
+  if (!m) throw new Error("ma data-src not found");
+  const rows = await getJSON(new URL(m[1], MA_PAGE).href);
+  return [
+    ...normalizeAA(rows, "MA").filter((x) => x.fmt !== "online" && x.lat && x.lng && inMetro(x))
+      .map((x) => ({ ...x, loc: x.loc.split(" - ").pop(), region: undefined })), // region is just "United States"
+    ...onlineOnly(normalizeAA(rows.filter((r) => r.timezone === "America/Chicago"), "MA")),
+  ];
+}
+
+async function fetchDA() {
+  const out = [];
+  // rooms: one table for the world; the state is only in each row's link
+  const f2f = await getText(`${DA_BASE}/meeting-search-f2f/`);
+  const rooms = [...f2f.matchAll(/href="\/meeting-search-detail\/\?mid=(\d+)[^"]*&sn=MN&gn=([^&"]+)/g)];
+  for (const [, mid, gn] of rooms.slice(0, 10)) {
+    const url = `${DA_BASE}/meeting-search-detail/?mid=${mid}&searchType=F2F`;
+    const t = htmlText((await getText(url).catch(() => "")).replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, ""));
+    const v = t.match(/Get Directions (.+?) MN (\d{5}) US (\w+day) (\d{1,2}:\d{2} [ap]m) to (\d{1,2}:\d{2} [ap]m)/i);
+    if (!v) continue;
+    const name = htmlText(gn);
+    // "Unity Church - Unitarian 732 Holly Av St. Paul"; some give only a crossing
+    const [, venue, street] = v[1].match(/^(.*?) (\d+ [^&]+)$/) || [, v[1], ""];
+    const at = clockToCentral(WEEKDAYS.indexOf(v[3].toLowerCase()), v[4], "America/Chicago");
+    const end = clockToCentral(0, v[5], "America/Chicago");
+    const exact = street ? await censusPin(`${street} MN ${v[2]}`).catch(() => null) : null;
+    const ll = exact || ZIP_PINS[v[2]];
+    if (!at || !ll) continue;
+    out.push({
+      cat: "DA", name, ...at, dur: end ? durMins(at.time, end.time) : 60,
+      fmt: /Hybrid meeting|Video/i.test(t.slice(0, t.indexOf("Get Directions"))) ? "hybrid" : "in-person",
+      loc: venue, addr: street || v[1], approx: exact ? undefined : true, lat: +ll[0].toFixed(5), lng: +ll[1].toFixed(5),
+      types: [], url, live: true, verified: true,
+    });
+  }
+  // online: times shown in Central; a day name only on the first row of each day
+  const virt = await getText(`${DA_BASE}/meeting-search-virtual/?mytz=Y&mytimezone=America%2FChicago`);
+  let day = -1;
+  const seen = new Set();
+  for (const tr of virt.split(/<tr[\s>]/).slice(1)) {
+    const td = tr.split(/<td[^>]*>/).slice(1);
+    if (td.length < 4) continue;
+    const dayCell = htmlText(td[0]);
+    if (/day$/i.test(dayCell)) day = WEEKDAYS.indexOf(dayCell.toLowerCase());
+    const nameCell = htmlText(td[2]);
+    const clock = (htmlText(td[1]).match(/(\d{1,2}:\d{2} [ap]m) your time/) || [])[1];
+    const mid = (td[2].match(/mid=(\d+)/) || [])[1];
+    if (!/Central Time \(US\/CAN\)/.test(nameCell) || !clock || !mid) continue;
+    const many = (nameCell.match(/Multiple Days: ([\w,]+)/) || [])[1];
+    const days = many ? many.split(",").map((d) => WEEKDAYS.indexOf(d.toLowerCase())) : [day];
+    const venue = htmlText(td[3]);
+    for (const d of days) {
+      const at = clockToCentral(d, clock, "America/Chicago");
+      if (!at || seen.has(mid + "|" + at.day)) continue;
+      seen.add(mid + "|" + at.day);
+      out.push({
+        cat: "DA", name: nameCell.split(" (")[0], ...at, dur: 60, fmt: "online", approx: true,
+        loc: `Online meeting · DA ${mid}`, addr: /^phone/i.test(venue) ? "Phone meeting" : "Online", lat: null, lng: null,
+        types: /^phone/i.test(venue) ? ["Phone"] : [], url: `${DA_BASE}/meeting-search-detail/?mid=${mid}&searchType=virtual`,
+        live: true, verified: true,
+      });
+    }
+  }
+  return out.filter(wakingCentral);
+}
+
+async function fetchGamAnon() {
+  const html = await getText(GAMANON_URL);
+  const out = [];
+  for (const item of html.split(/class="latestnews-item /).slice(1)) {
+    const field = (n) => htmlText((item.match(new RegExp(`detail_jfield_${n} "[\\s\\S]*?<span class="detail_data">([\\s\\S]*?)</span>`)) || [])[1]);
+    const title = htmlText((item.match(/<span>([^<]+)<\/span>\s*<\/a>/) || [])[1]);
+    const href = (item.match(/href="(\/meeting-directory\/meeting-details\/[^"]+)"/) || [])[1];
+    const zone = ZONE[(field(31).split(" ")[0] || "").toLowerCase()];
+    const at = clockToCentral(WEEKDAYS.indexOf(field(1).toLowerCase()), field(27), zone);
+    if (!at || !zone || !href) continue;
+    const lang = field(34);
+    out.push({
+      cat: "Gam-Anon", name: `Gam-Anon online ${title.replace(/^\w+\s*/, "").toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase())}`.trim(), ...at, dur: 60, fmt: "online",
+      types: lang && !/^english$/i.test(lang) ? [lang] : [], url: new URL(href, GAMANON_URL).href, live: true, verified: true,
+    });
+  }
+  return onlineOnly(out);
+}
+
+// Heroin Anonymous: one national table; rows can hold members' phone numbers
+// and passcodes, so only the name, day and time are kept
+async function fetchHA() {
+  const html = await getText(HA_URL);
+  const out = [];
+  for (const tr of html.split(/<tr[\s>]/).slice(1)) {
+    const td = tr.split(/<td[^>]*>/).slice(1).map(htmlText);
+    if (td.length < 6 || !/^online$/i.test(td[5])) continue;
+    const tz = ZONE[((td[2].match(/\b([PMCE][SD]T)\b|\((AZ)\b/i) || []).slice(1).find(Boolean) || "").toLowerCase()];
+    const at = tz && clockToCentral(WEEKDAYS.indexOf(td[1].toLowerCase()), td[2], tz);
+    if (!at) continue;
+    out.push({ cat: "HA", name: td[0], ...at, dur: 60, fmt: "online", types: [], url: HA_URL, live: true, verified: true });
+  }
+  return onlineOnly(out);
 }
 
 async function fetchAAMinnesota() {
@@ -893,7 +1035,7 @@ module.exports = async (req, res) => {
 
   // start the newer feeds alongside the main ones, not after them
   const extrasP = Promise.allSettled(EXTRA_TSML.map((f) => getJSON(f.url)));
-  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), ...PATHMINDER.map(fetchPathminder)]);
+  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), fetchCAOnline(), fetchMA(), fetchDA(), fetchGamAnon(), fetchHA(), ...PATHMINDER.map(fetchPathminder)]);
   const [aa, na, aamn, alanon, dharma, refuge, buddhist] = await Promise.allSettled([
     getJSON(AA_URL),
     getJSON(NA_URL),
@@ -904,7 +1046,7 @@ module.exports = async (req, res) => {
     getJSON(BUDDHIST_URL),
   ]);
   const extras = await extrasP;
-  const [sa, soba, saa, ga, naranon, ea, ...pm] = await moreP;
+  const [sa, soba, saa, ga, naranon, ea, caOnline, ma, da, gamanon, ha, ...pm] = await moreP;
 
   function take(label, result, list) {
     if (result.status === "fulfilled" && Array.isArray(result.value)) {
@@ -979,6 +1121,11 @@ module.exports = async (req, res) => {
     naranon.status === "fulfilled" ? naranon.value.filter((x) => inMetro(x)) : []);
   take("Emotions Anonymous", ea,
     ea.status === "fulfilled" ? ea.value.filter((x) => inMetro(x)) : []);
+  take("Cocaine Anonymous (online)", caOnline, caOnline.status === "fulfilled" ? caOnline.value : []);
+  take("Marijuana Anonymous", ma, ma.status === "fulfilled" ? ma.value : []);
+  take("Debtors Anonymous", da, da.status === "fulfilled" ? da.value : []);
+  take("Gam-Anon (online)", gamanon, gamanon.status === "fulfilled" ? gamanon.value : []);
+  take("Heroin Anonymous (online)", ha, ha.status === "fulfilled" ? ha.value : []);
   PATHMINDER.forEach((site, i) => take(site.label, pm[i], pm[i].status === "fulfilled" ? pm[i].value : []));
   take("SobaSearch (OA, CoDA, ACA, SMART, CR, MA, EDA)", soba,
     soba.status === "fulfilled" ? soba.value.filter((x) => inMetro(x)) : []);
