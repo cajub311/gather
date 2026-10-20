@@ -259,6 +259,31 @@ const NARANON_URL =
   "https://api.knack.com/v1/pages/scene_5/views/view_7/records?rows_per_page=200&filters=" +
   encodeURIComponent(JSON.stringify([{ field: "field_1", operator: "near", value: "55401", range: "50" }]));
 
+// Nar-Anon's public list of virtual meetings: one plain table (all languages).
+// Only English meetings in US/Canada zones are kept, with name, day and time;
+// contact emails stay on Nar-Anon's page, which is where people join.
+const NARANON_ONLINE_URL = "https://nar-anon.org/virtual-naranon-meetings/?wdt_column_filter%5BLanguage%5D=English&language=English";
+const NARANON_ZONES = { "Eastern Time": "America/New_York", "Central Time": "America/Chicago", "Mountain Time": "America/Denver",
+  "Arizona Time": "America/Phoenix", "Pacific Time": "America/Los_Angeles", "Alaska Time": "America/Anchorage",
+  "Hawaii Time": "Pacific/Honolulu", "Atlantic Time": "America/Halifax" };
+async function fetchNarAnonOnline() {
+  const r = await fetch(NARANON_ONLINE_URL, { headers: { "User-Agent": CHROME_UA }, signal: AbortSignal.timeout(15000) });
+  if (!r.ok) throw new Error(`nar-anon online HTTP ${r.status}`);
+  const out = [], seen = new Set();
+  const cell = (c) => cleanText(c).replace(/&#0*39;|&apos;|&#8217;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+  for (const tr of (await r.text()).split(/<tr[\s>]/).slice(1)) {
+    const [, lang, dayName, zone, clock, name] = [...tr.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => cell(m[1]));
+    const tz = NARANON_ZONES[zone];
+    const at = lang === "English" && tz && clockToCentral(WEEKDAYS.indexOf(String(dayName).toLowerCase()), clock, tz);
+    const title = String(name || "").split("|")[0].trim();
+    if (!at || !title || seen.has(`${title}|${at.day}|${at.time}`)) continue;
+    seen.add(`${title}|${at.day}|${at.time}`);
+    out.push({ cat: "Nar-Anon", name: title, ...at, dur: 60, fmt: "online", types: [],
+      notes: "Join details are on Nar-Anon's virtual meeting list.", url: "https://nar-anon.org/virtual-naranon-meetings/", live: true, verified: true });
+  }
+  return onlineOnly(out);
+}
+
 async function fetchNarAnon() {
   const r = await fetch(NARANON_URL, {
     headers: { "User-Agent": UA, "X-Knack-Application-Id": "54dd0787f294e1891969b4db", "X-Knack-REST-API-Key": "knack" },
@@ -1682,7 +1707,7 @@ module.exports = async (req, res) => {
 
   // start the newer feeds alongside the main ones, not after them
   const extrasP = Promise.allSettled(EXTRA_TSML.map((f) => getJSON(f.url)));
-  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), fetchCAOnline(), fetchMA(), fetchDA(), fetchGamAnon(), fetchHA(), fetchDRA(), fetchCROnline(), fetchSLAA(), fetchPA(), fetchRI(), fetchSAnon(), fetchNAVirtual(), fetchOIAA(), fetchAlAnonOnline(), fetchACA(), ...TSML_ONLINE.map(fetchTSMLOnline), ...PATHMINDER.map(pathminderOrSaved)]);
+  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba(), withBackup(SAA_LABEL, fetchSAA), fetchGA(), fetchNarAnon(), fetchEA(), fetchCAOnline(), fetchMA(), fetchDA(), fetchGamAnon(), fetchHA(), fetchDRA(), fetchCROnline(), fetchSLAA(), fetchPA(), fetchRI(), fetchSAnon(), fetchNAVirtual(), fetchOIAA(), fetchAlAnonOnline(), fetchACA(), fetchNarAnonOnline(), ...TSML_ONLINE.map(fetchTSMLOnline), ...PATHMINDER.map(pathminderOrSaved)]);
   const [aa, na, aamn, alanon, dharma, refuge, buddhist] = await Promise.allSettled([
     getJSON(AA_URL),
     getJSON(NA_URL),
@@ -1693,7 +1718,7 @@ module.exports = async (req, res) => {
     getJSON(BUDDHIST_URL),
   ]);
   const extras = await extrasP;
-  const [sa, soba, saa, ga, naranon, ea, caOnline, ma, da, gamanon, ha, dra, crOnline, slaa, pa, ri, sanon, naVirtual, oiaa, afgOnline, aca, rca, sia, wa, ...pm] = await moreP;
+  const [sa, soba, saa, ga, naranon, ea, caOnline, ma, da, gamanon, ha, dra, crOnline, slaa, pa, ri, sanon, naVirtual, oiaa, afgOnline, aca, naranonOnline, rca, sia, wa, ...pm] = await moreP;
 
   function take(label, result, list) {
     if (result.status === "fulfilled" && Array.isArray(result.value)) {
@@ -1773,6 +1798,7 @@ module.exports = async (req, res) => {
     ga.status === "fulfilled" ? ga.value.filter((x) => inMetro(x)) : []);
   take("Nar-Anon", naranon,
     naranon.status === "fulfilled" ? naranon.value.filter((x) => inMetro(x)) : []);
+  take("Nar-Anon (virtual)", naranonOnline, naranonOnline.status === "fulfilled" ? naranonOnline.value : []);
   take("Emotions Anonymous", ea,
     ea.status === "fulfilled" ? ea.value.filter((x) => inMetro(x)) : []);
   take("Cocaine Anonymous (online)", caOnline, caOnline.status === "fulfilled" ? caOnline.value : []);
