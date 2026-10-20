@@ -48,4 +48,4 @@ createServer(async (req, res) => {
   } catch (e) {
     res.statusCode = 404; res.end("nope: " + e.message);
   }
-}).listen(8795, () => console.log("dev on http://localhost:8795"));
+}).listen(process.env.PORT || 8795, () => console.log(`dev on http://localhost:${process.env.PORT || 8795}`));

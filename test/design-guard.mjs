@@ -10,7 +10,9 @@ const checks = [
   ["dayboard design marker", html.includes('data-design="dayboard-v4"')],
   // Default is For You (production dayboard); Everything stays one tap away.
   ["For You stays available as an option", html.includes('{id:"social",label:"For You"')],
-  ["For You is the default activity view", html.includes('let _vibeStored="social"')],
+  // Everything is the default (smoke.mjs checks the same thing in a browser).
+  ["Everything is the default activity view", html.includes('let _vibeStored="all"')],
+  ["Popular is the default activity sort", html.includes('let _sortStored="popular"')],
   ["20 mile radius option", html.includes('[20,"\\u226420 mi"]')],
   ["dayboard metadata", html.includes('name="gather-design" content="dayboard-v4"')],
   [
@@ -35,7 +37,7 @@ const checks = [
   ["soft distance sort for approx", html.includes("_sortD")],
   ["automatic startup does not request location", !initBody.includes("getCurrentPosition") && !initBody.includes("requestMyArea")],
   ["installed app refreshes itself", html.includes('serviceWorker.addEventListener("controllerchange"')],
-  ["current app cache", sw.includes('const CACHE = "gather-v10"')],
+  ["current app cache", sw.includes('const CACHE = "gather-v11"')],
 ];
 
 const failed = checks.filter(([, ok]) => !ok);

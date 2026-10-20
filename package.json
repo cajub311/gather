@@ -6,7 +6,8 @@
   "scripts": {
     "build": "echo skip-build",
     "dev": "node test/dev-server.mjs",
-    "test": "node scripts/apply-polish.cjs && node test/design-guard.mjs && node test/smoke.mjs",
+    "test": "node test/design-guard.mjs && node test/smoke.mjs",
+    "polish": "node scripts/apply-polish.cjs",
     "test:api": "node test/api-probe.mjs",
     "test:guard": "node test/design-guard.mjs"
   },

@@ -13,6 +13,7 @@
 //   firstave -> First Avenue WP event posts (also Fine Line, Turf Club, Entry)
 //   opendate -> independent venue calendars powered by OpenDate
 //   standing -> fixed recurring community events (Dance Church, etc.)
+//   sports -> Minnesota pro + Gophers home games (ESPN public schedule API)
 //
 // Add a venue/org: drop it in SOURCES with its type. That's the whole job.
 
@@ -23,6 +24,10 @@
 // fetchWithRetry is what gives it a second chance.
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Gather/1.0";
+// The one exception: ESPN's public schedule API 403s the Gather UA and 200s a
+// plain browser one (measured 2026-09-27). Used for that source only.
+const BROWSER_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
 
 // `fallback` = what an unrecognized title at this venue most likely is. Without
 // it every unclassifiable row landed in "Social", which made Social 55% of the
@@ -38,7 +43,7 @@ const SOURCES = [
   { type: "tribe", name: "Como Zoo & Conservatory", base: "https://comozooconservatory.org", lat: 44.9822, lng: -93.1519, addr: "1225 Estabrook Dr, St Paul", fallback: "Family" },
   { type: "tribe", name: "Summit Brewing", base: "https://www.summitbrewing.com", lat: 44.9160, lng: -93.1360, addr: "910 Montreal Cir, St Paul" },
   { type: "tribe", name: "Utepils Brewing", base: "https://www.utepilsbrewing.com", lat: 44.9790, lng: -93.3080, addr: "225 Thomas Ave N, Minneapolis" },
-  { type: "tribe", name: "White Squirrel Bar", base: "https://whitesquirrelbar.com", lat: 44.9270, lng: -93.1250, addr: "974 W 7th St, St Paul", fallback: "Music" },
+  { type: "tribe", name: "White Squirrel Bar", base: "https://whitesquirrelbar.com", lat: 44.9270, lng: -93.1250, addr: "974 W 7th St, St Paul", cat: "Music" },
   { type: "tribe", name: "Science Museum of MN", base: "https://www.smm.org", lat: 44.9425, lng: -93.0990, addr: "120 W Kellogg Blvd, St Paul", fallback: "Family" },
   { type: "tribe", name: "Malcolm Yards", base: "https://malcolmyards.market", lat: 44.9797, lng: -93.2130, addr: "501 30th Ave SE, Minneapolis" },
   { type: "tribe", name: "Dakota Jazz Club", base: "https://dakotacooks.com", lat: 44.9727, lng: -93.2760, addr: "1010 Nicollet Mall, Minneapolis", cat: "Music" },
@@ -46,12 +51,24 @@ const SOURCES = [
   { type: "tribe", name: "American Swedish Institute", base: "https://asimn.org", lat: 44.9552, lng: -93.2659, addr: "2600 Park Ave, Minneapolis", fallback: "Art" },
   { type: "tribe", name: "DanceMN", base: "https://dancemn.org", lat: 44.9778, lng: -93.2650, addr: "Twin Cities", fallback: "Music" },
   { type: "tribe", name: "Quatrefoil Library", base: "https://qlibrary.org", lat: 44.9482, lng: -93.2575, addr: "1220 E Lake St, Minneapolis", fallback: "Books" },
-  { type: "tribe", name: "The Meditation Center", base: "https://themeditationcenter.org", lat: 44.9954, lng: -93.2611, addr: "631 University Ave NE, Minneapolis", fallback: "Zen" },
+  // Dropped The Events Calendar for a Mindbody schedule widget (2026-10)
+  { type: "mindbody", name: "The Meditation Center", url: "https://brandedweb-next.mindbodyonline.com/components/widgets/schedules/view/78548450e43/schedule", base: "https://themeditationcenter.org/calendar/", lat: 44.9954, lng: -93.2611, addr: "631 University Ave NE, Minneapolis", fallback: "Zen" },
   { type: "tribe", name: "Northern Clay Center", base: "https://northernclaycenter.org", lat: 44.9620, lng: -93.2336, addr: "2424 E Franklin Ave, Minneapolis", fallback: "Art" },
   { type: "tribe", name: "Minnesota Museum of American Art", base: "https://mmaa.org", lat: 44.9487, lng: -93.0895, addr: "350 Robert St N, St Paul", fallback: "Art" },
   // NE brewery with regular trivia / social nights (confirmed tribe feed)
-  { type: "tribe", name: "Wooden Hill Brewing", base: "https://woodenhillbrewing.com", lat: 45.0139, lng: -93.2475, addr: "2415 Central Ave NE, Minneapolis" },
+  { type: "jsonld", name: "Wooden Hill Brewing", url: "https://woodenhillbrewing.com/events/", lat: 44.8653, lng: -93.3748, addr: "7421 Bush Lake Rd, Edina", cat: "Games" },
   { type: "tribe", name: "Friends of St Paul Library", base: "https://www.thefriends.org", lat: 44.9445, lng: -93.0977, addr: "St Paul", fallback: "Books" },
+  // mostly online family + peer classes; every row is a support listing
+  // Church-run weekly groups (13-week sessions you can join any week) + one-off workshops
+  { type: "churchfinder", name: "GriefShare", url: "https://find.griefshare.org/find?address=Minneapolis%2C+MN", support: "Grief", group: "GriefShare grief support group", desc: "Church-run grief support group (Christian), meets weekly through the session. Check the page for the street address." },
+  { type: "churchfinder", name: "DivorceCare", url: "https://find.divorcecare.org/find?address=Minneapolis%2C+MN", support: "Divorce", group: "DivorceCare divorce & separation support group", desc: "Church-run support group (Christian) for separation and divorce, meets weekly through the session. Check the page for the street address." },
+  { type: "tribe", name: "NAMI Minnesota", base: "https://namimn.org", lat: 44.9778, lng: -93.2650, addr: "Online or call NAMI Minnesota", fallback: "Zen", support: "Mental health", skipCats: /advocacy|training/i,
+    skipTitle: /for professionals|agricultural|candidate forum|presenter training/i, metroZips: true },
+  // peer-run "All Recovery" meetings (any path, any substance) + naloxone trainings
+  // DBSA's national peer-run online groups (HeyPeers lists the next ~11 sessions)
+  { type: "heypeers", name: "DBSA", url: "https://heypeers.com/organizations/8/scheduled_meetings", support: "Mental health",
+    types: ["Depression", "Bipolar", "Peer support"], lat: 44.9778, lng: -93.2650, addr: "Online (DBSA)", fallback: "Zen" },
+  { type: "tribe", name: "Minnesota Recovery Connection", base: "https://minnesotarecovery.org", lat: 44.9480, lng: -93.1660, addr: "Online or call Minnesota Recovery Connection", fallback: "Zen", support: "Recovery", metroZips: true },
   { type: "tribe", name: "Loppet Foundation", base: "https://www.loppet.org", lat: 44.9880, lng: -93.3230, addr: "1221 Theodore Wirth Pkwy, Minneapolis", fallback: "Outdoors" },
 
   // --- UMN public calendar (LiveWhale JSON) — lectures, arboretum, concerts ---
@@ -73,7 +90,7 @@ const SOURCES = [
   { type: "squarespace", name: "Minnesota Center for Book Arts", base: "https://mnbookarts.org/events", lat: 44.9751, lng: -93.2517, addr: "1011 Washington Ave S, Minneapolis", fallback: "Art" },
 
   // --- Small independent/community calendars not indexed well elsewhere ---
-  { type: "rss", name: "Twin Cities Maker", url: "https://wa.tcmaker.org/widget/Calendar/RSS", loc: "Twin Cities Maker / Hack Factory", lat: 44.9551, lng: -93.2260, addr: "3119 E 26th St, Minneapolis", fallback: "Art" },
+  { type: "rss", name: "Twin Cities Maker", cat: "Art", url: "https://wa.tcmaker.org/widget/Calendar/RSS", loc: "Twin Cities Maker / Hack Factory", lat: 44.9551, lng: -93.2260, addr: "3119 E 26th St, Minneapolis", fallback: "Art" },
   { type: "opendate", name: "The Hook and Ladder", url: "https://r.jina.ai/http://thehookmpls.com/events/", loc: "The Hook and Ladder", lat: 44.9480, lng: -93.2344, addr: "3010 Minnehaha Ave, Minneapolis", fallback: "Music" },
 
   // Meditation centers publish their own calendars but rarely reach city roundups.
@@ -85,6 +102,7 @@ const SOURCES = [
   // --- Nightlife / dance / concerts ---
   { type: "cabooze", name: "The Cabooze", url: "https://cabooze.com/events/", lat: 44.9628, lng: -93.2465, addr: "913 Cedar Ave S, Minneapolis", cat: "Music" },
   { type: "firstave", name: "First Avenue + sister venues", listUrl: "https://first-avenue.com/shows/", cat: "Music" },
+  { type: "sports", name: "Pro & college home games", url: "https://site.api.espn.com/", cat: "Sports" },
   { type: "eventbrite", name: "Can Can Wonderland", url: "https://www.eventbrite.com/d/mn--saint-paul/can-can-wonderland/", venueMatch: "can can wonderland", loc: "Can Can Wonderland", base: "https://www.cancanwonderland.com/entertainment", lat: 44.9538, lng: -93.1839, addr: "755 Prior Ave N, St Paul" },
 
   // Standing community hangouts (published schedules, no JSON API)
@@ -151,6 +169,10 @@ const SOURCES = [
   { type: "eventbrite", name: "Eventbrite Fitness", url: "https://www.eventbrite.com/d/mn--minneapolis/sports-and-fitness--events--this-week/", cat: "Fitness" },
   { type: "eventbrite", name: "Eventbrite Community", url: "https://www.eventbrite.com/d/mn--minneapolis/community--events--this-week/", cat: "Social" },
   { type: "eventbrite", name: "Eventbrite Charity", url: "https://www.eventbrite.com/d/mn--minneapolis/charity-and-causes--events--this-week/", cat: "Volunteer" },
+  // support-group searches: only rows the support tagger recognises are kept
+  { type: "eventbrite", name: "Eventbrite Support Groups", url: "https://www.eventbrite.com/d/mn--minneapolis/support-group/", supportOnly: true },
+  { type: "eventbrite", name: "Eventbrite Caregiver Support", url: "https://www.eventbrite.com/d/mn--minneapolis/caregiver-support/", supportOnly: true },
+  { type: "eventbrite", name: "Eventbrite Recovery", url: "https://www.eventbrite.com/d/mn--minneapolis/recovery/", supportOnly: true },
   { type: "eventbrite", name: "Eventbrite Health", url: "https://www.eventbrite.com/d/mn--minneapolis/health--events--this-week/", cat: "Fitness" },
   // No "this-weekend" pages: probed, they return the same rows as the today /
   // this-week pages above, and every extra request to this host is what pushes
@@ -176,11 +198,62 @@ function isNoise(title) {
   if (/\b\d+\s*day\s+(?:workshop|training|bootcamp|course)\b/i.test(t)) return true;
   // multi-week fundraisers / "July 1–31" campaigns published as midnight events
   if (/\b(domestic abuse project|fundrais(?:e|ing)\s+month|month[- ]long)\b/i.test(t)) return true;
+  // Services and promos, not outings: library tech-help appointments (5 of
+  // them a day), "School Night Savings", shop office hours, pantry sign-ups.
+  if (/tech help|computer help|device help|by appointment|\bsavings\b|\bcoupons?\b|\b(daily|drink|food|lunch) specials?\b|office hours|\bcleaning\b/i.test(t)) return true;
+  if (/\bfood pantry\b|pantry registration/i.test(t) && !/volunteer/i.test(t)) return true;
+  // Called off or full, but the title is all that says so ("… - CANCELLED",
+  // "(Closed) Table 10") — the card would send someone to nothing.
+  if (/\b(cancell?ed|postponed)\b|\(closed\)|[-–—:]\s*closed\b|\bclosed for\b/i.test(t)) return true;
   return false;
 }
 
+// Real listings that still aren't a thing to go do (found in the 2026-10-19
+// feed): library service hours, member logistics, students-only campus
+// errands, casting calls, out-of-state trips, and Eventbrite SEO spam.
+const JUNK = [
+  // services and help desks
+  /\b(career services|job (?:club|search assistance)|employer of the day|homework (?:help|center)|community resource advocates?|early voting|voter registration|drop-in (?:computer lab|business consultations?|health and vaccine clinic)|business consultations?|small business support|public health in public places|immunization clinic|vaccine clinic|lactation lounge|community health services|library community hours|tax (?:help|prep(?:aration)?)|legal clinic|mobile market|foodmobile)\b/i,
+  // member logistics and notices
+  /\b((?<!sexual )orientation|check[- ]?out training|maintenance night|budget (?:approval )?meeting|monthly meeting|staff meeting|applications? (?:are )?open|open for registration|registration (?:is )?open|bisqueware|zendo in use|practice period ends|please disregard|free shuttle|teacher tuesdays|shred day|birth center tour|audience sign[- ]?up|class of (?:19|20)\d\d)\b/i,
+  /^suspended\b|^full\s*[-–—]|\btbd\b.*\bbreak\b|seeks .*\b(?:extras?|roles|actors)\b|\bdealer\b.*\btraining\b|barista training/i,
+  // students-only campus errands
+  /\b(admissions|undergraduate research|urop|zotero|preparing to publish|data snack|study (?:day|break|skills)|snack & study|writing lab)\b|^paws\s*[-–—(]|paws (?:study break|new location)/i,
+  // members-only tool sign-offs, chores, hours and drink specials
+  /\(ad hoc\)|\bbasic training\b|quarterly cleanup|closing at \d|featured beer|\$\d+ (?:per )?pints?\b|info(?:rmation)? session|\bsymposium\b|game day specials|business networking|\(BNI\)/i,
+  // trips somewhere else, not a night out here
+  /\b(moab|zion|bryce|smoky mountains?|grand canyon|yellowstone|glamping)\b/i,
+  // events in other cities that a metro venue lists
+  /\b(rochester|duluth|mankato|st\.? cloud|st\.? croix falls|eau claire)\b/i,
+  // spam and sales pitches
+  /strip clubs?|strippers?\b|male revue|psychic fair|psychic readings?|soul adventure seminar|secrets of spiritual healing|fabletics/i,
+  // Eventbrite ads: exam-prep and manager courses, deal-flow "networking", and
+  // self-guided phone-app city hunts listed for every day of the year
+  /\bexam prep\b|certification\b.*\b(?:bootcamp|exam)\b|\b(?:pmp|capm|six sigma|scrum master)\b|masterclass for (?:new )?managers|leadership excellence|real estate invest|property deals?|passive income|\bforex\b|financial freedom|\b(?:minneapolis|saint paul|st\.? paul)\b.*scavenger hunt|mystery quest|adventure quest|let.?s roam/i,
+];
+function isJunk(title) {
+  const t = title || "";
+  return JUNK.some((re) => re.test(t));
+}
+
+// Support groups that venue and library calendars mix in with concerts. The
+// page moves these to Support meetings, where someone looking for them is.
+const SUPPORT_KINDS = [
+  [/\b(grief|griev|bereave|loss of a loved|widow)/i, "Grief"],
+  [/\b(twelve steps|12[- ]?steps?|sobriety|sober support|recovery (?:meeting|group|circle|resource)|naloxone|narcan|substance use)\b/i, "Recovery"],
+  [/\b(depression|anxiety|bipolar|ocd|ptsd|trauma)\b.*\b(group|support|circle)\b|\bmental health (?:professional|support|in the community)\b|\bnami\b|\bpeer (?:support|network)\b/i, "Mental health"],
+  [/\b(caregiver|dementia|alzheimer|stroke|cancer|parkinson|chronic (?:pain|illness))\b.*\b(support|alone|group|klatch)/i, "Health"],
+  [/\b(care partners|spinal cord injury|brain injury)\b.*\b(support|peer|group)\b/i, "Health"],
+  [/\bsupport group\b|\bsurvivors? (?:support|group)\b/i, "Support group"],
+];
+function supportKind(title) {
+  const hit = SUPPORT_KINDS.find(([re]) => re.test(title || ""));
+  return hit ? hit[1] : null;
+}
+
 function isUnavailableTitle(title) {
-  return /^\s*\(?(?:canceled|cancelled|sold out)\)?\s*[:—-]?/i.test(title || "");
+  // "❗SOLD OUT❗ Bill Callahan" — skip leading emoji/punctuation before the word
+  return /^[^\p{L}\p{N}]*(?:canceled|cancelled|sold out)\b/iu.test(title || "");
 }
 
 // Venue categories that mean "this row is logistics, not an event". Only drops a
@@ -205,7 +278,10 @@ function classify(text, catNames) {
   // "Environmental Volunteer Opportunities" — neither is guessable from the name.
   if (cats) {
     if (/trivia|quiz|bingo|game night/.test(cats)) return "Games";
-    if (/on stage|live music|music in the park|concert|dance/.test(cats)) return "Music";
+    // plays are filed under "Theatre & Dance"-style names; bare "dance" also
+    // matched "guidance" and "attendance" in the blurbs some feeds send here
+    if (/theat(?:er|re)\b|\bdrama\b/.test(cats) && !/concert|live music|kid|child|famil|youth|teen|preschool/.test(cats)) return "Art";
+    if (/on stage|live music|music in the park|concert|\bdanc/.test(cats)) return "Music";
     if (/volunteer/.test(cats)) return "Volunteer";
     if (/storytime|story time|kids|children|family|youth|preschool|toddler/.test(cats)) return "Family";
     if (/movie|film|screening/.test(cats)) return "Art";
@@ -215,20 +291,23 @@ function classify(text, catNames) {
   // title is the better signal. Categories still feed the title pass below.
   const t = ((text || "") + " " + cats).toLowerCase();
   const has = (re) => re.test(t);
-  if (has(/trivia|quiz night|\bbingo\b|board game|tabletop|chess|d&d|dungeons|magic the|euchre|card game|crokinole|jigsaw|puzzl|pinball|arcade|karaoke|game night|clocktower/)) return "Games";
-  if (has(/music|concert|\bband\b|\bjam\b|\bdj\b|open mic|singer|songwriter|orchestra|jazz|acoustic|hip[- ]?hop|\bpunk\b|\bmetal\b|indie|bluegrass|\bchoir\b|recital|honky tonk|\bfest\b|on stage|\blive at\b|\btrio\b|quartet|quintet|\bduo\b|\bvinyl\b|communion|\bedm\b|techno|house music|dance party|dance church|rave|nightclub|live show|comedy|stand[- ]?up/)) return "Music";
+  if (has(/trivia|quiz night|\bbingo\b|board game|tabletop|chess|d&d|dungeons|magic the|euchre|card game|crokinole|jigsaw|puzzl|pinball|arcade|karaoke|game night|clocktower|free pool|pool (?:league|tournament|night)|billiards|\bdarts?\b|cribbage|mah ?jongg?|shuffleboard|skee-?ball|\bkubb\b/)) return "Games";
+  // Hands-on craft classes: their blurbs mention "build", "beginners" or
+  // "skills" and landed in Fitness or Music.
+  if (has(/ceramic|pottery|bookmaking|stained glass|woodwork|woodturn|letterpress|weaving|glassblow|jewelry making|hand-building|wheel throwing|laser (?:engrav|cut)|engraving|3d print/)) return "Art";
+  if (has(/music|concert|\bband\b|\bjam\b|\bdj\b|open mic|singer|songwriter|orchestra|jazz|acoustic|hip[- ]?hop|\bpunk\b|\bmetal\b|indie|bluegrass|\bchoir\b|recital|trumpet|organist|symphon|violin|\bcello|pianist|saxophon|honky tonk|\bfest\b|on stage|\blive at\b|\btrio\b|quartet|quintet|\bduo\b|\bvinyl\b|communion|\bedm\b|techno|house music|dance party|dance church|\brave(?!n|l)|nightclub|live show|comedy|stand[- ]?up/)) return "Music";
   // board games / trivia often land as "Social" without this
-  if (has(/trivia|quiz night|\bbingo\b|board game|tabletop|game night|mario kart|canasta|euchre|d&d|dungeons/)) return "Games";
+  if (has(/trivia|quiz night|\bbingo\b|board game|tabletop|game night|mario kart|canasta|euchre|d&d|dungeons|domino|scrabble/)) return "Games";
   if (has(/meditat|mindful|sound bath|breathwork|yin yoga|restorative|reiki|sangha|zazen|dharma/)) return "Zen";
   if (has(/storytime|story time|toddler|preschool|\bkids?\b|children|\bfamily\b|all ages|\bbabies?\b|\bteens?\b|puppet|face paint|\blego\b|zookeeper|gorilla|polar bear|tiger talk|giraffe|penguin|sea lion|petting|little explorer|sea stories|dinosaur/)) return "Family";
   if (has(/\brun(?:ning|s)?\b|\b(?:5|10)k\b|marathon|fitness|workout|yoga|pilates|volleyball|pickleball|table tennis|ping pong|climb|cycling|bike ride|bike night|\bsports?\b|softball|basketball|\bswim|skate|zumba|\bbarre\b|crossfit/)) return "Fitness";
   if (has(/volunteer|food shelf|fundrais|charity|blood drive|buckthorn|invasive plant|litter pick/)) return "Volunteer";
-  if (has(/book club|\bauthor\b|\bread(?:ing|s)?\b|poetry|writers|book sale|lit crawl/)) return "Books";
+  if (has(/book club|book circle|book group|book discussion|\bauthor\b|\bread(?:ing|s)?\b|poetry|writers|book sale|lit crawl/)) return "Books";
   if (has(/\barts?\b|craft|paint|pottery|knit|maker|\bdraw|ceramic|\bprint|gallery|exhibit|quilt|\bsew\b|collage|photograph|mural|\bmovie|\bfilm\b|screening/)) return "Art";
   // bare "trail" matched "training" (Salesforce Admin Training → Outdoors). Use trails? word.
   if (has(/hike|\btrails?\b|nature walk|birding|\bbirders?\b|kayak|paddle|canoe|garden|\bpark\b|cleanup|prairie|arboretum|pollinator|\btrek|\bflower|\bbloom|meadow/)) return "Outdoors";
   if (has(/tasting|brunch|\bdinner\b|beer release|cocktail|\bwine\b|farmers market|cooking|\bbake|\bchef\b|barbecue|\bbbq\b|ice cream|pizza night|brewer/)) return "Food";
-  if (has(/language|spanish|french|german|conversation table|\besl\b|somali|hmong|\basl\b|sign language/)) return "Language";
+  if (has(/language|spanish|french|german|conversation table|\bnorsk\b|språk|conversation(?:al)? (?:skills|club|practice|group|circle)|\besl\b|somali|hmong|\basl\b|sign language/)) return "Language";
   if (has(/\bclass\b|workshop|lecture|seminar|\bpanel\b|\btalk\b|\b101\b|intro to|how to|tech help|resume|job fair|info session|\bdemo\b|symposium|colloquium|training/)) return "Learn";
   if (has(/watch party|singles mixer|meet new|networking|happy hour|\bmixer\b|block party|\bsocial\b|meetup/)) return "Social";
   return null;
@@ -307,7 +386,7 @@ function hostKeyFor(src) {
   try { return new URL(u).host; } catch { return src.type; }
 }
 
-async function fetchWithRetry(url, accept, ms, budget) {
+async function fetchWithRetry(url, accept, ms, budget, ua = UA) {
   let last;
   for (let attempt = 0; attempt < 2; attempt++) {
     if (budget && budget.expired()) break;
@@ -315,7 +394,7 @@ async function fetchWithRetry(url, accept, ms, budget) {
     try {
       const r = await fetch(url, {
         headers: {
-          "User-Agent": UA,
+          "User-Agent": ua,
           Accept: accept,
           "Accept-Language": "en-US,en;q=0.9",
           Referer: new URL(url).origin + "/",
@@ -326,6 +405,9 @@ async function fetchWithRetry(url, accept, ms, budget) {
       return r;
     } catch (e) {
       last = e;
+      // Some sites (Cloudflare) 403 the Gather UA from Vercel's servers but serve
+      // a plain browser one — try that once before giving up
+      if (/HTTP 403/.test(String(e.message)) && ua === UA) { ua = BROWSER_UA; continue; }
       // a 4xx is a decision, not a hiccup — retrying just burns the time budget
       if (/HTTP 4\d\d/.test(String(e.message))) break;
       if (budget && budget.expired()) break;
@@ -334,8 +416,8 @@ async function fetchWithRetry(url, accept, ms, budget) {
   throw last || new Error("source timed out");
 }
 
-async function getJSON(url, ms = 10000, budget) {
-  return (await fetchWithRetry(url, "application/json", ms, budget)).json();
+async function getJSON(url, ms = 10000, budget, ua) {
+  return (await fetchWithRetry(url, "application/json", ms, budget, ua)).json();
 }
 
 async function getText(url, ms = 10000, budget) {
@@ -386,17 +468,23 @@ async function fromTribe(src, startISO, endISO) {
     if (isNoise(title) || isUnavailableTitle(title)) continue;
     const v = Array.isArray(e.venue) ? (e.venue[0] || {}) : (e.venue || {});
     const lat = parseFloat(v.geo_lat), lng = parseFloat(v.geo_lng);
+    const webOnly = /^\s*(online|virtual|zoom)\b/i.test(decode(v.venue || ""));
     const catNames = (e.categories || []).map((c) => decode(c.name)).filter(Boolean);
     if (isFillerOnly(catNames)) continue;
+    if (src.skipCats && catNames.some((c) => src.skipCats.test(c))) continue;
+    if (src.skipTitle && src.skipTitle.test(title)) continue;
+    // statewide calendars give no pins: a Twin Cities ZIP (550xx-555xx) keeps
+    // the row, anything else (St Cloud, Virginia, Moorhead) is out of reach
+    if (src.metroZips && v.zip && !/^55[0-5]/.test(String(v.zip).trim())) continue;
     out.push({
       cat: src.cat || classify(title, catNames) || src.fallback || "Social",
       name: title,
       day: dayKey(p),
       time: `${String(p.h).padStart(2, "0")}:${String(p.mi).padStart(2, "0")}`,
       dur: 120,
-      fmt: e.is_virtual ? "online" : "in-person",
-      loc: decode(v.venue || src.name),
-      addr: decode(v.address ? `${v.address}, ${v.city || ""}`.replace(/, $/, "") : src.addr),
+      fmt: e.is_virtual || webOnly ? "online" : "in-person",
+      loc: webOnly ? `Online · ${src.name}` : decode(v.venue || src.name),
+      addr: webOnly ? "Sign up on the event page for the link" : decode(v.address ? `${v.address}, ${v.city || ""}`.replace(/, $/, "") : src.addr),
       lat: isFinite(lat) ? lat : src.lat,
       lng: isFinite(lng) ? lng : src.lng,
       approx: !(isFinite(lat) && isFinite(lng)) || undefined,
@@ -408,6 +496,7 @@ async function fromTribe(src, startISO, endISO) {
       dateLabel: `${DOW[dayKey(p)]}, ${MON[p.mo - 1]} ${p.d}`,
       source: src.name,
       image: e.image && e.image.url,
+      support: src.support,
       live: true,
       verified: true,
     });
@@ -531,7 +620,11 @@ async function fromSquarespace(src) {
       if (seen.has(k)) continue;
       seen.add(k);
       const loc = e.location || {};
-      const lat = parseFloat(loc.mapLat), lng = parseFloat(loc.mapLng);
+      // Squarespace fills an unset event location with its own New York office
+      // (40.72,-74.00) — measured: all 49 Berlin pins sat in Manhattan. Only
+      // trust the event's pin when it's actually in the metro.
+      let lat = parseFloat(loc.mapLat), lng = parseFloat(loc.mapLng);
+      if (!inMetro(lat, lng)) { lat = src.lat; lng = src.lng; }
       const place = `${title} ${loc.addressTitle || ""} ${loc.addressLine1 || ""}`;
       const online = /(?:^|\b)(online|virtual|zoom)(?:\b|$)/i.test(place);
       out.push({
@@ -543,11 +636,12 @@ async function fromSquarespace(src) {
         fmt: online ? "online" : "in-person",
         loc: decode(loc.addressTitle || src.name),
         addr: decode([loc.addressLine1, loc.addressLine2].filter(Boolean).join(", ")) || src.addr,
-        lat: isFinite(lat) && lat ? lat : src.lat,
-        lng: isFinite(lng) && lng ? lng : src.lng,
+        lat,
+        lng,
         types: [],
         desc: short(e.excerpt || "") || undefined,
         url: e.fullUrl ? origin + e.fullUrl : src.base,
+        image: e.assetUrl || undefined,
         date,
         dateLabel: `${DOW[dayKey(p)]}, ${MON[p.mo - 1]} ${p.d}`,
         source: src.name,
@@ -583,7 +677,7 @@ async function fromRSS(src) {
       url: decode(field("link")) || src.url,
       types: [],
       desc: short(decode(field("description"))),
-      cat: classify(title, [decode(field("description"))]) || src.fallback,
+      cat: src.cat || classify(title, [decode(field("description"))]) || src.fallback,
     }));
   }
   return out;
@@ -816,6 +910,7 @@ async function fromMeetup(src) {
       types: [going ? `${going} going` : "", e.group && e.group.name].filter(Boolean).slice(0, 2),
       url: e.eventUrl,
       image: e.displayPhoto && e.displayPhoto.highResUrl,
+      going: going > 0 ? going : undefined,
       date: `${p.y}-${String(p.mo).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`,
       dateLabel: `${DOW[dayKey(p)]}, ${MON[p.mo - 1]} ${p.d}`,
       source: src.name,
@@ -843,6 +938,10 @@ async function fromEventbrite(src) {
     const address = decode(a.localized_address_display || [a.address_1, a.city, a.region].filter(Boolean).join(", "));
     if (src.venueMatch && !`${venueName} ${address}`.toLowerCase().includes(src.venueMatch.toLowerCase())) continue;
     const onlinePlace = /(?:^|\b)(online|virtual|zoom)(?:\b|$)/i.test(`${venueName} ${address}`);
+    // Eventbrite's own demand flags. "salesEndSoon" is on half of everything
+    // (it just means the date is close), so only the real ones count.
+    const urgency = (e.urgency_signals && e.urgency_signals.messages) || [];
+    const hot = urgency.includes("fewTickets") ? "Few tickets left" : urgency.includes("goingFast") ? "Selling fast" : undefined;
     out.push({
       cat: classify(e.name, tags) || classify(`${e.name} ${tags.join(" ")}`) || src.cat || "Social",
       name: decode(e.name),
@@ -858,6 +957,7 @@ async function fromEventbrite(src) {
       desc: short(e.summary || "") || undefined,
       url: e.url,
       image: e.image && e.image.image_sizes && (e.image.image_sizes.medium || e.image.url),
+      hot,
       date: e.start_date,
       dateLabel: `${DOW[dayKey(p)]}, ${MON[p.mo - 1]} ${p.d}`,
       source: src.name,
@@ -1029,6 +1129,10 @@ const FIRSTAVE_VENUE_MAP = {
   "the-fitzgerald-theater": { loc: "Fitzgerald Theater", addr: "10 E Exchange St, St Paul", lat: 44.9478, lng: -93.0965 },
   "first-avenue": { loc: "First Avenue", addr: "701 1st Ave N, Minneapolis", lat: 44.9784, lng: -93.2760 },
   "mpls-cpac": { loc: "MPLS CPAC", addr: "Minneapolis", lat: 44.9778, lng: -93.2650 },
+  "state-theatre": { loc: "State Theatre", addr: "805 Hennepin Ave, Minneapolis", lat: 44.9746, lng: -93.2758 },
+  "amsterdam-bar": { loc: "Amsterdam Bar & Hall", addr: "6 W 6th St, St Paul", lat: 44.9489, lng: -93.0947 },
+  "icehouse-mpls": { loc: "Icehouse", addr: "2528 Nicollet Ave, Minneapolis", lat: 44.9559, lng: -93.2780 },
+  "grand-casino-arena": { loc: "Grand Casino Arena", addr: "199 W Kellogg Blvd, St Paul", lat: 44.9448, lng: -93.1010 },
 };
 
 function parseTitleDate(title) {
@@ -1050,99 +1154,355 @@ function parseFirstAveDate(slug, title) {
   return null;
 }
 
+// /shows/ lists ONE calendar month per page. Reading only the bare URL meant
+// October onward never loaded — 9 shows total for the busiest music calendar
+// in town. Fetch every month the 45-day window touches and parse card by card.
+function firstAveMonths() {
+  const now = chicagoParts(Date.now());
+  const end = chicagoParts(Date.now() + 45 * 864e5);
+  const months = [];
+  let y = now.y, mo = now.mo;
+  while (y < end.y || (y === end.y && mo <= end.mo)) {
+    months.push(`${y}${String(mo).padStart(2, "0")}01`);
+    if (++mo > 12) { mo = 1; y++; }
+  }
+  return months;
+}
+
 async function fromFirstAve(src) {
   const budget = deadline();
-  // /shows/ cards: poster link + month/day + venue-* class + artist name
-  const pageUrl = src.listUrl || "https://first-avenue.com/shows/";
-  const html = await getText(pageUrl, 15000, budget);
+  const base = src.listUrl || "https://first-avenue.com/shows/";
+  const pages = await Promise.all(firstAveMonths().map((ymd) =>
+    getText(`${base}?post_type=event&start_date=${ymd}`, 15000, budget).then((html) => ({ ymd, html }), () => null)
+  ));
+  if (!pages.some(Boolean)) throw new Error("First Avenue calendar unavailable");
   const out = [];
   const seen = new Set();
+  for (const page of pages.filter(Boolean)) {
+    for (const card of page.html.split(/<div class="show_list_item"/i).slice(1)) {
+      // "postponed" / "Cancelled" / "Sold Out" badges: nothing to go to
+      const status = (card.match(/class="status badge[^"]*"[^>]*>\s*<span>([^<]+)</i) || [])[1] || "";
+      if (/cancel|postpon|sold out|resched/i.test(status)) continue;
+      const head = card.match(/<h4[^>]*>\s*<a href="(https:\/\/first-avenue\.com\/event\/([^"\/]+)\/?)"[^>]*>([\s\S]*?)<\/a>/i);
+      if (!head) continue;
+      const url = head[1].replace(/\/?$/, "/");
+      const slug = decodeURIComponent(head[2]);
+      let title = decode(head[3]);
+      const support = decode((card.match(/<h5[^>]*>([\s\S]*?)<\/h5>/i) || [])[1] || "");
+      const tagline = decode((card.match(/<h6[^>]*>([\s\S]*?)<\/h6>/i) || [])[1] || "");
+      if (!title || isNoise(title) || isUnavailableTitle(title)) continue;
 
-  // Each show card is anchored by /event/{slug}/ then nearby .month / .day / venue class
-  const linkRe = /href="(https:\/\/first-avenue\.com\/event\/([^"\/]+))\/?"/gi;
-  let m;
-  while ((m = linkRe.exec(html))) {
-    const url = m[1].replace(/\/$/, "") + "/";
-    const slug = decodeURIComponent(m[2]);
-    if (seen.has(url)) continue;
+      const monthM = card.match(/class="month"\s*>\s*([A-Za-z]{3,9})\s*</i);
+      const dayM = card.match(/class="day"\s*>\s*(\d{1,2})\s*</i);
+      const slugY = slug.match(/^(\d{4})-(\d{2})-/);
+      let y = slugY ? +slugY[1] : +page.ymd.slice(0, 4);
+      let mo = monthM ? MON3[monthM[1].slice(0, 3).toLowerCase()] : +page.ymd.slice(4, 6);
+      let d = dayM ? +dayM[1] : null;
+      // title date wins when present (multi-night runs: "Zoso 10/8/26")
+      const fromTitle = parseTitleDate(title);
+      if (fromTitle) ({ y, mo, d } = fromTitle);
+      if (!mo || !d) continue;
 
-    // Card body is after the poster link (venue + date + title live nearby either side)
-    const around = html.slice(Math.max(0, m.index - 200), m.index + 1800);
+      const venueSlug = ((card.match(/venue-([a-z0-9-]+)/i) || [])[1] || "").toLowerCase().replace(/-+$/, "");
+      // The Cedar is its own source with real show times; don't list it twice
+      if (venueSlug === "the-cedar-cultural-center") continue;
+      const venueName = decode((card.match(/venue_name">\s*([^<]+?)\s*</i) || [])[1] || "");
+      const venue = FIRSTAVE_VENUE_MAP[venueSlug]
+        // a room we have no pin for: name it honestly, pin it approx downtown
+        || (venueName ? { loc: venueName, addr: "Minneapolis", lat: 44.9778, lng: -93.2650, approx: true } : FIRSTAVE_VENUE_MAP["first-avenue"]);
 
-    const monthM = around.match(/class="month"\s*>\s*([A-Za-z]{3,9})\s*</i);
-    const dayM = around.match(/class="day"\s*>\s*(\d{1,2})\s*</i);
-    const venueM = around.match(/venue-([a-z0-9-]+)/i);
-    const venueKey = venueM && FIRSTAVE_VENUE_MAP[venueM[1].toLowerCase()]
-      ? venueM[1].toLowerCase()
-      : "first-avenue";
-    const venue = FIRSTAVE_VENUE_MAP[venueKey] || FIRSTAVE_VENUE_MAP["first-avenue"];
+      let time = "20:00";
+      if (/\blate\b/i.test(title + " " + slug)) time = "22:00";
+      else if (/\bearly\b/i.test(title + " " + slug)) time = "19:00";
+      const [hh, mm] = time.split(":").map(Number);
+      const p = { y, mo, d, h: hh, mi: mm };
 
-    // Artist title: prefer visible name link text, not "Buy Tickets"
-    let title = "";
-    const titleCandidates = [...around.matchAll(/href="https:\/\/first-avenue\.com\/event\/[^"]+"[^>]*>\s*([^<]{2,100})\s*</gi)]
-      .map((x) => decode(x[1]).trim())
-      .filter((t) => t && !/buy tickets|view details|read more|^\s*$/i.test(t));
-    title = titleCandidates.sort((a, b) => b.length - a.length)[0] || "";
-    if (!title || title.length < 3) {
-      title = slug
-        .replace(/^\d{4}-\d{2}-/, "")
-        .replace(/-/g, " ")
-        .replace(/\b\w/g, (c) => c.toUpperCase());
-    }
-    if (isNoise(title)) continue;
+      title = title
+        .replace(/\s+\d{1,2}\/\d{1,2}\/\d{2,4}\s*/g, " ")
+        .replace(/\s*\((early|late)( show)?\)\s*/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      const k = title.toLowerCase() + "|" + y + mo + d + "|" + venue.loc + "|" + time;
+      if (seen.has(k)) continue;
+      seen.add(k);
 
-    const slugY = slug.match(/^(\d{4})-(\d{2})-/);
-    let y = slugY ? +slugY[1] : chicagoParts(Date.now()).y;
-    let mo = slugY ? +slugY[2] : null;
-    let d = dayM ? +dayM[1] : null;
-    if (monthM) {
-      const mo2 = MON3[monthM[1].slice(0, 3).toLowerCase()];
-      if (mo2) mo = mo2;
-    }
-    // title date wins when present (handles multi-night + late/early)
-    const fromTitle = parseTitleDate(title);
-    if (fromTitle) {
-      y = fromTitle.y;
-      mo = fromTitle.mo;
-      d = fromTitle.d;
-    }
-    if (!mo || !d) continue;
-
-    let time = "20:00";
-    if (/\blate\b/i.test(title + " " + slug)) time = "22:00";
-    else if (/\bearly\b/i.test(title + " " + slug)) time = "19:00";
-    const [hh, mm] = time.split(":").map(Number);
-    const p = { y, mo, d, h: hh, mi: mm };
-
-    const cleanName = title
-      .replace(/\s+\d{1,2}\/\d{1,2}\/\d{2,4}\s*/g, " ")
-      .replace(/\s*\((early|late)\)\s*/gi, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-    const k = cleanName.toLowerCase() + "|" + y + mo + d + "|" + venue.loc + "|" + time;
-    if (seen.has(k)) continue;
-    seen.add(k);
-    seen.add(url);
-
-    out.push(
-      eventRow(src, {
-        title: cleanName || title,
+      const row = eventRow(src, {
+        title,
         p,
         time,
         url,
         types: ["Live music", venue.loc],
+        desc: [support, tagline.replace(/★/g, "").trim()].filter(Boolean).join(" · ") || undefined,
         cat: "Music",
         loc: venue.loc,
         addr: venue.addr,
         lat: venue.lat,
         lng: venue.lng,
-      })
-    );
+      });
+      const poster = (card.match(/background-image:\s*url\(([^)"']+)/i) || [])[1];
+      if (poster) row.image = poster.replace(/&amp;/g, "&");
+      if (venue.approx) row.approx = true;
+      // No show time on the list page; 8 PM is the house default, so say so
+      row.timeGuess = time === "20:00";
+      out.push(row);
+    }
+  }
+  return out;
+}
+
+// Big-league home games: the biggest crowds in town, and no venue calendar we
+// read carries them. ESPN's public schedule API, home games only. The default
+// schedule is whatever season is current (preseason in Sept for NBA/NHL), so
+// hockey and basketball also read the regular season (seasontype=2).
+const SPORTS_VENUES = {
+  "U.S. Bank Stadium": { addr: "401 Chicago Ave, Minneapolis", lat: 44.9737, lng: -93.2581 },
+  "Target Center": { addr: "600 N 1st Ave, Minneapolis", lat: 44.9795, lng: -93.2761 },
+  "Target Field": { addr: "1 Twins Way, Minneapolis", lat: 44.9817, lng: -93.2776 },
+  "Grand Casino Arena": { addr: "199 W Kellogg Blvd, St Paul", lat: 44.9448, lng: -93.1010 },
+  "Huntington Bank Stadium": { addr: "420 23rd Ave SE, Minneapolis", lat: 44.9765, lng: -93.2246 },
+  "Allianz Field": { addr: "400 Snelling Ave N, St Paul", lat: 44.9530, lng: -93.1650 },
+};
+const HOME_TEAMS = [
+  { team: "Vikings", league: "NFL", path: "football/nfl", id: "min", home: "U.S. Bank Stadium", dur: 200 },
+  { team: "Wild", league: "NHL", path: "hockey/nhl", id: "min", home: "Grand Casino Arena", dur: 160, regular: true },
+  { team: "Timberwolves", league: "NBA", path: "basketball/nba", id: "min", home: "Target Center", dur: 150, regular: true },
+  { team: "Lynx", league: "WNBA", path: "basketball/wnba", id: "min", home: "Target Center", dur: 140 },
+  { team: "Twins", league: "MLB", path: "baseball/mlb", id: "min", home: "Target Field", dur: 180 },
+  { team: "Gophers", league: "Big Ten football", path: "football/college-football", id: "135", home: "Huntington Bank Stadium", dur: 210 },
+  { team: "Minnesota United", league: "MLS", path: "soccer/usa.1", id: "17362", home: "Allianz Field", dur: 120 },
+];
+
+function tzDateParts(ms, timeZone) {
+  const f = new Intl.DateTimeFormat("en-US", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" });
+  const o = {};
+  for (const p of f.formatToParts(new Date(ms))) o[p.type] = p.value;
+  return { y: +o.year, mo: +o.month, d: +o.day };
+}
+
+async function fromSports(src) {
+  const budget = deadline();
+  const jobs = [];
+  for (const t of HOME_TEAMS) {
+    const url = `https://site.api.espn.com/apis/site/v2/sports/${t.path}/teams/${t.id}/schedule`;
+    jobs.push({ t, url });
+    if (t.regular) jobs.push({ t, url: url + "?seasontype=2" });
+  }
+  let firstErr = "";
+  const miss = (e) => { firstErr = firstErr || String((e && e.message) || e); return null; };
+  // site.web.api is the same data behind a different edge; try it if the first is refused
+  const pages = await Promise.all(jobs.map((j) =>
+    getJSON(j.url, 10000, budget, BROWSER_UA)
+      .catch((e) => { miss(e); return getJSON(j.url.replace("//site.api.", "//site.web.api."), 8000, budget, BROWSER_UA); })
+      .then((data) => ({ ...j, data }), miss)
+  ));
+  if (!pages.some(Boolean)) throw new Error("sports schedules unavailable" + (firstErr ? ` (${firstErr})` : ""));
+  const out = [], seen = new Set();
+  for (const page of pages.filter(Boolean)) {
+    const { t } = page;
+    for (const e of (page.data && page.data.events) || []) {
+      const comp = (e.competitions || [])[0];
+      if (!comp || comp.neutralSite || seen.has(e.id)) continue;
+      const home = (comp.competitors || []).find((c) => c.homeAway === "home");
+      const team = home && home.team || {};
+      if (String(team.id) !== t.id && String(team.abbreviation || "").toLowerCase() !== t.id) continue;
+      const state = comp.status && comp.status.type || {};
+      if (state.state === "post" || /postpone|cancel|suspend/i.test(state.name || "")) continue;
+      const ms = Date.parse(e.date);
+      if (!Number.isFinite(ms)) continue;
+      seen.add(e.id);
+      // Unscheduled kickoff: ESPN parks it at midnight Eastern, which is the
+      // evening BEFORE in Minnesota. Take the date in Eastern; say "Time TBA".
+      const tba = comp.timeValid === false || e.timeValid === false;
+      const p = tba ? { ...tzDateParts(ms, "America/New_York"), h: 19, mi: 0 } : chicagoParts(ms);
+      const venueName = decode(comp.venue && comp.venue.fullName || t.home);
+      const v = SPORTS_VENUES[venueName] || SPORTS_VENUES[t.home];
+      const link = (e.links || []).find((l) => (l.rel || []).includes("desktop")) || (e.links || [])[0];
+      const row = eventRow(src, {
+        title: decode(e.name || e.shortName),
+        p,
+        time: `${String(p.h).padStart(2, "0")}:${String(p.mi).padStart(2, "0")}`,
+        url: link && link.href,
+        types: [`${t.team} home game`, t.league],
+        cat: "Sports",
+        loc: venueName,
+        addr: v.addr,
+        lat: v.lat,
+        lng: v.lng,
+      });
+      row.dur = t.dur;
+      row.sport = t.team;
+      if (tba) row.tba = true;
+      out.push(row);
+    }
   }
   return out;
 }
 
 // Fixed recurring community events with a public published schedule (no API)
+// schema.org Event blocks in the page; weekly ones (eventSchedule.byDay) repeat for ~6 weeks
+async function fromJsonLd(src) {
+  const html = await getText(src.url, 15000);
+  const evs = [];
+  for (const m of html.matchAll(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)) {
+    try {
+      const j = JSON.parse(m[1]);
+      [].concat(j["@graph"] || j).forEach((x) => /Event$/.test(x["@type"] || "") && evs.push(x));
+    } catch {}
+  }
+  const out = [];
+  const today = chicagoParts(Date.now());
+  const todayStr = `${today.y}-${String(today.mo).padStart(2, "0")}-${String(today.d).padStart(2, "0")}`;
+  const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  for (const e of evs) {
+    const sch = e.eventSchedule || {};
+    const byDay = [].concat(sch.byDay || []).map((d) => DAYS.indexOf(String(d).split("/").pop())).filter((d) => d >= 0);
+    const time = sch.startTime || (String(e.startDate).match(/T(\d\d:\d\d)/) || [])[1] || "19:00";
+    const [hh, mm] = time.split(":").map(Number);
+    const dates = [];
+    if (byDay.length && sch.repeatFrequency === "P1W") {
+      for (let i = 0; i < 42; i++) {
+        const dt = new Date(today.y, today.mo - 1, today.d + i);
+        if (byDay.includes(dt.getDay())) dates.push({ y: dt.getFullYear(), mo: dt.getMonth() + 1, d: dt.getDate() });
+      }
+    } else {
+      const d = String(e.startDate || "").match(/^(\d{4})-(\d\d)-(\d\d)/);
+      if (d && d[0] >= todayStr) dates.push({ y: +d[1], mo: +d[2], d: +d[3] });
+    }
+    const title = String(e.name || "").replace(/\s+at\s+.*$/i, "").trim() || src.name;
+    for (const p of dates) {
+      p.h = hh;
+      p.mi = mm;
+      const row = eventRow(src, { title, p, time, url: e.url || src.url, types: [], cat: classify(title) || src.cat, desc: e.description, loc: src.name });
+      if (e.isAccessibleForFree === true) row.free = true;
+      out.push(row);
+    }
+  }
+  return out;
+}
+
+// Mindbody branded-web schedule: a Next.js page whose streamed data holds this
+// week's class sessions as JSON ({"id":"cinst_…","name",…,"startDateTime" UTC,"duration"})
+async function fromMindbody(src) {
+  const html = await getText(src.url, 15000);
+  let flight = "";
+  for (const m of html.matchAll(/self\.__next_f\.push\(\[1,("(?:[^"\\]|\\.)*")\]\)/g)) {
+    try { flight += JSON.parse(m[1]); } catch {}
+  }
+  const out = [];
+  const seen = new Set();
+  const re = /\{"id":"cinst_[^"]+","name":"((?:[^"\\]|\\.)*)"[\s\S]*?"startDateTime":"([^"]+)","duration":(\d+)/g;
+  for (const m of flight.matchAll(re)) {
+    let title;
+    try { title = decode(JSON.parse(`"${m[1]}"`)).replace(/\s+/g, " ").trim(); } catch { continue; }
+    const ms = Date.parse(m[2].replace(/\.\d+Z$/, "Z"));
+    if (!isFinite(ms)) continue;
+    // hybrid classes are listed twice (room + Zoom section) — keep the room one
+    const online = /\bzoom\b/i.test(title) && !/in[- ]person/i.test(title);
+    const key = ms + "|" + online;
+    if (seen.has(key) || (online && seen.has(ms + "|false"))) continue;
+    seen.add(key);
+    const p = chicagoParts(ms);
+    const time = String(p.h).padStart(2, "0") + ":" + String(p.mi).padStart(2, "0");
+    const name = title.replace(/\s*-\s*(?:In Person|Zoom)\s+Hybrid\s+Sec\.?\s*\d+\s*-?\s*/i, " — ").replace(/\s{2,}/g, " ");
+    const row = eventRow(src, { title: name, p, time, url: src.base, types: [], cat: classify(name) || src.fallback, loc: src.name });
+    row.dur = +m[3];
+    if (online) { row.fmt = "online"; row.loc = `Online · ${src.name}`; }
+    out.push(row);
+  }
+  return out;
+}
+
+// HeyPeers organization page: cards with "Tuesday, Oct 20 | 06:00pm CDT" (no
+// year), 10 per page; hosts' names are left out
+async function fromHeyPeers(src) {
+  const MON3 = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+  const today = chicagoParts(Date.now());
+  const out = [];
+  for (let page = 1; page <= 3; page++) {
+    const html = await getText(`${src.url}?page=${page}`, 15000);
+    const cards = html.split(/<div class="w-full bg-white border/).slice(1);
+    for (const c of cards) {
+      const href = (c.match(/href="(\/meetings\/\d+\/details)"/) || [])[1];
+      const title = decode(((c.match(/href="\/meetings\/\d+\/details">([^<]+)</) || [])[1] || "").trim());
+      const desc = decode(((c.match(/<p class="mb-4[^"]*">([^<]+)</) || [])[1] || "").trim());
+      const w = c.match(/\w+day, (\w{3}) (\d{1,2}) \| (\d{1,2}):(\d\d)(am|pm) C[DS]T/i);
+      if (!href || !title || !w) continue;
+      const mo = MON3.indexOf(w[1].toLowerCase()) + 1;
+      if (!mo) continue;
+      // no year: a month before this one means next year
+      const y = mo < today.mo ? today.y + 1 : today.y;
+      const h = (+w[3] % 12) + (/pm/i.test(w[5]) ? 12 : 0);
+      const p = { y, mo, d: +w[2], h, mi: +w[4] };
+      const row = eventRow(src, { title, p, time: String(h).padStart(2, "0") + ":" + w[4], url: "https://heypeers.com" + href, types: src.types || [], cat: "Zen", desc, loc: `Online · ${src.name}`, addr: src.addr });
+      row.dur = 60;
+      row.fmt = "online";
+      row.support = src.support;
+      out.push(row);
+    }
+    if (cards.length < 10) break;
+  }
+  return out;
+}
+
+// GriefShare / DivorceCare finder: one server-rendered page, every group's pin,
+// weekday, session dates and Central time in data- attributes
+async function fromChurchFinder(src) {
+  const html = await getText(src.url, 15000);
+  const today = chicagoParts(Date.now());
+  const t0 = new Date(today.y, today.mo - 1, today.d);
+  const MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
+  const toDate = (str, yearHint) => {
+    const m = String(str).match(/([A-Za-z]+)\s+(\d{1,2})(?:,\s*(\d{4}))?/);
+    if (!m) return null;
+    const mo = MONTHS.indexOf(m[1].toLowerCase());
+    if (mo < 0) return null;
+    return new Date(+(m[3] || yearHint), mo, +m[2]);
+  };
+  // "5–6:30pm CT", "10am–12pm CT", "11–12:30pm CT"
+  const clock = (str) => {
+    const m = String(str).replace(/\s/g, "").match(/^(\d{1,2})(?::(\d\d))?(am|pm)?[–-](\d{1,2})(?::(\d\d))?(am|pm)/i);
+    if (!m) return null;
+    const h24 = (h, ap) => (+h % 12) + (/pm/i.test(ap) ? 12 : 0);
+    const end = h24(m[4], m[6]) * 60 + +(m[5] || 0);
+    let start = h24(m[1], m[3] || m[6]) * 60 + +(m[2] || 0);
+    if (!m[3] && start > end) start -= 720;
+    return { start, dur: Math.max(30, end - start) };
+  };
+  const out = [];
+  const base = new URL(src.url).origin + "/";
+  for (const m of html.matchAll(/<div class="group-search-result[^"]*"([^>]*)>\s*<a[^>]*href="([^"]*)"/g)) {
+    const d = Object.fromEntries([...m[1].matchAll(/data-([\w-]+)="([^"]*)"/g)].map((x) => [x[1], decode(x[2])]));
+    const lat = parseFloat(d.lat), lng = parseFloat(d.lng);
+    const t = clock(d.time);
+    if (!t || !isFinite(lat)) continue;
+    // next-meeting has no year: it is the first date on or after today
+    let next = toDate(d["next-meeting"], today.y);
+    if (!next) continue;
+    if (next < t0) next.setFullYear(next.getFullYear() + 1);
+    const oneTime = d["is-event"] === "true" || /one-time/i.test(d["date-range"] || "");
+    let last = next;
+    if (!oneTime) {
+      // "September 15–December  8, 2026" or "October 10, 2026–January 23, 2027"
+      const [a, b] = String(d["date-range"] || "").split(/[–-]/);
+      const endYear = (String(b).match(/\d{4}/) || [])[0] || next.getFullYear();
+      last = toDate(b && /[A-Za-z]/.test(b) ? b : `${(a || "").match(/[A-Za-z]+/)?.[0]} ${b}`, endYear) || next;
+    }
+    const horizon = new Date(t0.getTime() + (src.days || 42) * 864e5);
+    const label = oneTime ? d["event-label"].replace(/\s+Event$/i, "") : src.group;
+    for (let day = new Date(next); day <= last && day <= horizon; day.setDate(day.getDate() + 7)) {
+      const p = { y: day.getFullYear(), mo: day.getMonth() + 1, d: day.getDate(), h: Math.floor(t.start / 60), mi: t.start % 60 };
+      const time = String(p.h).padStart(2, "0") + ":" + String(p.mi).padStart(2, "0");
+      const row = eventRow(src, { title: label, p, time, url: base + m[2].replace(/^\//, ""), types: [], cat: "Learn", desc: src.desc, loc: d["church-name"], addr: d["location-line"], lat, lng });
+      row.dur = t.dur;
+      row.support = src.support;
+      if (d["delivery-method"] === "online") { row.fmt = "online"; row.loc = `Online · ${src.name}`; }
+      out.push(row);
+      if (oneTime) break;
+    }
+  }
+  return out;
+}
+
 function fromStanding(src) {
   const out = [];
   const now = new Date();
@@ -1238,6 +1598,99 @@ async function addWeather(events) {
   }
 }
 
+// The metro, generously: 40 mi from the middle of the two downtowns reaches
+// Stillwater, Hastings and the far suburbs. Eventbrite's city pages leak
+// Mankato, Rochester and Eau Claire; Squarespace defaults to New York.
+function inMetro(lat, lng) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || (!lat && !lng)) return false;
+  const r = (x) => (x * Math.PI) / 180;
+  const a = Math.sin(r(lat - 44.96) / 2) ** 2 + Math.cos(r(44.96)) * Math.cos(r(lat)) * Math.sin(r(lng + 93.18) / 2) ** 2;
+  return 3959 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) <= 40;
+}
+
+// —— Popularity ——
+// Nobody publishes attendance, so add up the public signals there are. Each
+// one is something a person could check, and popWhy carries the best of them
+// to the card ("212 going", "Few tickets left", "Arena · Target Center").
+const ROOM_TIERS = [
+  [/u\.?s\.? bank stadium|huntington bank stadium|target field|allianz field/i, 40, "Stadium"],
+  [/target center|grand casino arena|xcel energy center|\barmory\b/i, 34, "Arena"],
+  [/palace theatre|state theatre|orpheum|^first avenue$|mpls cpac|orchestra hall|ordway|guthrie/i, 24, "Big room"],
+  [/fitzgerald|fine line|dakota|\bcedar\b|pantages|varsity theater|parkway theater/i, 14, ""],
+  [/turf club|7th st entry|amsterdam|icehouse|cabooze|^berlin$|white squirrel|hook and ladder|bryant lake bowl|can can wonderland/i, 8, ""],
+  [/como (zoo|park)|science museum|bell museum|american swedish institute|walker art|surly|malcolm yards/i, 5, ""],
+];
+const SPECIAL = /\b(festival|fest|oktoberfest|album release|record release|release (?:show|party)|anniversary|premiere|opening night|farewell|reunion|final show|gala|parade|block party|marathon|halloween|haunted|night market|homecoming)\b/i;
+
+// "VIP Event: Alicia Witt: Album Release" and "Alicia Witt (late)" are the
+// same show for anyone deciding where to go tonight.
+function repeatName(name) {
+  return String(name || "").toLowerCase()
+    .replace(/^vip( event)?\s*[:\-–]\s*/, "")
+    .replace(/\((?:early|late)(?: show)?\)|\b(?:early|late) show\b|\bnight (?:one|two|three|\d)\b|\d{1,2}\/\d{1,2}(?:\/\d{2,4})?/g, " ")
+    .replace(/\W+/g, " ").trim();
+}
+
+// Real listings, but appointments and info sessions, not a night out.
+const NICHE = /birth center|childbirth|prenatal|breastfeed|newborn care|parkinson|dementia|alzheimer|caregiver|medicare|estate planning|homebuy|first[- ]time home|retirement planning|financial planning|webinar|info(?:rmation(?:al)?)? session|orientation|open house|job fair|career fair|hiring event/i;
+
+function popularity(e, runs, sameDay, buzz) {
+  let s = 10;
+  const why = [];
+  // Eventbrite's "few tickets" fires on 12-seat workshops too, so it nudges, not crowns.
+  if (e.hot) { s += e.hot === "Few tickets left" ? 8 : 6; why.push(e.hot); }
+  if (e.going) { s += Math.min(30, Math.round(e.going / 2)); if (e.going >= 15) why.push(`${e.going} going`); }
+  if (e.sport) { s += 6; why.push(`${e.sport} home game`); }
+  const room = ROOM_TIERS.find(([re]) => re.test(e.loc || ""));
+  if (room) { s += room[1]; if (room[2] && !e.sport) why.push(`${room[2]} · ${e.loc}`); }
+  if (buzz > 1) { s += Math.min(20, (buzz - 1) * 10); why.push(`On ${buzz} calendars`); }
+  const special = String(e.name || "").match(SPECIAL);
+  if (special) { s += 10; why.push(special[1][0].toUpperCase() + special[1].slice(1).toLowerCase()); }
+  // one night only beats the ninth showing of the same thing this month
+  if (runs === 1) s += 10;
+  else if (runs <= 4) s += 4;
+  else if (runs >= 8) s -= 14;
+  if (sameDay > 1) s -= 6;
+  if (e.image) s += 4;
+  if (e.desc) s += 2;
+  if (e.free) s += 2;
+  if (e.cat === "Family") s -= 4;
+  if (e.cat === "Learn") s -= 3;
+  if (e.fmt === "online") s -= 12;
+  if (NICHE.test(e.name || "")) s -= 12;
+  const dow = new Date(e.date + "T12:00:00Z").getUTCDay();
+  if ((dow === 5 || dow === 6) && e.time >= "17:00") s += 3;
+  return { pop: Math.max(0, Math.round(s)), popWhy: why.slice(0, 2) };
+}
+
+async function readSource(src, startISO, endISO) {
+  if (src.type === "ics") return parseICS(await getText(src.url), src);
+  if (src.type === "commonground") return fromCommonGround(src);
+  if (src.type === "biblio") return fromBiblio(src);
+  if (src.type === "livewhale") return fromLiveWhale(src);
+  if (src.type === "squarespace") return fromSquarespace(src);
+  if (src.type === "rss") return fromRSS(src);
+  if (src.type === "opendate") return fromOpenDate(src);
+  if (src.type === "meetup") return fromMeetup(src);
+  if (src.type === "eventbrite") return fromEventbrite(src);
+  if (src.type === "cabooze") return fromCabooze(src);
+  if (src.type === "firstave") return fromFirstAve(src);
+  if (src.type === "sports") return fromSports(src);
+  if (src.type === "standing") return fromStanding(src);
+  if (src.type === "jsonld") return fromJsonLd(src);
+  if (src.type === "churchfinder") return fromChurchFinder(src);
+  if (src.type === "mindbody") return fromMindbody(src);
+  if (src.type === "heypeers") return fromHeyPeers(src);
+  return fromTribe(src, startISO, endISO);
+}
+
+// Backup copy of sources that block Vercel's servers by IP (Cloudflare 403s
+// there, fine from a home connection). Made by `node scripts/backup-blocked.cjs`
+// on a Mac; used only when the live read fails, and ignored once 75 days old.
+let BACKUP = {};
+try { BACKUP = require("./_backup.json"); } catch {}
+const backupFresh = () => BACKUP.taken && Date.now() - Date.parse(BACKUP.taken) < 75 * 864e5;
+
 module.exports = async (req, res) => {
   const now = new Date();
   const end = new Date(now.getTime() + 45 * 864e5); // next 45 days
@@ -1250,21 +1703,13 @@ module.exports = async (req, res) => {
   hostQueues.clear(); // serverless containers are reused between requests
   const results = await Promise.allSettled(
     SOURCES.map((src) => hostGate(hostKeyFor(src), async () => {
-      let list;
-      if (src.type === "ics") list = parseICS(await getText(src.url), src);
-      else if (src.type === "commonground") list = await fromCommonGround(src);
-      else if (src.type === "biblio") list = await fromBiblio(src);
-      else if (src.type === "livewhale") list = await fromLiveWhale(src);
-      else if (src.type === "squarespace") list = await fromSquarespace(src);
-      else if (src.type === "rss") list = await fromRSS(src);
-      else if (src.type === "opendate") list = await fromOpenDate(src);
-      else if (src.type === "meetup") list = await fromMeetup(src);
-      else if (src.type === "eventbrite") list = await fromEventbrite(src);
-      else if (src.type === "cabooze") list = await fromCabooze(src);
-      else if (src.type === "firstave") list = await fromFirstAve(src);
-      else if (src.type === "standing") list = fromStanding(src);
-      else list = await fromTribe(src, startISO, endISO);
-      return { src, list };
+      try {
+        return { src, list: await readSource(src, startISO, endISO) };
+      } catch (e) {
+        const saved = backupFresh() && BACKUP.events && BACKUP.events[src.name];
+        if (!saved) throw e;
+        return { src, list: saved.map((x) => ({ ...x })), backup: BACKUP.taken };
+      }
     }))
   );
 
@@ -1272,13 +1717,38 @@ module.exports = async (req, res) => {
   results.forEach((r, i) => {
     const src = SOURCES[i];
     if (r.status === "fulfilled") {
-      const list = r.value.list.filter((e) => e.date >= todayStr && e.date <= endStr && e.lat && e.lng);
+      // noise + metro checks run here too: not every adapter screens titles,
+      // and a Squarespace or Eventbrite pin can land in New York or Mankato
+      let list = r.value.list.filter((e) => e.date >= todayStr && e.date <= endStr &&
+        inMetro(e.lat, e.lng) && !isNoise(e.name) && !isUnavailableTitle(e.name) && !isJunk(e.name));
+      for (const e of list) {
+        const kind = e.support || supportKind(e.name);
+        if (kind) e.support = kind;
+        else delete e.support;
+        // "… - Zoom only" listed at the venue's address isn't somewhere to walk in
+        if (/\b(?:zoom|online|virtual)[- ]only\b/i.test(e.name)) e.fmt = "online";
+      }
+      if (src.supportOnly) list = list.filter((e) => e.support);
       events = events.concat(list);
-      sources.push({ name: src.name, count: list.length, ok: true });
+      sources.push({ name: src.name, count: list.length, ok: true, ...(r.value.backup ? { backup: r.value.backup } : {}) });
     } else {
       sources.push({ name: src.name, count: 0, ok: false, error: String(r.reason && r.reason.message || r.reason || "Unavailable") });
     }
   });
+
+  // Cross-site buzz, counted before duplicates go: the same show on a venue
+  // calendar AND Meetup AND Eventbrite is a show people are passing around.
+  // Venue calendars count as one site — "Family Storytime" at three library
+  // systems is a common program name, not buzz — and the start hour has to
+  // match so two different trivia nights don't vouch for each other.
+  const siteOf = (e) => /^meetup/i.test(e.source) ? "meetup" : /^eventbrite/i.test(e.source) ? "eventbrite" : "venue";
+  const buzzKey = (e) => repeatName(e.name) + "|" + e.date + "|" + String(e.time).slice(0, 2);
+  const buzzSites = new Map();
+  for (const e of events) {
+    const k = buzzKey(e);
+    if (!buzzSites.has(k)) buzzSites.set(k, new Set());
+    buzzSites.get(k).add(siteOf(e));
+  }
 
   // A venue's own calendar beats aggregators: drop Meetup/Eventbrite rows at
   // venues we already pull directly — organizers leave stale times on
@@ -1330,13 +1800,28 @@ module.exports = async (req, res) => {
   // Flag standing programs so the front-end can offer "hide daily repeats" —
   // Como Zoo's 9 recurring animal talks otherwise are most of Kids & family.
   const runCount = new Map();
-  const seriesKey = (e) => e.source + "|" + e.name.toLowerCase().replace(/\W+/g, " ").trim();
+  const seriesKey = (e) => e.source + "|" + repeatName(e.name);
   for (const e of events) runCount.set(seriesKey(e), (runCount.get(seriesKey(e)) || 0) + 1);
   for (const e of events) if (runCount.get(seriesKey(e)) >= 8) e.series = true;
 
+  const dayKeyOf = (e) => seriesKey(e) + "|" + e.date;
+  const sameDay = new Map();
+  for (const e of events) sameDay.set(dayKeyOf(e), (sameDay.get(dayKeyOf(e)) || 0) + 1);
+  for (const e of events) {
+    const buzz = buzzSites.get(buzzKey(e));
+    Object.assign(e, popularity(e, runCount.get(seriesKey(e)), sameDay.get(dayKeyOf(e)), buzz ? buzz.size : 1));
+  }
+
   await addWeather(events);
 
-  res.setHeader("Cache-Control", "s-maxage=900, stale-while-revalidate=21600");
+  // A cold fan-out takes ~20s. Serve the edge copy for 30 min and keep handing
+  // it out (while it refreshes in the background) for up to 2 days, so almost
+  // nobody ever waits on the cold path.
+  res.setHeader("Cache-Control", "s-maxage=1800, stale-while-revalidate=172800");
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.status(200).json({ updated: new Date().toISOString(), sources, events });
 };
+
+// for scripts/backup-blocked.cjs
+module.exports.SOURCES = SOURCES;
+module.exports.readSource = readSource;
