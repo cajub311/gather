@@ -21,6 +21,20 @@ const BUDDHIST_URL = "https://buddhistrecovery.org/wp-admin/admin-ajax.php?actio
 const EXTRA_TSML = [
   { cat: "CMA", label: "Crystal Meth Anonymous", url: "https://www.crystalmeth.org/wp-admin/admin-ajax.php?action=meetings" },
 ];
+// Sexaholics Anonymous Twin Cities: WP Store Locator, one row per meeting with
+// the day and time inside the name ("Meraki – Saturday, 7:00 AM").
+const SA_URL =
+  "https://satwincities.org/wp-admin/admin-ajax.php?action=store_search&lat=44.9778&lng=-93.265&max_results=500&search_radius=250&autoload=1";
+// Fellowships with no public feed of their own (OA, CoDA, ACA, SMART, ...).
+// SobaSearch is a third-party meeting directory; one search per program,
+// asked one at a time because it rate-limits after about ten quick calls.
+const SOBA_URL =
+  "https://sobasearch.com/api/v1/search?location=Minneapolis%2C%20MN&kind=meeting&radius_miles=30&limit=100&q=";
+const SOBA_PROGRAMS = [
+  ["OA", "OA"], ["CoDA", "CoDA"], ["ACA", "ACA"], ["SMART", "SMART"],
+  ["Celebrate Recovery", "CR"], ["MA", "MA"], ["EDA", "EDA"], ["Wellbriety", "WB"],
+];
+const SOBA_CAT = { WB: "Wellbriety" };
 
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Gather/1.0";
@@ -48,9 +62,10 @@ const NA_FORMATS = {
   SD: "Speaker", SPAD: "SPAD",
 };
 
-async function getJSON(url) {
+async function getJSON(url, ms = 25000) {
   const r = await fetch(url, {
     headers: { "User-Agent": UA, Accept: "application/json,*/*", Referer: url },
+    signal: AbortSignal.timeout(ms),
   });
   if (!r.ok) throw new Error(`${url} -> HTTP ${r.status}`);
   return r.json();
@@ -107,6 +122,136 @@ function cleanText(s) {
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+const DAY_NAMES = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+
+function to24h(t) {
+  if (/\bnoon\b/i.test(t || "")) return "12:00";
+  const m = String(t || "").match(/(\d{1,2}):(\d{2})\s*([ap])\.?m/i);
+  if (!m) return null;
+  let h = +m[1] % 12;
+  if (m[3].toLowerCase() === "p") h += 12;
+  return String(h).padStart(2, "0") + ":" + m[2];
+}
+
+function normalizeSA(rows) {
+  const out = [];
+  for (const r of rows || []) {
+    const store = cleanText(String(r.store || "").replace(/&#8211;|&ndash;/g, "–"));
+    const m = store.match(/^(.*?)\s*[–-]\s*(sun|mon|tue|wed|thu|fri|sat)[a-z]*\b[^,]*,?\s*(\d{1,2}:\d{2}\s*[ap]\.?m\.?|12 noon)/i);
+    if (!m) continue;
+    const time = to24h(m[3]);
+    if (!time) continue;
+    const inRoom = /in[- ]person/i.test(r.meeting_type || "");
+    const online = !inRoom;
+    const hybrid = inRoom && /dial/i.test(r.meeting_type || "");
+    const hidden = /not published/i.test(r.address || "");
+    const addr = [r.address, r.address2].filter((x) => x && !/only|not published/i.test(x)).join(", ");
+    out.push({
+      cat: "SA",
+      name: m[1] || "SA meeting",
+      day: DAY_NAMES.findIndex((d) => d.startsWith(m[2].toLowerCase())),
+      time,
+      dur: 60,
+      fmt: online ? "online" : hybrid ? "hybrid" : "in-person",
+      loc: online ? "Phone / Zoom" : hidden ? "Call for the location" : cleanText(r.address),
+      addr: online ? "Call or email for the link" : cleanAddr(`${addr ? addr + ", " : ""}${r.city || ""}, ${r.state || "MN"} ${r.zip || ""}`),
+      lat: +r.lat || null,
+      lng: +r.lng || null,
+      types: [r.genders, r.meeting_type].filter(Boolean).map(cleanText),
+      notes: cleanText(r.note) || undefined,
+      url: "https://satwincities.org/",
+      approx: online || hidden || undefined,
+      region: r.city || "Twin Cities",
+      live: true,
+      verified: true,
+    });
+  }
+  return out;
+}
+
+// Hours to add to a SobaSearch time to make it Central. Their rows carry the
+// zone the time is written in; Twin Cities OA rows are labelled Denver but
+// written an hour early, so converting by the label lands on the right time
+// (checked against OA Unity Intergroup's own sheet, 2026-10-19).
+function hoursToCentral(tz) {
+  if (!tz || tz === "America/Chicago") return 0;
+  try {
+    const at = (z) => +new Intl.DateTimeFormat("en-US", { timeZone: z, hour: "numeric", hourCycle: "h23" }).format(new Date());
+    return ((at("America/Chicago") - at(tz)) + 36) % 24 - 12;
+  } catch {
+    return 0;
+  }
+}
+
+function normalizeSoba(rows, want) {
+  const out = [];
+  for (const r of rows || []) {
+    if (r.program_type !== want || r.latitude == null || r.longitude == null) continue;
+    // a Duluth, Georgia meeting was geocoded into the metro box
+    if (r.state && !/^(MN|Minnesota)$/i.test(r.state)) continue;
+    const t = String(r.starts_at || "").match(/^(\d{2}):(\d{2})/);
+    if (!t) continue;
+    let mins = +t[1] * 60 + +t[2] + hoursToCentral(r.timezone) * 60;
+    let shift = 0;
+    if (mins < 0) { mins += 1440; shift = -1; }
+    if (mins >= 1440) { mins -= 1440; shift = 1; }
+    const time = String(Math.floor(mins / 60)).padStart(2, "0") + ":" + String(mins % 60).padStart(2, "0");
+    let dur = 60;
+    const e = String(r.ends_at || "").match(/^(\d{2}):(\d{2})/);
+    if (e) {
+      const d = +e[1] * 60 + +e[2] - (+t[1] * 60 + +t[2]);
+      if (d > 0 && d <= 240) dur = d;
+    }
+    const virtual = r.attendance_mode === "online" || /only held virtually/i.test(r.name || "");
+    const hybrid = r.attendance_mode === "hybrid" || /hybrid/i.test(r.name || "");
+    const cat = SOBA_CAT[want] || want;
+    const name = /only held virtually/i.test(r.name || "")
+      ? `${cat} – ${r.city || "Twin Cities"}`
+      : cleanText(r.name).replace(/^SMART Recovery USA - Meeting #\d+\s*(.*?)(?:, Minnesota)?$/i, "SMART Recovery – $1");
+    // some directory rows carry scraped page code instead of a street
+    const street = /[<>]|manage your meeting/i.test(r.address || "") || String(r.address || "").length < 5 ? "" : r.address;
+    for (const day of r.days || []) {
+      out.push({
+        cat,
+        name,
+        day: (day + shift + 7) % 7,
+        time,
+        dur,
+        fmt: virtual ? "online" : hybrid ? "hybrid" : "in-person",
+        loc: virtual ? "Online for now" : name,
+        addr: cleanAddr(street ? (r.formatted_address || [street, r.city, r.state].filter(Boolean).join(", ")) : `${r.city || "Twin Cities"}, MN`),
+        lat: +r.latitude,
+        lng: +r.longitude,
+        types: [],
+        notes: "Listed by SobaSearch, a meeting directory. Check with the group before you go.",
+        url: "https://sobasearch.com" + (r.detail_url || ""),
+        approx: virtual || !street || undefined,
+        region: r.city || "Twin Cities",
+        live: true,
+        verified: true,
+      });
+    }
+  }
+  return out;
+}
+
+async function fetchSoba() {
+  const lists = [];
+  const stopAt = Date.now() + 12000; // the function has 30s; never spend most of it here
+  for (const [q, want] of SOBA_PROGRAMS) {
+    if (Date.now() > stopAt) break;
+    try {
+      const d = await getJSON(SOBA_URL + encodeURIComponent(q), 5000);
+      lists.push(normalizeSoba(d.data, want));
+    } catch (e) {
+      if (/HTTP 429/.test(e.message)) break; // asked too often: keep what we have
+    }
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  if (!lists.length) throw new Error("sobasearch: no answers");
+  return lists.flat();
 }
 
 function isCityOnlyAddr(addr) {
@@ -402,6 +547,9 @@ module.exports = async (req, res) => {
   const sources = [];
   let meetings = [];
 
+  // start the newer feeds alongside the main ones, not after them
+  const extrasP = Promise.allSettled(EXTRA_TSML.map((f) => getJSON(f.url)));
+  const moreP = Promise.allSettled([getJSON(SA_URL), fetchSoba()]);
   const [aa, na, aamn, alanon, dharma, refuge, buddhist] = await Promise.allSettled([
     getJSON(AA_URL),
     getJSON(NA_URL),
@@ -411,7 +559,8 @@ module.exports = async (req, res) => {
     getJSON(REFUGE_URL),
     getJSON(BUDDHIST_URL),
   ]);
-  const extras = await Promise.allSettled(EXTRA_TSML.map((f) => getJSON(f.url)));
+  const extras = await extrasP;
+  const [sa, soba] = await moreP;
 
   function take(label, result, list) {
     if (result.status === "fulfilled" && Array.isArray(result.value)) {
@@ -471,6 +620,11 @@ module.exports = async (req, res) => {
     const list = ok ? normalizeAA(r.value, f.cat).filter((x) => x.lat && x.lng && inMetro(x)) : [];
     take(f.label, r, list);
   });
+
+  take("Sexaholics Anonymous Twin Cities", sa,
+    sa.status === "fulfilled" ? normalizeSA(sa.value).filter((x) => x.lat && x.lng && inMetro(x)) : []);
+  take("SobaSearch (OA, CoDA, ACA, SMART, CR, MA, EDA)", soba,
+    soba.status === "fulfilled" ? soba.value.filter((x) => inMetro(x)) : []);
 
   const before = meetings.length;
   meetings = dedupeMeetings(meetings);

@@ -958,31 +958,60 @@ const FELLOWSHIPS = {
   MA:{name:"Marijuana Anonymous",color:"#bef264"},
   DDA:{name:"Dual Diagnosis Anonymous",color:"#fda4af"},
   CMA:{name:"CMA (Crystal Meth Anonymous)",color:"#e879f9"},
+  SA:{name:"SA (Sexaholics Anonymous)",color:"#93c5fd"},
+  EDA:{name:"Eating Disorders Anonymous",color:"#fdba74"},
+  SAA:{name:"SAA (Sex Addicts Anonymous)",color:"#a5b4fc"},
+  SLAA:{name:"SLAA (Sex and Love Addicts Anon.)",color:"#c4b5fd"},
+  DA:{name:"Debtors Anonymous",color:"#fde68a"},
+  "Nar-Anon":{name:"Nar-Anon (family of addicts)",color:"#f9a8d4"},
+  "Gam-Anon":{name:"Gam-Anon (family of gamblers)",color:"#fecaca"},
+  FA:{name:"Families Anonymous",color:"#bbf7d0"},
+  HA:{name:"Heroin Anonymous",color:"#fda4af"},
+  PA:{name:"Pills Anonymous",color:"#d9f99d"},
+  NAMI:{name:"NAMI Minnesota (mental illness support)",color:"#99f6e4"},
+  DBSA:{name:"DBSA (depression & bipolar groups)",color:"#bae6fd"},
+  MHMN:{name:"Mental Health Minnesota",color:"#a7f3d0"},
+  GriefShare:{name:"GriefShare (grief groups)",color:"#e9d5ff"},
+  TCF:{name:"Compassionate Friends (loss of a child)",color:"#fbcfe8"},
   Group:{name:"Support group (grief, mental health, caregivers)",color:"#5eead4"},
 };
 // Official meeting finders per program — powers the "verify" button.
 const FINDERS={
   AA:"https://aaminneapolis.org/meetings/",
-  NA:"https://naminnesota.org/meetings/",
+  NA:"https://naminnesota.org/find-a-meeting/",
   "Al-Anon":"https://al-anon.org/al-anon-meetings/",
   ACA:"https://adultchildren.org/meeting-search/",
-  EA:"https://emotionsanonymous.org/find-a-meeting/",
+  EA:"https://emotionsanonymous.org/find-an-ea-meeting/",
   CoDA:"https://coda.org/coda-meetings/",
   OA:"https://oa.org/find-a-meeting/",
-  GA:"https://www.gamblersanonymous.org/ga/locations",
+  GA:"https://gamblersanonymous.org/find-a-meeting/",
   SMART:"https://meetings.smartrecovery.org/meetings/",
   Dharma:"https://recoverydharma.org/find-a-meeting/",
-  Refuge:"https://www.refugerecovery.org/meetings",
+  Refuge:"https://www.refugerecovery.org/meetings-1",
   Buddhist:"https://buddhistrecovery.org/meetings/",
-  LifeRing:"https://lifering.org/find-a-meeting/",
-  WFS:"https://womenforsobriety.org/find-meetings/",
+  LifeRing:"https://lifering.org/dynamic-meetings/",
+  WFS:"https://meetings.womenforsobriety.org/meetings/",
   Wellbriety:"https://wellbriety.com/",
-  CR:"https://locator.crgroups.info/",
-  SOS:"https://www.sossobriety.org/meetings/",
+  CR:"https://crlocator.com/",
   CA:"https://ca.org/meetings/",
   MA:"https://www.marijuana-anonymous.org/meetings/",
   DDA:"https://draonline.org/",
-  CMA:"https://www.crystalmeth.org/find-a-meeting/",
+  CMA:"https://www.crystalmeth.org/meetings/",
+  SA:"https://satwincities.org/",
+  EDA:"https://www.eatingdisordersanonymous.org/",
+  SAA:"https://saa-recovery.org/",
+  SLAA:"https://slaafws.org/",
+  DA:"https://debtorsanonymous.org/",
+  "Nar-Anon":"https://www.nar-anon.org/",
+  "Gam-Anon":"https://www.gam-anon.org/",
+  FA:"https://www.familiesanonymous.org/",
+  HA:"https://heroinanonymous.org/",
+  PA:"https://www.pillsanonymous.org/",
+  NAMI:"https://namimn.org/",
+  DBSA:"https://www.dbsalliance.org/",
+  MHMN:"https://mentalhealthmn.org/",
+  GriefShare:"https://www.griefshare.org/",
+  TCF:"https://www.compassionatefriends.org/",
   Group:"https://www.211.org/",
 };
 function finderFor(m){return (m.url)||FINDERS[m.cat]||"https://www.211.org/";}
@@ -1018,11 +1047,11 @@ const SUPPORT = [
   // ----- Non-12-step programs: official online meetings (verify on source) -----
   {cat:"SMART",name:"SMART Recovery Daily Online",day:0,time:"19:00",dur:90,fmt:"online",loc:"SMART Recovery (online)",addr:"Online · meetings.smartrecovery.org",lat:44.95,lng:-93.09,types:["Open","Secular","Science-based"],url:"https://meetings.smartrecovery.org/meetings/"},
   {cat:"Dharma",name:"Recovery Dharma Online Sit",day:2,time:"20:00",dur:60,fmt:"online",loc:"Recovery Dharma (online)",addr:"Online · recoverydharma.online",lat:44.95,lng:-93.09,types:["Open","Buddhist","Meditation"],url:"https://recoverydharma.online/"},
-  {cat:"LifeRing",name:"LifeRing Online Meeting",day:3,time:"18:00",dur:60,fmt:"online",loc:"LifeRing Secular Recovery",addr:"Online · lifering.org",lat:44.95,lng:-93.09,types:["Open","Secular","Abstinence"],url:"https://lifering.org/find-a-meeting/"},
-  {cat:"WFS",name:"Women for Sobriety Online",day:1,time:"19:00",dur:60,fmt:"online",loc:"Women for Sobriety",addr:"Online · womenforsobriety.org",lat:44.95,lng:-93.09,types:["Closed","Women","New Life"],url:"https://womenforsobriety.org/find-meetings/"},
+  {cat:"LifeRing",name:"LifeRing Online Meeting",day:3,time:"18:00",dur:60,fmt:"online",loc:"LifeRing Secular Recovery",addr:"Online · lifering.org",lat:44.95,lng:-93.09,types:["Open","Secular","Abstinence"],url:"https://lifering.org/dynamic-meetings/"},
+  {cat:"WFS",name:"Women for Sobriety Online",day:1,time:"19:00",dur:60,fmt:"online",loc:"Women for Sobriety",addr:"Online · womenforsobriety.org",lat:44.95,lng:-93.09,types:["Closed","Women","New Life"],url:"https://meetings.womenforsobriety.org/meetings/"},
   {cat:"Wellbriety",name:"Wellbriety Talking Circle",day:4,time:"18:30",dur:90,fmt:"online",loc:"White Bison Wellbriety",addr:"Online · wellbriety.com",lat:44.95,lng:-93.09,types:["Open","Native American","Medicine Wheel"],url:"https://wellbriety.com/"},
   {cat:"SOS",name:"SOS Secular Sobriety (online)",day:6,time:"10:00",dur:60,fmt:"online",loc:"Secular Organizations for Sobriety",addr:"Online · sossobriety.org",lat:44.95,lng:-93.09,types:["Open","Secular"],url:"https://www.sossobriety.org/meetings/"},
-  {cat:"CR",name:"Celebrate Recovery — St Paul",day:5,time:"19:00",dur:120,fmt:"hybrid",loc:"Substance Church",addr:"1390 Arcade St, St Paul",lat:44.9810,lng:-93.0640,types:["Open","Christian"],url:"https://locator.crgroups.info/"},
+  {cat:"CR",name:"Celebrate Recovery — St Paul",day:5,time:"19:00",dur:120,fmt:"hybrid",loc:"Substance Church",addr:"1390 Arcade St, St Paul",lat:44.9810,lng:-93.0640,types:["Open","Christian"],url:"https://crlocator.com/"},
   {cat:"CA",name:"Cocaine Anonymous MN",day:2,time:"19:30",dur:60,fmt:"hybrid",loc:"CA Minnesota",addr:"Online + Twin Cities · ca-mn.org",lat:44.95,lng:-93.09,types:["Open"],url:"https://ca.org/meetings/"},
   {cat:"MA",name:"Marijuana Anonymous Online",day:0,time:"18:00",dur:60,fmt:"online",loc:"Marijuana Anonymous",addr:"Online · marijuana-anonymous.org",lat:44.95,lng:-93.09,types:["Open"],url:"https://www.marijuana-anonymous.org/meetings/"},
 ];
@@ -1852,7 +1881,7 @@ function buildQuickFilters(){
     // One chip per program we actually have rows for: the big three first,
     // then the rest by how many meetings they have.
     const counts={};DATA.forEach(m=>{counts[m.cat]=(counts[m.cat]||0)+1;});
-    const LABEL={Dharma:"🧘 Recovery Dharma",Group:"💬 Support groups"};
+    const LABEL={Dharma:"🧘 Recovery Dharma",Group:"💬 Support groups",CR:"Celebrate Recovery",MA:"Marijuana Anon.",EDA:"Eating disorders",OA:"OA (food)",CoDA:"CoDA (relationships)",ACA:"ACA (adult children)",SA:"SA (sex addiction)",CMA:"CMA (crystal meth)",SMART:"SMART Recovery"};
     const FIRST=["AA","NA","Al-Anon"];
     const cats=[...new Set([...Object.keys(counts),...state.cat])].sort((a,b)=>{
       const fa=FIRST.indexOf(a),fb=FIRST.indexOf(b);
@@ -2187,7 +2216,7 @@ function renderCard(el,m){
       <div class="top">
         <div class="name">${esc(m.name)}</div>
         <button type="button" class="savebtn${SAVED.has(id)?" on":""}" title="Save" aria-label="Save">${saved}</button>
-        <div class="fell" style="background:${fc}">${esc(m.cat)}</div>
+        <div class="fell" style="background:${fc}">${esc(m.cat==="Group"&&m.support?m.support:m.cat)}</div>
       </div>
       <div class="when">${esc(whenLine)}</div>
       ${placeLine}
@@ -2510,7 +2539,8 @@ function updateFooter(){
       if(k==="AA"||k==="NA"||k==="Al-Anon")return; // live feeds cover these
       const a=document.createElement("a");
       a.href=u;a.target="_blank";a.rel="noopener";
-      a.textContent=k;a.title=(FELLOWSHIPS[k]||{}).name||k;
+      // "ACA" or "DDA" alone meant nothing to someone new; say the whole name
+      a.textContent=k==="Group"?"211: any support group":((FELLOWSHIPS[k]||{}).name||k);a.title=a.textContent;
       pl.appendChild(a);
     });
   }
