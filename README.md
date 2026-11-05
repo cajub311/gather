@@ -7,3 +7,7 @@ Twin Cities support meetings and community activities on one map.
 Sample listings show until `/api/meetings` and `/api/events` load. `main` should match production.
 
 Vercel deploys the static tree plus `api/`. HTML polish and design-guard are `npm test` only. Do not run them as the Vercel `buildCommand` — that failed three preview deploys on 2026-08-28 when the guard required production HTML that was not in git yet.
+
+## Ask it from an AI
+- `gather tonight` (CLI), `GET /api/agent?when=tonight&q=trivia&miles=15&skip=lgbtq` (plain text, `&format=json` for data),
+  or the MCP server `node mcp/server.mjs` (tool `whats_on`). Hub skill: `~/AI-Hub/skills/gather`.
