@@ -143,7 +143,8 @@ async function main() {
   }
   if (!searchToken) searchToken = "music";
 
-  const browser = await chromium.launch({ headless: true });
+  // PW_BIN = any chrome-headless-shell on disk, when the pinned build isn't downloaded
+const browser = await chromium.launch({ headless: true, executablePath: process.env.PW_BIN || undefined });
   const context = await browser.newContext({
     viewport: { width: 1280, height: 900 },
     serviceWorkers: "block",
