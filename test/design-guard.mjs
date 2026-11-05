@@ -12,7 +12,7 @@ const checks = [
   ["For You stays available as an option", html.includes('{id:"social",label:"For You"')],
   // Everything is the default (smoke.mjs checks the same thing in a browser).
   ["Everything is the default activity view", html.includes('let _vibeStored="all"')],
-  ["Popular is the default activity sort", html.includes('let _sortStored="popular"')],
+  ["Soonest (date, then time) is the default activity sort", html.includes('let _sortStored="soon"')],
   ["20 mile radius option", html.includes('[20,"\\u226420 mi"]')],
   ["dayboard metadata", html.includes('name="gather-design" content="dayboard-v4"')],
   [

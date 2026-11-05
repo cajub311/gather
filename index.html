@@ -1217,8 +1217,8 @@ try{SAVED=new Set(JSON.parse(localStorage.getItem("gather-saved")||"[]"));}catch
 let _vibeStored="all";
 try{const v=localStorage.getItem("gather-vibe");if(v==="all"||v==="social")_vibeStored=v;}catch(e){}
 // Things to do open most-popular-first; Soonest is one tap away and sticks.
-let _sortStored="popular";
-try{const v=localStorage.getItem("gather-sort");if(v==="soon"||v==="near")_sortStored=v;}catch(e){}
+let _sortStored="soon";
+try{const v=localStorage.getItem("gather-sort-v2");if(v==="soon"||v==="near"||v==="popular")_sortStored=v;}catch(e){}
 const state={qAhead:6,mode:"activities",cat:new Set(),day:null,daySet:null,fmt:null,tod:"",nowOnly:false,q:"",near:null,nearGps:false,quick:new Set(),savedOnly:false,preset:"",area:"",horizon:6,radius:0,hideSeries:false,soonOnly:false,flag:"",hideEnded:true,vibe:_vibeStored,sort:_sortStored,limit:80};
 let _urlTimer=null;
 function todayDay(){return nowInfo().day;}
@@ -1363,7 +1363,7 @@ function buildVibeBar(){
 }
 function setSort(v){
   state.sort=v==="soon"||v==="near"?v:"popular";
-  try{localStorage.setItem("gather-sort",state.sort);}catch(e){}
+  try{localStorage.setItem("gather-sort-v2",state.sort);}catch(e){}
   buildVibeBar();render();
 }
 // "near" falls back to Popular while Near me is off
@@ -1417,13 +1417,21 @@ function bumpTaste(m,d){
 }
 // What you hid or starred nudges similar things down or up in Popular order.
 function tasteScore(m){
-  let s=(TASTE.cat[m.cat]||0)*3+(TASTE.venue[venueKeyOf(m)]||0)*4;
+  let s=(TASTE.cat[m.cat]||0)*3+(TASTE.venue[venueKeyOf(m)]||0)*3;
   tasteWords(m).forEach(w=>{s+=(TASTE.word[w]||0)*1.5;});
   return Math.max(-30,Math.min(15,s));
 }
-function isNope(m){
+function isExplicitNope(m){
   return !!(NOPE.series[seriesKeyOf(m)]||NOPE.venue[venueKeyOf(m)]||NOPE.cats[m.cat]);
 }
+// Things that look like what you keep skipping go away on their own (same
+// venue, category and title words). Starred events are never auto-hidden, and
+// "Hidden" shows them so you can bring any back.
+const AUTO_AT=-12;
+let SHOW_AUTO=false;
+function isAuto(m){return m.cat!=="Civic"&&!state.cat.has(m.cat)&&!SAVED.has(m._id)&&!isExplicitNope(m)&&tasteScore(m)<=AUTO_AT;}
+function autoCount(){return state.mode==="activities"?DATA.reduce((n,m)=>n+(isAuto(m)?1:0),0):0;}
+function isNope(m){return isExplicitNope(m)||(!SHOW_AUTO&&isAuto(m));}
 function nopeCount(){return Object.keys(NOPE.series).length+Object.keys(NOPE.venue).length+Object.keys(NOPE.cats).length;}
 function closeSheet(){document.getElementById("nopeBack")?.remove();document.getElementById("nopeSheet")?.remove();document.removeEventListener("keydown",sheetKey);}
 function sheetKey(e){if(e.key==="Escape")closeSheet();}
@@ -1452,11 +1460,13 @@ function applyNope(kind,m){
   const key=kind==="series"?seriesKeyOf(m):kind==="venue"?venueKeyOf(m):m.cat;
   const bucket=kind==="series"?NOPE.series:kind==="venue"?NOPE.venue:NOPE.cats;
   const weight=kind==="series"?-1:kind==="venue"?-2:-3;
+  const autoBefore=autoCount();
   bucket[key]=label;
   bumpTaste(m,weight);
+  const autoNew=Math.max(0,autoCount()-autoBefore);
   closeSheet();
   buildQuickFilters();render();
-  toastAct(kind==="cats"?`Hid all ${label}`:`Hidden: ${String(label).slice(0,34)}`,"Undo",()=>{
+  toastAct((kind==="cats"?`Hid all ${label}`:`Hidden: ${String(label).slice(0,30)}`)+(autoNew?` + ${autoNew} similar`:""),"Undo",()=>{
     delete bucket[key];bumpTaste(m,-weight);persistNope();buildQuickFilters();render();
   });
 }
@@ -1473,17 +1483,20 @@ function openHiddenList(){
   Object.entries(NOPE.cats).forEach(([k,l])=>rows.push(["cats",k,`All ${l}`]));
   Object.entries(NOPE.venue).forEach(([k,l])=>rows.push(["venue",k,`Everything at ${l}`]));
   Object.entries(NOPE.series).forEach(([k,l])=>rows.push(["series",k,l]));
-  const sh=showSheet(`<h3>Hidden (${rows.length})</h3><p class="sub">Tap Show again to bring something back.</p>
+  const nAuto=autoCount();
+  const sh=showSheet(`<h3>Hidden (${rows.length+nAuto})</h3><p class="sub">Tap Show again to bring something back.</p>
+    ${nAuto||SHOW_AUTO?`<div class="nope-row"><span><strong>${nAuto} auto-hidden</strong><br><small>Look like things you skipped</small></span><button type="button" data-auto="1">${SHOW_AUTO?"Hide again":"Show them"}</button></div>`:""}
     ${rows.map((r,i)=>`<div class="nope-row"><span>${esc(r[2])}</span><button type="button" data-i="${i}">Show again</button></div>`).join("")||'<p class="sub">Nothing hidden.</p>'}
     <button type="button" class="opt" data-k="reset">Forget everything Gather learned<small>Unhide all and reset the ranking</small></button>
     <button type="button" class="opt cancel" data-k="x">Close</button>`);
-  sh.querySelectorAll(".nope-row button").forEach(b=>b.onclick=()=>{
+  sh.querySelector("[data-auto]")?.addEventListener("click",()=>{SHOW_AUTO=!SHOW_AUTO;closeSheet();buildQuickFilters();render();});
+  sh.querySelectorAll(".nope-row button:not([data-auto])").forEach(b=>b.onclick=()=>{
     const [kind,key]=rows[+b.dataset.i];
     delete (kind==="series"?NOPE.series:kind==="venue"?NOPE.venue:NOPE.cats)[key];
     persistNope();closeSheet();buildQuickFilters();render();if(nopeCount())openHiddenList();
   });
   sh.querySelector('[data-k="reset"]').onclick=()=>{
-    NOPE.series={};NOPE.venue={};NOPE.cats={};TASTE.cat={};TASTE.venue={};TASTE.word={};
+    NOPE.series={};NOPE.venue={};NOPE.cats={};TASTE.cat={};TASTE.venue={};TASTE.word={};SHOW_AUTO=false;
     persistNope();closeSheet();buildQuickFilters();render();toast("Reset — everything is back");
   };
   sh.querySelector('[data-k="x"]').onclick=closeSheet;
@@ -2161,10 +2174,11 @@ function buildQuickFilters(){
     row.appendChild(b);
   }
 
-  if(state.mode==="activities"&&nopeCount()>0){
+  const nAuto=autoCount();
+  if(state.mode==="activities"&&(nopeCount()>0||nAuto>0)){
     const b=document.createElement("button");
     b.type="button";b.className="qchip";
-    b.textContent=`🚫 Hidden (${nopeCount()})`;
+    b.textContent=`🚫 Hidden (${nopeCount()+nAuto})`;
     b.title="See what you hid, or bring it back";
     b.onclick=openHiddenList;
     row.appendChild(b);
@@ -2287,6 +2301,7 @@ function featuredEyebrow(m,why){
 function popChips(m){
   const out=[];
   if((m.pop||0)>=40)out.push('<span class="b pop">🔥 Popular</span>');
+  if(m.going>=3&&!(m.popWhy||[]).some(w=>/going/.test(w)))out.push(`<span class="b why">👥 ${m.going} going</span>`);
   (m.popWhy||[]).slice(0,2).forEach(w=>{
     // "Big room · First Avenue" — the place line already names the room
     const t=String(w).replace(" · "+m.loc,"");
@@ -2426,7 +2441,7 @@ function renderCard(el,m){
         <div class="event-place">📍 ${esc(m.loc)}${placeAddress}</div>
         ${m.desc?`<div class="event-desc">${esc(m.desc)}</div>`:""}
         ${alsoLine(m)}
-        ${now||usefulTypes.length||m.wx||m.free||m.popWhy?.length||m.pop>=40?`<div class="event-tags">${now?'<span class="b now">Happening now</span>':""}${popChips(m)}${m.free?'<span class="b ok">Free</span>':""}${wxChip(m)}${usefulTypes.map(t=>`<span class="b">${esc(t)}</span>`).join("")}</div>`:""}
+        ${now||usefulTypes.length||m.wx||m.free||m.popWhy?.length||m.pop>=40||m.going>=3?`<div class="event-tags">${now?'<span class="b now">Happening now</span>':""}${popChips(m)}${m.free?'<span class="b ok">Free</span>':""}${wxChip(m)}${usefulTypes.map(t=>`<span class="b">${esc(t)}</span>`).join("")}</div>`:""}
         <div class="event-actions">${details}${directions}<a class="event-details" href="${icsFor(m)}" download="${m._id}.ics" onclick="event.stopPropagation()">📅 Calendar</a></div>
       </div>
       <button type="button" class="savebtn${SAVED.has(id)?" on":""}" title="Save event" aria-label="Save event">${SAVED.has(id)?"★":"☆"}</button>

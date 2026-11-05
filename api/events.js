@@ -1646,6 +1646,8 @@ async function fromLegistar(src) {
 // once-a-year budget meetings; past dates fall off on their own. Re-check the
 // links each fall — dates move.
 const CIVIC_HEARINGS = [
+  { date: "2026-11-30", time: "18:00", name: "St. Paul budget & tax levy hearing (Truth in Taxation)", loc: "St. Paul City Hall", addr: "15 W Kellogg Blvd, Council Chambers (3rd floor), St Paul", lat: 44.9443, lng: -93.0937,
+    url: "https://www.stpaul.gov/departments/financial-services/saint-pauls-budget", desc: "The city's public hearing on its proposed 2027 budget and property tax levy — a chance to give testimony. Date and time as posted by the Dayton's Bluff Community Council; confirm on the city's budget page." },
   { date: "2026-12-01", time: "18:00", name: "Hennepin County budget & tax levy hearing (Truth in Taxation)", loc: "Hennepin County Government Center", addr: "300 S 6th St, Minneapolis", lat: 44.9758, lng: -93.2666,
     url: "https://www.hennepincounty.gov/services/property/property-taxes/truth-in-taxation-meetings", desc: "Public meeting on the proposed 2027 county budget and property tax levy. Room A-2400. Anyone can speak." },
   { date: "2026-12-02", time: "18:00", name: "Metropolitan Council budget & tax levy hearing (Truth in Taxation)", loc: "Metropolitan Council chambers", addr: "390 Robert St N, St Paul", lat: 44.9546, lng: -93.0948,
@@ -1862,6 +1864,7 @@ module.exports = async (req, res) => {
       let list = r.value.list.filter((e) => e.date >= todayStr && e.date <= endStr &&
         inMetro(e.lat, e.lng) && !isUnavailableTitle(e.name) &&
         ((e.cat === "Civic" && (src.civic || src.type === "legistar" || src.type === "civicstatic" || CIVIC_RE.test(e.name))) || (!isNoise(e.name) && !isJunk(e.name))));
+      if (src.civic) list = list.filter((e) => !/truth in taxation/i.test(e.name));
       for (const e of list) {
         // "November Board Meeting" means nothing without whose board it is
         if (src.civic) {
