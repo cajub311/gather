@@ -1367,6 +1367,17 @@ function setSort(v){
   buildVibeBar();render();
 }
 // "near" falls back to Popular while Near me is off
+const DISTRICT_COUNCILS=[
+  [1,"Southeast Community Org.","https://www.southeastside.org/get-involved.html"],[2,"Greater East Side","https://greatereastside.org/events"],
+  [3,"West Side","https://www.wsco.org/calendar"],[4,"Dayton's Bluff","https://www.daytonsbluff.org/events"],
+  [5,"Payne-Phalen","https://paynephalen.org/who-we-are/our-board/"],[6,"North End","https://nenostpaul.org/committees/"],
+  [7,"Frogtown","https://www.frogtownmn.org/frogtown-forums"],[8,"Summit-University","https://www.summit-university.org/calendar"],
+  [9,"West 7th / Fort Road","https://fortroadfed.org/calendar"],[10,"Como","https://district10comopark.org/community-council/"],
+  [11,"Hamline Midway","https://hamlinemidway.org/events-calendar/"],[12,"St. Anthony Park","https://sapcc.org/committee-overview/"],
+  [13,"Union Park","https://www.unionparkdc.org/committees"],[14,"Macalester-Groveland","https://macgrove.org/participate/"],
+  [15,"Highland","https://www.highlanddistrictcouncil.org/calendar/"],[16,"Summit Hill","https://www.summithillassociation.org/calendar"],
+  [17,"CapitolRiver","https://www.capitolrivercouncil.org/"],
+];
 // Council meetings are a calendar, not a popularity contest: soonest first.
 function sortMode(){
   if(state.mode==="activities"&&state.quick.has("civic")&&state.sort!=="near")return "soon";
@@ -2573,7 +2584,9 @@ function render(){
       More calendars: <a href="https://stpaul.legistar.com/Calendar.aspx" target="_blank" rel="noopener">St. Paul council</a> ·
       <a href="https://www.ramseycountymn.gov/your-government/leadership/board-commissioners/board-meetings-information" target="_blank" rel="noopener">Ramsey County board</a> ·
       <a href="https://lims.minneapolismn.gov/Calendar/all/monthly" target="_blank" rel="noopener">Minneapolis council</a> ·
-      <a href="https://www.spps.org/boe" target="_blank" rel="noopener">St. Paul schools board</a>`;
+      <a href="https://www.spps.org/boe" target="_blank" rel="noopener">St. Paul schools board</a>
+      <details style="margin-top:8px"><summary style="cursor:pointer;font-weight:700">Your St. Paul district council (all 17)</summary>
+      <div style="margin-top:6px;columns:2;column-gap:14px">${DISTRICT_COUNCILS.map(([n,name,url])=>`<div><a href="${url}" target="_blank" rel="noopener">${n}. ${esc(name)}</a></div>`).join("")}</div></details>`;
     el.appendChild(n);
   }
   const featuredId=state.mode==="activities"&&list.length>1&&!loadingNow?renderFeatured(el,list):null;

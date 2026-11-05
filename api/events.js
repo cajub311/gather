@@ -127,6 +127,11 @@ const SOURCES = [
   { type: "legistar", name: "St. Paul City Council & boards", client: "stpaul", cat: "Civic",
     url: "https://stpaul.legistar.com/Calendar.aspx", loc: "St. Paul City Hall", addr: "15 W Kellogg Blvd, St Paul", lat: 44.9443, lng: -93.0937 },
   { type: "civicstatic", name: "Budget & tax hearings", cat: "Civic" },
+  // St. Paul district councils whose calendars have a feed (the rest are linked in the page)
+  { type: "squarespace", civic: true, cat: "Civic", name: "Dayton's Bluff Community Council", base: "https://www.daytonsbluff.org/events", lat: 44.9566, lng: -93.0572, addr: "Dayton's Bluff, St Paul" },
+  { type: "squarespace", civic: true, cat: "Civic", name: "Greater East Side Community Council", base: "https://greatereastside.org/events", lat: 44.9770, lng: -93.0235, addr: "1365 Prosperity Ave, St Paul" },
+  { type: "squarespace", civic: true, cat: "Civic", name: "Summit Hill Association", base: "https://www.summithillassociation.org/calendar", lat: 44.9400, lng: -93.1400, addr: "Summit Hill, St Paul" },
+  { type: "tribe", civic: true, cat: "Civic", name: "Macalester-Groveland Community Council", base: "https://macgrove.org", lat: 44.9400, lng: -93.1700, addr: "Macalester-Groveland, St Paul" },
 
   // --- Library systems (BiblioCommons JSON) ---
   { type: "biblio", name: "St Paul Library", lib: "sppl", addr: "St Paul", fallback: "Learn" },
@@ -478,7 +483,7 @@ async function fromTribe(src, startISO, endISO) {
     const p = parseLocal(e.start_date);
     if (!p) continue;
     const title = decode(e.title);
-    if (isNoise(title) || isUnavailableTitle(title)) continue;
+    if ((!src.civic && isNoise(title)) || isUnavailableTitle(title)) continue;
     const v = Array.isArray(e.venue) ? (e.venue[0] || {}) : (e.venue || {});
     const lat = parseFloat(v.geo_lat), lng = parseFloat(v.geo_lng);
     const webOnly = /^\s*(online|virtual|zoom)\b/i.test(decode(v.venue || ""));
@@ -626,7 +631,7 @@ async function fromSquarespace(src) {
     for (const e of items) {
       if (!e.startDate) continue;
       const title = decode(e.title);
-      if (!title || isNoise(title) || isUnavailableTitle(title)) continue;
+      if (!title || (!src.civic && isNoise(title)) || isUnavailableTitle(title)) continue;
       const p = chicagoParts(e.startDate);
       const date = `${p.y}-${String(p.mo).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`;
       const k = title + "|" + date;
@@ -1650,8 +1655,22 @@ const CIVIC_HEARINGS = [
   { date: "2026-12-15", time: "18:05", name: "Minneapolis budget hearing & council vote (Truth in Taxation)", loc: "Minneapolis City Hall", addr: "350 S 5th St, Room 380, Minneapolis", lat: 44.9775, lng: -93.2655,
     url: "https://www.minneapolismn.gov/news/2026/august/council-budget-next-steps/", desc: "The last public hearing on the 2027 city budget; the council votes to adopt it right after." },
 ];
+// Nearby cities' own budget hearings, as listed on Hennepin County's tax notice page.
+const SUBURB_HEARINGS = [
+  ["Hopkins", "2026-11-30", "18:30", "1010 First St S", 44.9240, -93.4110],
+  ["Edina", "2026-12-01", "19:00", "4801 W 50th St", 44.9140, -93.3390],
+  ["Richfield", "2026-12-01", "18:30", "6700 Portland Ave S", 44.8750, -93.2830],
+  ["Golden Valley", "2026-12-01", "18:30", "7800 Golden Valley Rd", 44.9930, -93.3750],
+  ["Robbinsdale", "2026-12-01", "19:00", "4100 Lakeview Ave N", 45.0300, -93.3340],
+  ["St. Louis Park", "2026-12-07", "18:15", "5005 Minnetonka Blvd", 44.9480, -93.3470],
+  ["Minnetonka", "2026-12-07", "18:00", "14600 Minnetonka Blvd", 44.9380, -93.4580],
+  ["Brooklyn Park", "2026-12-07", "18:00", "5200 85th Ave N", 45.1050, -93.3550],
+  ["Maple Grove", "2026-12-07", "19:30", "12800 Arbor Lakes Pkwy", 45.0990, -93.4570],
+  ["St. Anthony", "2026-12-08", "19:00", "3301 Silver Lake Rd", 45.0210, -93.2180],
+].map(([city, date, time, addr, lat, lng]) => ({ date, time, name: `${city} budget & tax levy hearing (Truth in Taxation)`, loc: `${city} City Hall`, addr: `${addr}, ${city}`, lat, lng,
+  url: "https://www.hennepincounty.gov/services/property/property-taxes/truth-in-taxation-meetings", desc: `${city}'s public hearing on its proposed 2027 budget and property tax levy. Date and time as listed by Hennepin County — confirm with the city.` }));
 function fromCivicStatic(src) {
-  return CIVIC_HEARINGS.map((h) => {
+  return [...CIVIC_HEARINGS, ...SUBURB_HEARINGS].map((h) => {
     const [y, mo, d] = h.date.split("-").map(Number);
     const [hh, mm] = h.time.split(":").map(Number);
     const row = eventRow(src, { title: h.name, p: { y, mo, d, h: hh, mi: mm }, time: h.time, url: h.url,
@@ -1842,8 +1861,13 @@ module.exports = async (req, res) => {
       // and a Squarespace or Eventbrite pin can land in New York or Mankato
       let list = r.value.list.filter((e) => e.date >= todayStr && e.date <= endStr &&
         inMetro(e.lat, e.lng) && !isUnavailableTitle(e.name) &&
-        ((e.cat === "Civic" && (src.type === "legistar" || src.type === "civicstatic" || CIVIC_RE.test(e.name))) || (!isNoise(e.name) && !isJunk(e.name))));
+        ((e.cat === "Civic" && (src.civic || src.type === "legistar" || src.type === "civicstatic" || CIVIC_RE.test(e.name))) || (!isNoise(e.name) && !isJunk(e.name))));
       for (const e of list) {
+        // "November Board Meeting" means nothing without whose board it is
+        if (src.civic) {
+          const short = src.name.replace(/ (Community Council|Association)$/, "");
+          if (!e.name.toLowerCase().includes(short.split(/[ -]/)[0].toLowerCase())) e.name = `${short}: ${e.name}`;
+        }
         const kind = e.support || supportKind(e.name);
         if (kind) e.support = kind;
         else delete e.support;
