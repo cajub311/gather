@@ -123,6 +123,11 @@ const SOURCES = [
     desc: "DJ dance party every Sunday except the first Sunday of the month. 11am–1pm at Tapestry Folkdance Center.",
   },
 
+  // --- Civic: city council, hearings, budget meetings (St Paul first) ---
+  { type: "legistar", name: "St. Paul City Council & boards", client: "stpaul", cat: "Civic",
+    url: "https://stpaul.legistar.com/Calendar.aspx", loc: "St. Paul City Hall", addr: "15 W Kellogg Blvd, St Paul", lat: 44.9443, lng: -93.0937 },
+  { type: "civicstatic", name: "Budget & tax hearings", cat: "Civic" },
+
   // --- Library systems (BiblioCommons JSON) ---
   { type: "biblio", name: "St Paul Library", lib: "sppl", addr: "St Paul", fallback: "Learn" },
   { type: "biblio", name: "Hennepin Co. Library", lib: "hclib", addr: "Minneapolis", fallback: "Learn" },
@@ -152,6 +157,9 @@ const SOURCES = [
   { type: "meetup", name: "Meetup Writing", url: "https://www.meetup.com/find/?keywords=writing&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Books" },
   { type: "meetup", name: "Meetup Pickleball", url: "https://www.meetup.com/find/?keywords=pickleball&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Fitness" },
   // Active board-game groups (weekly brewery / shop nights around the metro)
+  // Civic / neighborhood hangouts
+  { type: "meetup", name: "Meetup Civic", url: "https://www.meetup.com/find/?keywords=civic%20engagement&location=us--mn--saint-paul&source=EVENTS&eventType=inPerson", fallback: "Social" },
+  { type: "meetup", name: "Meetup Neighborhood", url: "https://www.meetup.com/find/?keywords=neighborhood&location=us--mn--saint-paul&source=EVENTS&eventType=inPerson", cat: "Social" },
   { type: "meetup", name: "MN Board Games group", url: "https://www.meetup.com/minnesota-board-game-get-together/events/", cat: "Games" },
 
   { type: "eventbrite", name: "Eventbrite", url: "https://www.eventbrite.com/d/mn--minneapolis/events--today/" },
@@ -168,6 +176,7 @@ const SOURCES = [
   { type: "eventbrite", name: "Eventbrite Film", url: "https://www.eventbrite.com/d/mn--minneapolis/film-and-media--events--this-week/", cat: "Art" },
   { type: "eventbrite", name: "Eventbrite Fitness", url: "https://www.eventbrite.com/d/mn--minneapolis/sports-and-fitness--events--this-week/", cat: "Fitness" },
   { type: "eventbrite", name: "Eventbrite Community", url: "https://www.eventbrite.com/d/mn--minneapolis/community--events--this-week/", cat: "Social" },
+  { type: "eventbrite", name: "Eventbrite Government", url: "https://www.eventbrite.com/d/mn--saint-paul/government--events--this-week/", cat: "Civic" },
   { type: "eventbrite", name: "Eventbrite Charity", url: "https://www.eventbrite.com/d/mn--minneapolis/charity-and-causes--events--this-week/", cat: "Volunteer" },
   // support-group searches: only rows the support tagger recognises are kept
   { type: "eventbrite", name: "Eventbrite Support Groups", url: "https://www.eventbrite.com/d/mn--minneapolis/support-group/", supportOnly: true },
@@ -271,6 +280,9 @@ function isFillerOnly(catNames) {
 // Map a title (+ the venue's own category names) to one of the app's activity
 // types. Returns null when nothing matches so the caller can fall back to the
 // venue's `fallback` instead of dumping everything into "Social".
+// Public meetings and hearings. Kept narrow on purpose: "council" alone also
+// means a youth council or a book-club "council of readers".
+const CIVIC_RE = /\b(city council|county board|board of commissioners|school board|park board|planning commission|zoning (?:board|committee|hearing)|public hearing|budget hearing|truth in taxation|town hall|community council|district council|neighborhood (?:association|council)|listening session|public comment|city hall|legislative hearing|charter commission|met(?:ropolitan)? council|candidate forum|ward meeting)\b/i;
 function classify(text, catNames) {
   const cats = (catNames || []).filter(Boolean).join(" ").toLowerCase();
   // A venue's own taxonomy beats guessing from the title: Surly files concerts
@@ -291,6 +303,7 @@ function classify(text, catNames) {
   // title is the better signal. Categories still feed the title pass below.
   const t = ((text || "") + " " + cats).toLowerCase();
   const has = (re) => re.test(t);
+  if (CIVIC_RE.test(t)) return "Civic";
   if (has(/trivia|quiz night|\bbingo\b|board game|tabletop|chess|d&d|dungeons|magic the|euchre|card game|crokinole|jigsaw|puzzl|pinball|arcade|karaoke|game night|clocktower|free pool|pool (?:league|tournament|night)|billiards|\bdarts?\b|cribbage|mah ?jongg?|shuffleboard|skee-?ball|\bkubb\b/)) return "Games";
   // Hands-on craft classes: their blurbs mention "build", "beginners" or
   // "skills" and landed in Fitness or Music.
@@ -1548,6 +1561,106 @@ function fromStanding(src) {
   return out;
 }
 
+
+// ---- Civic meetings --------------------------------------------------------
+// St. Paul runs on Legistar, which has a free public JSON API. It lists only
+// about a week ahead, so the Wednesday council meeting (3:30 PM, every week)
+// is also filled in for the weeks the feed hasn't reached yet, marked as the
+// usual time rather than a posted agenda.
+const LEGISTAR_SKIP = /organizational committee|penfield/i;
+function legistarTitle(body, city) {
+  const b = String(body || "").trim();
+  if (/^city council$/i.test(b)) return `${city} City Council meeting`;
+  if (/^budget committee$/i.test(b)) return `${city} City Council budget committee`;
+  if (/legislative hearings?$/i.test(b)) return `${city} legislative hearing (code & property appeals)`;
+  if (/hearing|meeting|committee|board|commission|council|authority/i.test(b)) return `${city} ${b}${/committee|authority|board|commission$/i.test(b) ? " meeting" : ""}`;
+  return `${city} ${b} meeting`;
+}
+function clock12(t) {
+  const m = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(String(t || "").trim());
+  if (!m) return null;
+  let h = +m[1] % 12; if (/pm/i.test(m[3])) h += 12;
+  return { h, mi: +m[2] };
+}
+async function fromLegistar(src) {
+  const now = new Date();
+  const end = new Date(now.getTime() + 60 * 864e5);
+  const filter = `EventDate ge datetime'${chicagoDateKey(now)}' and EventDate le datetime'${chicagoDateKey(end)}'`;
+  const rows = await getJSON(`https://webapi.legistar.com/v1/${src.client}/events?$filter=${encodeURIComponent(filter)}&$orderby=EventDate`, 15000);
+  const city = "St. Paul";
+  const out = [];
+  const councilDays = new Set();
+  for (const r of rows) {
+    if (!r || !r.EventDate || LEGISTAR_SKIP.test(r.EventBodyName || "")) continue;
+    if (/cancel/i.test(r.EventAgendaStatusName || "") || /cancel/i.test(r.EventComment || "")) continue;
+    const [y, mo, d] = r.EventDate.slice(0, 10).split("-").map(Number);
+    const c = clock12(r.EventTime);
+    // "1:00 AM" is how Legistar shows a meeting with no time entered
+    const tba = !c || c.h < 6;
+    const p = { y, mo, d, h: tba ? 9 : c.h, mi: tba ? 0 : c.mi };
+    const time = `${String(p.h).padStart(2, "0")}:${String(p.mi).padStart(2, "0")}`;
+    const body = r.EventBodyName || "";
+    if (/^city council$/i.test(body)) councilDays.add(r.EventDate.slice(0, 10));
+    const hearing = /hearing/i.test(body);
+    const loc = String(r.EventLocation || "").replace(/\s+/g, " ").trim();
+    const row = eventRow(src, {
+      title: legistarTitle(body, city), p, time, url: r.EventInSiteURL || src.url,
+      types: ["Free", hearing ? "Public hearing" : "Public meeting"],
+      desc: `Open to the public${r.EventAgendaFile ? " — agenda is posted" : " — agenda not posted yet"}. ${loc ? loc + ". " : ""}Tap for the agenda, video and how to speak.`,
+      cat: "Civic",
+      loc: /city hall|courthouse|council chambers|room \d/i.test(loc) ? "St. Paul City Hall" : (loc.split(/[,;]/)[0] || src.loc),
+    });
+    row.dur = /^city council$/i.test(body) ? 120 : 90;
+    if (tba) row.tba = true;
+    if (/remote|zoom|virtual|webex/i.test(loc)) row.fmt = "hybrid";
+    out.push(row);
+  }
+  // Weeks the feed hasn't reached: the council's regular Wednesday 3:30 PM.
+  const todayStr = chicagoDateKey(now);
+  for (let i = 0; i < 60; i++) {
+    const dt = new Date(now.getTime() + i * 864e5);
+    const p0 = chicagoParts(dt.getTime());
+    const key = `${p0.y}-${String(p0.mo).padStart(2, "0")}-${String(p0.d).padStart(2, "0")}`;
+    if (key < todayStr || new Date(Date.UTC(p0.y, p0.mo - 1, p0.d)).getUTCDay() !== 3 || councilDays.has(key)) continue;
+    // only guess beyond the last posted week; inside it, no row means no meeting
+    const lastPosted = rows.length ? rows[rows.length - 1].EventDate.slice(0, 10) : todayStr;
+    if (key <= lastPosted) continue;
+    const row = eventRow(src, {
+      title: `${city} City Council meeting`, p: { ...p0, h: 15, mi: 30 }, time: "15:30",
+      url: src.url, types: ["Free", "Public meeting", "Usual schedule"],
+      desc: "The council usually meets Wednesdays at 3:30 PM in Council Chambers (3rd floor, City Hall). The agenda posts about a week ahead, and holidays can move a meeting — tap to check.",
+      cat: "Civic", loc: "St. Paul City Hall",
+    });
+    row.dur = 120; row.timeGuess = true;
+    out.push(row);
+  }
+  return out;
+}
+
+// Dated hearings read from the governments' own pages (2026-11-05). These are
+// once-a-year budget meetings; past dates fall off on their own. Re-check the
+// links each fall — dates move.
+const CIVIC_HEARINGS = [
+  { date: "2026-12-01", time: "18:00", name: "Hennepin County budget & tax levy hearing (Truth in Taxation)", loc: "Hennepin County Government Center", addr: "300 S 6th St, Minneapolis", lat: 44.9758, lng: -93.2666,
+    url: "https://www.hennepincounty.gov/services/property/property-taxes/truth-in-taxation-meetings", desc: "Public meeting on the proposed 2027 county budget and property tax levy. Room A-2400. Anyone can speak." },
+  { date: "2026-12-02", time: "18:00", name: "Metropolitan Council budget & tax levy hearing (Truth in Taxation)", loc: "Metropolitan Council chambers", addr: "390 Robert St N, St Paul", lat: 44.9546, lng: -93.0948,
+    url: "https://www.hennepincounty.gov/services/property/property-taxes/truth-in-taxation-meetings", desc: "Metropolitan Council's public meeting on its proposed 2027 budget and levy (time/place as listed by Hennepin County's tax notice page)." },
+  { date: "2026-12-03", time: "18:00", name: "Ramsey County final budget & tax levy hearing (Truth in Taxation)", loc: "Ramsey County Courthouse / St. Paul City Hall", addr: "15 W Kellogg Blvd, St Paul", lat: 44.9443, lng: -93.0937,
+    url: "https://www.ramseycountymn.gov/events/2026-12-03/truth-taxation-final-public-hearing-proposed-2027-supplemental-county-budget-tax-levy", desc: "Final public hearing on Ramsey County's proposed 2027 supplemental budget and tax levy. Register to speak through the Chief Clerk's office (651-266-9200)." },
+  { date: "2026-12-15", time: "18:05", name: "Minneapolis budget hearing & council vote (Truth in Taxation)", loc: "Minneapolis City Hall", addr: "350 S 5th St, Room 380, Minneapolis", lat: 44.9775, lng: -93.2655,
+    url: "https://www.minneapolismn.gov/news/2026/august/council-budget-next-steps/", desc: "The last public hearing on the 2027 city budget; the council votes to adopt it right after." },
+];
+function fromCivicStatic(src) {
+  return CIVIC_HEARINGS.map((h) => {
+    const [y, mo, d] = h.date.split("-").map(Number);
+    const [hh, mm] = h.time.split(":").map(Number);
+    const row = eventRow(src, { title: h.name, p: { y, mo, d, h: hh, mi: mm }, time: h.time, url: h.url,
+      types: ["Free", "Budget hearing", "Public comment"], desc: h.desc, cat: "Civic", loc: h.loc, addr: h.addr, lat: h.lat, lng: h.lng });
+    row.dur = 120; row.hearing = true;
+    return row;
+  });
+}
+
 // Weather is the deciding factor for an outdoor plan in Minnesota. api.weather.gov
 // is free and keyless; its hourly forecast runs ~6.5 days, which covers the
 // default views. One fetch for the metro (events here are within ~15 miles, well
@@ -1654,6 +1767,12 @@ function popularity(e, runs, sameDay, buzz) {
   if (e.image) s += 4;
   if (e.desc) s += 2;
   if (e.free) s += 2;
+  // civic meetings have no crowd counts, so give them a floor that shows them
+  if (e.cat === "Civic") {
+    if (e.hearing || /hearing|budget|truth in taxation/i.test(e.name || "")) { s += 22; why.push("Public hearing"); }
+    else s += 10;
+    if (e.timeGuess) s -= 6;
+  }
   if (e.cat === "Family") s -= 4;
   if (e.cat === "Learn") s -= 3;
   if (e.fmt === "online") s -= 12;
@@ -1681,6 +1800,8 @@ async function readSource(src, startISO, endISO) {
   if (src.type === "churchfinder") return fromChurchFinder(src);
   if (src.type === "mindbody") return fromMindbody(src);
   if (src.type === "heypeers") return fromHeyPeers(src);
+  if (src.type === "legistar") return fromLegistar(src);
+  if (src.type === "civicstatic") return fromCivicStatic(src);
   return fromTribe(src, startISO, endISO);
 }
 
@@ -1720,7 +1841,8 @@ module.exports = async (req, res) => {
       // noise + metro checks run here too: not every adapter screens titles,
       // and a Squarespace or Eventbrite pin can land in New York or Mankato
       let list = r.value.list.filter((e) => e.date >= todayStr && e.date <= endStr &&
-        inMetro(e.lat, e.lng) && !isNoise(e.name) && !isUnavailableTitle(e.name) && !isJunk(e.name));
+        inMetro(e.lat, e.lng) && !isUnavailableTitle(e.name) &&
+        ((e.cat === "Civic" && (src.type === "legistar" || src.type === "civicstatic" || CIVIC_RE.test(e.name))) || (!isNoise(e.name) && !isJunk(e.name))));
       for (const e of list) {
         const kind = e.support || supportKind(e.name);
         if (kind) e.support = kind;

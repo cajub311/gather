@@ -523,7 +523,7 @@
   .event-place{margin-top:6px;color:var(--muted);font-size:14px;line-height:1.45}
   .event-place span{display:block;color:var(--muted2);font-size:13px;margin-top:3px}
   .event-desc{
-    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+    display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;
     margin-top:7px;font-size:13px;line-height:1.45;color:var(--muted);
   }
   .event-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
@@ -707,6 +707,28 @@
   .guide li{margin-bottom:4px}
   .guide-actions{display:flex;gap:8px;margin-top:12px}
 
+  .nopebtn{position:absolute;right:12px;top:48px;width:28px;height:28px;border-radius:50%;border:1px solid transparent;
+    background:transparent;color:var(--muted2);font-size:15px;line-height:1;cursor:pointer;opacity:.55;padding:0}
+  .nopebtn:hover,.nopebtn:focus-visible{opacity:1;background:#fff;border-color:var(--line,#d8dee6);color:#b42318}
+  .featured .nopebtn{top:10px;right:10px;opacity:.7}
+  .featured{position:relative}
+  .nope-back{position:fixed;inset:0;background:rgba(10,18,30,.45);z-index:9998}
+  .nope-sheet{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(520px,100%);max-height:80vh;overflow:auto;
+    background:#fff;color:var(--ink);border-radius:18px 18px 0 0;padding:18px 16px 22px;z-index:9999;box-shadow:0 -10px 40px rgba(0,0,0,.25)}
+  .nope-sheet h3{margin:0 0 4px;font-size:17px}
+  .nope-sheet .sub{margin:0 0 12px;font-size:13px;color:var(--muted);line-height:1.4}
+  .nope-sheet button.opt{display:block;width:100%;text-align:left;margin:8px 0 0;padding:13px 14px;border-radius:12px;
+    border:1px solid #d8dee6;background:#f7f9fb;font:inherit;font-size:14px;font-weight:700;color:var(--ink);cursor:pointer}
+  .nope-sheet button.opt small{display:block;font-weight:500;color:var(--muted);font-size:12px;margin-top:2px}
+  .nope-sheet button.opt:hover{background:#eef2f6}
+  .nope-sheet button.opt.cancel{background:transparent;border-color:transparent;color:var(--muted);text-align:center}
+  .nope-row{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid #e6ebf0;font-size:14px}
+  .nope-row:first-of-type{border-top:0}
+  .nope-row button{flex:none;border:1px solid #d8dee6;background:#fff;border-radius:999px;padding:6px 12px;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+  .toast.act{pointer-events:auto;display:flex;gap:14px;align-items:center}
+  .toast.act button{background:transparent;border:0;color:#9bd1ff;font:inherit;font-weight:800;cursor:pointer;padding:0}
+  .civic-note{margin:10px 14px 0;padding:12px 14px;border-radius:12px;background:#eef5ff;border:1px solid #cfe0f7;font-size:13px;line-height:1.5;color:#243b53}
+  .civic-note a{color:#1d4ed8;font-weight:700}
   .toast{
     position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);z-index:9999;
     padding:11px 18px;background:var(--ink);border:1px solid var(--ink);border-radius:999px;
@@ -1102,6 +1124,7 @@ const ACTIVITIES = {
   Food:{name:"Food & Drink",color:"#fb7185"},
   Language:{name:"Language Exchange",color:"#a78bfa"},
   Sports:{name:"Pro & College Sports",color:"#ef4444"},
+  Civic:{name:"City Council & Civic",color:"#3b82f6"},
 };
 // Unknown categories used to crash search and the map legend on META[cat].name.
 // A new feed category should degrade to a plain label, not a blank page.
@@ -1169,6 +1192,7 @@ const QUICK={
   // Order = what he actually wants first (games games / dance / meet people / music)
   activities:[
     {id:"games",label:"🎲 Board games",match:m=>m.cat==="Games"||/trivia|bingo|board game|tabletop|d&d|dungeons|game night|card game/i.test(m.name||"")},
+    {id:"civic",label:"🏛️ City Council & hearings",match:m=>m.cat==="Civic"},
     {id:"dance",label:"💃 Dance",match:m=>/dance|dj\b|communion|edm|techno|rave|dance church|zouk|salsa|swing dance/i.test((m.name||"")+" "+(m.desc||"")+" "+(m.types||[]).join(" "))},
     {id:"music",label:"🎵 Music & shows",match:m=>m.cat==="Music"},
     {id:"sports",label:"🏟️ Pro sports",match:m=>m.cat==="Sports"},
@@ -1253,6 +1277,7 @@ function socialScore(m){
   else if(cat==="Art"||cat==="Learn")s+=6;
   else if(cat==="Music")s+=5;
   else if(cat==="Social"||cat==="Language")s+=5;
+  else if(cat==="Civic")s+=7;
   else if(cat==="Fitness"||cat==="Books"||cat==="Volunteer")s+=3;
   else if(cat==="Food"||cat==="Outdoors"||cat==="Sports")s+=2;
   else if(cat==="Family")s-=12;
@@ -1270,7 +1295,7 @@ function socialScore(m){
   if(m.source&&liked.some(x=>x.source===m.source))s+=6;
   if(/21\+|18\+|after dark|nightlife/.test(t))s+=2;
   if(isKidsy(m))s-=15;
-  if(/board meeting|city council|public hearing|certification|salesforce|bootcamp/.test(t))s-=8;
+  if(cat!=="Civic"&&/board meeting|city council|public hearing|certification|salesforce|bootcamp/.test(t))s-=8;
   return s;
 }
 function forYouReasons(m){
@@ -1342,7 +1367,11 @@ function setSort(v){
   buildVibeBar();render();
 }
 // "near" falls back to Popular while Near me is off
-function sortMode(){return state.sort==="near"&&!state.near?"popular":state.sort;}
+// Council meetings are a calendar, not a popularity contest: soonest first.
+function sortMode(){
+  if(state.mode==="activities"&&state.quick.has("civic")&&state.sort!=="near")return "soon";
+  return state.sort==="near"&&!state.near?"popular":state.sort;
+}
 function popularMode(){return state.mode==="activities"&&sortMode()==="popular"&&!state.savedOnly;}
 function closestMode(){return state.mode==="activities"&&sortMode()==="near"&&!state.savedOnly;}
 function hoodLabel(m){
@@ -1354,9 +1383,105 @@ function hoodLabel(m){
   const city=(a.match(/,\s*([^,]+),\s*MN\b/i)||[])[1];
   return city&&!/united states/i.test(city)?city.trim():"";
 }
+/* ===== Not interested + learned taste (stays in this browser) ===== */
+const NOPE={series:{},venue:{},cats:{}};
+const TASTE={cat:{},venue:{},word:{}};
+try{
+  const n=JSON.parse(localStorage.getItem("gather-nope")||"{}");
+  ["series","venue","cats"].forEach(k=>{if(n[k]&&typeof n[k]==="object")NOPE[k]=n[k];});
+  const t=JSON.parse(localStorage.getItem("gather-taste")||"{}");
+  ["cat","venue","word"].forEach(k=>{if(t[k]&&typeof t[k]==="object")TASTE[k]=t[k];});
+}catch(e){}
+function persistNope(){try{localStorage.setItem("gather-nope",JSON.stringify(NOPE));localStorage.setItem("gather-taste",JSON.stringify(TASTE));}catch(e){}}
+const TASTE_STOP=new Set(["the","and","for","with","from","live","night","show","presents","featuring","tour","tickets","event","open","free","saint","paul","minneapolis"]);
+function seriesKeyOf(m){return repeatName(m.name)+"|"+String(m.loc||"").toLowerCase();}
+function venueKeyOf(m){return String(m.loc||"").toLowerCase();}
+function tasteWords(m){return [...new Set(repeatName(m.name).split(" ").filter(w=>w.length>3&&!TASTE_STOP.has(w)))].slice(0,6);}
+function bumpTaste(m,d){
+  if(!m)return;
+  const add=(o,k,v)=>{if(!k)return;o[k]=Math.max(-8,Math.min(8,(o[k]||0)+v));if(!o[k])delete o[k];};
+  add(TASTE.cat,m.cat,d);add(TASTE.venue,venueKeyOf(m),d);
+  tasteWords(m).forEach(w=>add(TASTE.word,w,d*0.5));
+  persistNope();
+}
+// What you hid or starred nudges similar things down or up in Popular order.
+function tasteScore(m){
+  let s=(TASTE.cat[m.cat]||0)*3+(TASTE.venue[venueKeyOf(m)]||0)*4;
+  tasteWords(m).forEach(w=>{s+=(TASTE.word[w]||0)*1.5;});
+  return Math.max(-30,Math.min(15,s));
+}
+function isNope(m){
+  return !!(NOPE.series[seriesKeyOf(m)]||NOPE.venue[venueKeyOf(m)]||NOPE.cats[m.cat]);
+}
+function nopeCount(){return Object.keys(NOPE.series).length+Object.keys(NOPE.venue).length+Object.keys(NOPE.cats).length;}
+function closeSheet(){document.getElementById("nopeBack")?.remove();document.getElementById("nopeSheet")?.remove();document.removeEventListener("keydown",sheetKey);}
+function sheetKey(e){if(e.key==="Escape")closeSheet();}
+function showSheet(html){
+  closeSheet();
+  const back=document.createElement("div");back.id="nopeBack";back.className="nope-back";back.onclick=closeSheet;
+  const sh=document.createElement("div");sh.id="nopeSheet";sh.className="nope-sheet";sh.setAttribute("role","dialog");sh.setAttribute("aria-modal","true");
+  sh.innerHTML=html;
+  document.body.append(back,sh);
+  document.addEventListener("keydown",sheetKey);
+  sh.querySelector("button")?.focus();
+  return sh;
+}
+function toastAct(msg,label,fn){
+  const t=document.getElementById("toast");
+  if(!t)return;
+  t.innerHTML="";t.append(document.createTextNode(msg));
+  const b=document.createElement("button");b.type="button";b.textContent=label;
+  b.onclick=()=>{fn();t.classList.remove("show","act");};
+  t.append(b);t.classList.add("show","act");
+  clearTimeout(toast._t);
+  toast._t=setTimeout(()=>t.classList.remove("show","act"),6000);
+}
+function applyNope(kind,m){
+  const label=kind==="series"?m.name:kind==="venue"?m.loc:activityLabel(m.cat);
+  const key=kind==="series"?seriesKeyOf(m):kind==="venue"?venueKeyOf(m):m.cat;
+  const bucket=kind==="series"?NOPE.series:kind==="venue"?NOPE.venue:NOPE.cats;
+  const weight=kind==="series"?-1:kind==="venue"?-2:-3;
+  bucket[key]=label;
+  bumpTaste(m,weight);
+  closeSheet();
+  buildQuickFilters();render();
+  toastAct(kind==="cats"?`Hid all ${label}`:`Hidden: ${String(label).slice(0,34)}`,"Undo",()=>{
+    delete bucket[key];bumpTaste(m,-weight);persistNope();buildQuickFilters();render();
+  });
+}
+function openNope(m){
+  const sh=showSheet(`<h3>Not interested</h3><p class="sub">${esc(m.name)}<br>Gather remembers this and ranks similar things lower.</p>
+    <button type="button" class="opt" data-k="series">Hide this${m._also||m.series?" and its repeats":""}<small>Just this event${m._also||m.series?" and the other days it runs":""}</small></button>
+    <button type="button" class="opt" data-k="venue">Hide everything at ${esc(m.loc||"this place")}<small>Every event listed there</small></button>
+    <button type="button" class="opt" data-k="cats">Hide all ${esc(activityLabel(m.cat))}<small>The whole category</small></button>
+    <button type="button" class="opt cancel" data-k="x">Cancel</button>`);
+  sh.querySelectorAll("button.opt").forEach(b=>b.onclick=()=>b.dataset.k==="x"?closeSheet():applyNope(b.dataset.k,m));
+}
+function openHiddenList(){
+  const rows=[];
+  Object.entries(NOPE.cats).forEach(([k,l])=>rows.push(["cats",k,`All ${l}`]));
+  Object.entries(NOPE.venue).forEach(([k,l])=>rows.push(["venue",k,`Everything at ${l}`]));
+  Object.entries(NOPE.series).forEach(([k,l])=>rows.push(["series",k,l]));
+  const sh=showSheet(`<h3>Hidden (${rows.length})</h3><p class="sub">Tap Show again to bring something back.</p>
+    ${rows.map((r,i)=>`<div class="nope-row"><span>${esc(r[2])}</span><button type="button" data-i="${i}">Show again</button></div>`).join("")||'<p class="sub">Nothing hidden.</p>'}
+    <button type="button" class="opt" data-k="reset">Forget everything Gather learned<small>Unhide all and reset the ranking</small></button>
+    <button type="button" class="opt cancel" data-k="x">Close</button>`);
+  sh.querySelectorAll(".nope-row button").forEach(b=>b.onclick=()=>{
+    const [kind,key]=rows[+b.dataset.i];
+    delete (kind==="series"?NOPE.series:kind==="venue"?NOPE.venue:NOPE.cats)[key];
+    persistNope();closeSheet();buildQuickFilters();render();if(nopeCount())openHiddenList();
+  });
+  sh.querySelector('[data-k="reset"]').onclick=()=>{
+    NOPE.series={};NOPE.venue={};NOPE.cats={};TASTE.cat={};TASTE.venue={};TASTE.word={};
+    persistNope();closeSheet();buildQuickFilters();render();toast("Reset — everything is back");
+  };
+  sh.querySelector('[data-k="x"]').onclick=closeSheet;
+}
+
 function toast(msg){
   const t=document.getElementById("toast");
   if(!t)return;
+  t.classList.remove("act");
   t.textContent=msg;
   t.classList.add("show");
   clearTimeout(toast._t);
@@ -1367,7 +1492,10 @@ function persistSaved(){
 }
 function toggleSaved(id,e){
   if(e){e.stopPropagation();}
-  SAVED.has(id)?SAVED.delete(id):SAVED.add(id);
+  const was=SAVED.has(id);
+  was?SAVED.delete(id):SAVED.add(id);
+  const sm=DATA.find(x=>x._id===id);
+  if(sm&&state.mode==="activities")bumpTaste(sm,was?-2:2);
   persistSaved();
   updateSavedBtn();
   render();
@@ -1521,10 +1649,10 @@ function wxChip(m){
   return `<span class="b wx${wet?" wet":""}" title="${esc(w.summary)}">${icon} ${w.temp}\u00B0${esc(w.unit)}${pop}</span>`;
 }
 function activityEmoji(cat){
-  return {Music:"🎵",Art:"🎨",Outdoors:"🌿",Games:"🎲",Social:"🤝",Zen:"🧘",Fitness:"🏃",Books:"📚",Volunteer:"🤲",Language:"💬",Family:"🧒",Learn:"🎓",Food:"🍽️",Sports:"🏟️"}[cat]||"✨";
+  return {Music:"🎵",Art:"🎨",Outdoors:"🌿",Games:"🎲",Social:"🤝",Zen:"🧘",Fitness:"🏃",Books:"📚",Volunteer:"🤲",Language:"💬",Family:"🧒",Learn:"🎓",Food:"🍽️",Sports:"🏟️",Civic:"🏛️"}[cat]||"✨";
 }
 function activityLabel(cat){
-  return {Music:"Music",Art:"Art & film",Outdoors:"Outdoors",Games:"Games",Social:"Social",Zen:"Wellness",Fitness:"Fitness",Books:"Books",Volunteer:"Volunteer",Language:"Languages",Family:"Kids & family",Learn:"Classes & talks",Food:"Food & drink",Sports:"Sports"}[cat]||cat;
+  return {Music:"Music",Art:"Art & film",Outdoors:"Outdoors",Games:"Games",Social:"Social",Zen:"Wellness",Fitness:"Fitness",Books:"Books",Volunteer:"Volunteer",Language:"Languages",Family:"Kids & family",Learn:"Classes & talks",Food:"Food & drink",Sports:"Sports",Civic:"Council & civic"}[cat]||cat;
 }
 function mapsDir(m){return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((m.loc?m.loc+" ":"")+m.addr)}`;}
 function icsFor(m){
@@ -1625,6 +1753,7 @@ function popRank(m,boostSocial,useNear){
   if(useNear&&m._sortD!=null)s-=Math.min(m._sortD,25)*0.6;
   // the VIP meet-and-greet shouldn't front for the actual show
   if(/^vip\b/i.test(m.name||""))s-=6;
+  if(state.mode==="activities")s+=tasteScore(m);
   return s;
 }
 function byRank(a,b){
@@ -1878,6 +2007,7 @@ function filtered(opts={}){
   let list=DATA.filter(m=>{
     // Saved view shows everything you starred (any day/format), minus past dates
     if(state.savedOnly)return SAVED.has(m._id)&&!(m.date&&dateOffset(m.date)<0);
+    if(state.mode==="activities"&&isNope(m))return false;
     if(state.cat.size&&!state.cat.has(m.cat))return false;
     if(!matchesDayView(m))return false;
     if(state.area){
@@ -1994,15 +2124,17 @@ function buildQuickFilters(){
     b.textContent=q.label;
     b.onclick=()=>{
       const on=state.quick.has(q.id);
-      if(on)state.quick.delete(q.id);
+      if(on){state.quick.delete(q.id);if(q.id==="civic"){state.day=todayDay();state.horizon=6;state.preset="today";}}
       else{
         state.quick.add(q.id);
+        // hearings are days or weeks out — look ahead instead of showing an empty "today"
+        if(q.id==="civic"){state.day=null;state.daySet=null;state.horizon=44;state.tod="";state.nowOnly=false;state.preset="";state.hideEnded=true;}
         // Online/hybrid chips take over format so they don't fight the in-person default
         if(q.id==="online"){state.fmt="online";state.quick.delete("hybrid");}
         if(q.id==="hybrid"){state.fmt="hybrid";state.quick.delete("online");}
       }
       if((q.id==="online"||q.id==="hybrid")&&on)state.fmt="in-person";
-      syncFmtUI();buildQuickFilters();render();
+      syncFmtUI();if(q.id==="civic"){syncDayUI();buildPresets();}buildQuickFilters();render();
     };
     row.appendChild(b);
   });
@@ -2015,6 +2147,15 @@ function buildQuickFilters(){
     b.setAttribute("aria-pressed",state.hideSeries?"true":"false");
     b.textContent="Hide daily repeats";
     b.onclick=()=>{state.hideSeries=!state.hideSeries;buildQuickFilters();render();};
+    row.appendChild(b);
+  }
+
+  if(state.mode==="activities"&&nopeCount()>0){
+    const b=document.createElement("button");
+    b.type="button";b.className="qchip";
+    b.textContent=`🚫 Hidden (${nopeCount()})`;
+    b.title="See what you hid, or bring it back";
+    b.onclick=openHiddenList;
     row.appendChild(b);
   }
 
@@ -2110,7 +2251,9 @@ function renderFeatured(el,list){
       <div><div class="eyebrow">${esc(featuredEyebrow(next,why))}</div>
       <div class="fname">${esc(next.name)}</div>
       <div class="fmeta">${esc(whenLbl)} · ${esc(whenTime(next))}${rel?` · ${esc(rel)}`:""} · 📍 ${esc(next.loc)}</div>
-      <div class="fcta">See event →</div></div>`;
+      <div class="fcta">See event →</div></div>
+      <button type="button" class="nopebtn" title="Not interested" aria-label="Not interested in this">✕</button>`;
+    box.querySelector(".nopebtn").onclick=e=>{e.stopPropagation();e.preventDefault();openNope(next);};
   }else{
     box.innerHTML=`<div><div class="eyebrow">${isNow(next)?"Happening now":"Up next"}</div>
       <div class="fname">${esc(next.name)}</div>
@@ -2275,8 +2418,10 @@ function renderCard(el,m){
         ${now||usefulTypes.length||m.wx||m.free||m.popWhy?.length||m.pop>=40?`<div class="event-tags">${now?'<span class="b now">Happening now</span>':""}${popChips(m)}${m.free?'<span class="b ok">Free</span>':""}${wxChip(m)}${usefulTypes.map(t=>`<span class="b">${esc(t)}</span>`).join("")}</div>`:""}
         <div class="event-actions">${details}${directions}<a class="event-details" href="${icsFor(m)}" download="${m._id}.ics" onclick="event.stopPropagation()">📅 Calendar</a></div>
       </div>
-      <button type="button" class="savebtn${SAVED.has(id)?" on":""}" title="Save event" aria-label="Save event">${SAVED.has(id)?"★":"☆"}</button>`;
+      <button type="button" class="savebtn${SAVED.has(id)?" on":""}" title="Save event" aria-label="Save event">${SAVED.has(id)?"★":"☆"}</button>
+      <button type="button" class="nopebtn" title="Not interested" aria-label="Not interested in ${esc(m.name)}">✕</button>`;
     card.querySelector(".savebtn").onclick=e=>toggleSaved(id,e);
+    card.querySelector(".nopebtn").onclick=e=>{e.stopPropagation();e.preventDefault();openNope(m);};
     card.setAttribute("role","link");
     card.setAttribute("aria-label",`Open ${m.name}`);
     card.onclick=()=>openActivity(m);
@@ -2422,6 +2567,15 @@ function render(){
     el.appendChild(ban);
   }
   const onMap=list.filter(hasMapPin);
+  if(state.mode==="activities"&&state.quick.has("civic")){
+    const n=document.createElement("div");n.className="civic-note";
+    n.innerHTML=`<strong>Public meetings you can walk into.</strong> Anyone can attend and most take public comment. St. Paul comes straight from the city's calendar; meetings marked "usual" are the regular Wednesday council time, so check the agenda link.<br>
+      More calendars: <a href="https://stpaul.legistar.com/Calendar.aspx" target="_blank" rel="noopener">St. Paul council</a> ·
+      <a href="https://www.ramseycountymn.gov/your-government/leadership/board-commissioners/board-meetings-information" target="_blank" rel="noopener">Ramsey County board</a> ·
+      <a href="https://lims.minneapolismn.gov/Calendar/all/monthly" target="_blank" rel="noopener">Minneapolis council</a> ·
+      <a href="https://www.spps.org/boe" target="_blank" rel="noopener">St. Paul schools board</a>`;
+    el.appendChild(n);
+  }
   const featuredId=state.mode==="activities"&&list.length>1&&!loadingNow?renderFeatured(el,list):null;
   const shown=list.filter(m=>m._id!==featuredId).slice(0,state.limit);
   let lastSection=null,overHdr=false;
