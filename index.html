@@ -2092,6 +2092,11 @@ function filtered(opts={}){
     // Radius filter when Near me is on. Approx pins use city-centroid coords —
     // still filter them (Shoreview vs far suburbs) but never hard-drop the whole
     // Meetup feed the way we used to with `if (m.approx) return false`.
+    // Hard limit: never more than 25 miles from you, even on "Any distance".
+    if(state.near&&state.mode==="activities"){
+      const cap=Math.min(state.radius||25,25);
+      if(m.fmt!=="online"&&m.lat!=null&&m.lng!=null&&isFinite(m.lat)&&isFinite(m.lng)&&dist(state.near[0],state.near[1],m.lat,m.lng)>cap)return false;
+    }
     if(state.radius&&state.near){
       if(m.lat==null||m.lng==null||!isFinite(m.lat)||!isFinite(m.lng))return false;
       if(dist(state.near[0],state.near[1],m.lat,m.lng)>state.radius)return false;
@@ -2229,7 +2234,7 @@ function buildQuickFilters(){
   // Distance only means something once we know where they are.
   // 20 mi reaches the nearby-ring places the user asked not to miss.
   if(state.near){
-    [[0,"Any distance"],[5,"\u22645 mi"],[10,"\u226410 mi"],[15,"\u226415 mi"],[20,"\u226420 mi"]].forEach(([r,lbl])=>{
+    [[0,"Up to 25 mi"],[5,"\u22645 mi"],[10,"\u226410 mi"],[15,"\u226415 mi"],[20,"\u226420 mi"]].forEach(([r,lbl])=>{
       const b=document.createElement("button");
       b.type="button";b.className="qchip"+(state.radius===r?" on":"");
       b.setAttribute("aria-pressed",state.radius===r?"true":"false");
