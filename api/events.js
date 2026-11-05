@@ -1738,9 +1738,9 @@ async function addWeather(events) {
 function inMetro(lat, lng) {
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || (!lat && !lng)) return false;
   const r = (x) => (x * Math.PI) / 180;
-  // Nothing farther than 25 miles from downtown St. Paul (Charlie's hard limit, 2026-11-05)
+  // Feed reaches 50 mi from downtown St. Paul; the page's "miles away" picker (default 25) narrows it.
   const a = Math.sin(r(lat - 44.9537) / 2) ** 2 + Math.cos(r(44.9537)) * Math.cos(r(lat)) * Math.sin(r(lng + 93.09) / 2) ** 2;
-  return 3959 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) <= 25;
+  return 3959 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) <= 50;
 }
 
 // —— Popularity ——
