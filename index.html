@@ -722,6 +722,9 @@
   .nope-sheet button.opt small{display:block;font-weight:500;color:var(--muted);font-size:12px;margin-top:2px}
   .nope-sheet button.opt:hover{background:#eef2f6}
   .nope-sheet button.opt.cancel{background:transparent;border-color:transparent;color:var(--muted);text-align:center}
+  .nope-chips{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 6px}
+  .tchip{border:1px solid #cbd5e1;border-radius:999px;padding:8px 13px;background:#fff;font:inherit;font-size:13px;font-weight:700;color:var(--ink);cursor:pointer}
+  .tchip.on{background:#0f172a;border-color:#0f172a;color:#fff}
   .nope-row{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid #e6ebf0;font-size:14px}
   .nope-row:first-of-type{border-top:0}
   .nope-row button{flex:none;border:1px solid #d8dee6;background:#fff;border-radius:999px;padding:6px 12px;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
@@ -1395,11 +1398,11 @@ function hoodLabel(m){
   return city&&!/united states/i.test(city)?city.trim():"";
 }
 /* ===== Not interested + learned taste (stays in this browser) ===== */
-const NOPE={series:{},venue:{},cats:{}};
+const NOPE={series:{},venue:{},cats:{},topics:{}};
 const TASTE={cat:{},venue:{},word:{}};
 try{
   const n=JSON.parse(localStorage.getItem("gather-nope")||"{}");
-  ["series","venue","cats"].forEach(k=>{if(n[k]&&typeof n[k]==="object")NOPE[k]=n[k];});
+  ["series","venue","cats","topics"].forEach(k=>{if(n[k]&&typeof n[k]==="object")NOPE[k]=n[k];});
   const t=JSON.parse(localStorage.getItem("gather-taste")||"{}");
   ["cat","venue","word"].forEach(k=>{if(t[k]&&typeof t[k]==="object")TASTE[k]=t[k];});
 }catch(e){}
@@ -1408,10 +1411,10 @@ const TASTE_STOP=new Set(["the","and","for","with","from","live","night","show",
 function seriesKeyOf(m){return repeatName(m.name)+"|"+String(m.loc||"").toLowerCase();}
 function venueKeyOf(m){return String(m.loc||"").toLowerCase();}
 function tasteWords(m){return [...new Set(repeatName(m.name).split(" ").filter(w=>w.length>3&&!TASTE_STOP.has(w)))].slice(0,6);}
-function bumpTaste(m,d){
+function bumpTaste(m,d,wordsOnly){
   if(!m)return;
   const add=(o,k,v)=>{if(!k)return;o[k]=Math.max(-8,Math.min(8,(o[k]||0)+v));if(!o[k])delete o[k];};
-  add(TASTE.cat,m.cat,d);add(TASTE.venue,venueKeyOf(m),d);
+  if(!wordsOnly){add(TASTE.cat,m.cat,d);add(TASTE.venue,venueKeyOf(m),d);}
   tasteWords(m).forEach(w=>add(TASTE.word,w,d*0.5));
   persistNope();
 }
@@ -1421,18 +1424,46 @@ function tasteScore(m){
   tasteWords(m).forEach(w=>{s+=(TASTE.word[w]||0)*1.5;});
   return Math.max(-30,Math.min(15,s));
 }
+// Topics: what an event is ABOUT ("LGBTQ+", "BIPOC"), picked by you when you tap ✕.
+// The place and the category stay untouched, so a meditation center you like still shows its other sittings.
+const TOPIC_CLUSTERS={
+  lgbtq:{label:"LGBTQ+",re:/\b(lgbtq?\w*|2slgbtq\w*|queer|gay|lesbian|transgender|nonbinary|non-binary|two[- ]spirit)\b/i},
+  bipoc:{label:"BIPOC / people of color",re:/\b(bipoc|poc|people of colou?r|indigenous|native american|latinx|latine|aapi|black,? indigenous|black (?:people|folks|community|communities|women|men|joy|voices|dharma|sangha|queer|lgbtq\w*))\b/i},
+  women:{label:"Women's groups",re:/\b(women|womxn|female|ladies)\b/i},
+  men:{label:"Men's groups",re:/\b(men's|mens)\b/i},
+  seniors:{label:"Seniors / 50+",re:/\b(seniors?|elders?|50\+|55\+|over 50)\b/i},
+  youth:{label:"Teens / youth",re:/\b(teens?|teenagers?|youth)\b/i},
+};
+const TOPIC_GENERIC=new Set(["meditation","group","sangha","circle","class","classes","meeting","practice","community","sitting","session","weekly","monthly","night","evening","morning","gathering","workshop","event","social","club","with","from","about","this","that"]);
+function topicText(m){return ((m.name||"")+" "+(m.types||[]).join(" ")+" "+String(m.desc||"").slice(0,120)).toLowerCase();}
+function topicMatches(key,text){
+  if(key.startsWith("c:")){const c=TOPIC_CLUSTERS[key.slice(2)];return !!(c&&c.re.test(text));}
+  const w=key.slice(2).replace(/[^a-z0-9]/g,"");
+  return !!w&&new RegExp("\\b"+w+"\\b").test(text);
+}
+function topicChoices(m){
+  const text=topicText(m),out=[];
+  Object.entries(TOPIC_CLUSTERS).forEach(([k,c])=>{if(c.re.test(text))out.push({key:"c:"+k,label:c.label,on:true});});
+  const skip=new Set(String(m.loc||"").toLowerCase().split(/\W+/).concat(String(m.source||"").toLowerCase().split(/\W+/)));
+  const words=repeatName(m.name).split(" ").filter(w=>w.length>3&&!TASTE_STOP.has(w)&&!TOPIC_GENERIC.has(w)&&!skip.has(w)&&!out.some(o=>topicMatches(o.key,w)));
+  [...new Set(words)].slice(0,3).forEach(w=>out.push({key:"w:"+w,label:w,on:!out.length}));
+  return out;
+}
 function isExplicitNope(m){
-  return !!(NOPE.series[seriesKeyOf(m)]||NOPE.venue[venueKeyOf(m)]||NOPE.cats[m.cat]);
+  if(NOPE.series[seriesKeyOf(m)]||NOPE.venue[venueKeyOf(m)]||NOPE.cats[m.cat])return true;
+  const ks=Object.keys(NOPE.topics);
+  if(ks.length){const t=topicText(m);if(ks.some(k=>topicMatches(k,t)))return true;}
+  return false;
 }
 // Things that look like what you keep skipping go away on their own (same
 // venue, category and title words). Starred events are never auto-hidden, and
 // "Hidden" shows them so you can bring any back.
 const AUTO_AT=-12;
 let SHOW_AUTO=false;
-function isAuto(m){return m.cat!=="Civic"&&!state.cat.has(m.cat)&&!SAVED.has(m._id)&&!isExplicitNope(m)&&tasteScore(m)<=AUTO_AT;}
+function isAuto(m){return false;}
 function autoCount(){return state.mode==="activities"?DATA.reduce((n,m)=>n+(isAuto(m)?1:0),0):0;}
 function isNope(m){return isExplicitNope(m)||(!SHOW_AUTO&&isAuto(m));}
-function nopeCount(){return Object.keys(NOPE.series).length+Object.keys(NOPE.venue).length+Object.keys(NOPE.cats).length;}
+function nopeCount(){return Object.keys(NOPE.series).length+Object.keys(NOPE.venue).length+Object.keys(NOPE.cats).length+Object.keys(NOPE.topics).length;}
 function closeSheet(){document.getElementById("nopeBack")?.remove();document.getElementById("nopeSheet")?.remove();document.removeEventListener("keydown",sheetKey);}
 function sheetKey(e){if(e.key==="Escape")closeSheet();}
 function showSheet(html){
@@ -1455,31 +1486,42 @@ function toastAct(msg,label,fn){
   clearTimeout(toast._t);
   toast._t=setTimeout(()=>t.classList.remove("show","act"),6000);
 }
-function applyNope(kind,m){
+function applyNope(kind,m,topics){
   const label=kind==="series"?m.name:kind==="venue"?m.loc:activityLabel(m.cat);
   const key=kind==="series"?seriesKeyOf(m):kind==="venue"?venueKeyOf(m):m.cat;
   const bucket=kind==="series"?NOPE.series:kind==="venue"?NOPE.venue:NOPE.cats;
+  // "Hide this" is about the event's topic only: place and category taste stay untouched.
   const weight=kind==="series"?-1:kind==="venue"?-2:-3;
-  const autoBefore=autoCount();
+  const addedTopics=[];
   bucket[key]=label;
-  bumpTaste(m,weight);
-  const autoNew=Math.max(0,autoCount()-autoBefore);
+  (topics||[]).forEach(t=>{if(!NOPE.topics[t.key]){NOPE.topics[t.key]=t.label;addedTopics.push(t.key);}});
+  bumpTaste(m,weight,kind==="series");
   closeSheet();
   buildQuickFilters();render();
-  toastAct((kind==="cats"?`Hid all ${label}`:`Hidden: ${String(label).slice(0,30)}`)+(autoNew?` + ${autoNew} similar`:""),"Undo",()=>{
-    delete bucket[key];bumpTaste(m,-weight);persistNope();buildQuickFilters();render();
+  const more=addedTopics.length?` + anything about ${(topics||[]).map(t=>t.label).join(", ")}`:"";
+  toastAct((kind==="cats"?`Hid all ${label}`:`Hidden: ${String(label).slice(0,26)}`)+more,"Undo",()=>{
+    delete bucket[key];addedTopics.forEach(k=>delete NOPE.topics[k]);bumpTaste(m,-weight,kind==="series");persistNope();buildQuickFilters();render();
   });
 }
 function openNope(m){
-  const sh=showSheet(`<h3>Not interested</h3><p class="sub">${esc(m.name)}<br>Gather remembers this and ranks similar things lower.</p>
-    <button type="button" class="opt" data-k="series">Hide this${m._also||m.series?" and its repeats":""}<small>Just this event${m._also||m.series?" and the other days it runs":""}</small></button>
+  const choices=topicChoices(m);
+  const chips=choices.map((c,i)=>`<button type="button" class="tchip${c.on?" on":""}" data-i="${i}" aria-pressed="${c.on}">${esc(c.label)}</button>`).join("");
+  const sh=showSheet(`<h3>Not interested</h3><p class="sub">${esc(m.name)}</p>
+    ${choices.length?`<p class="sub"><strong>What put you off?</strong> Tap the topics to hide. Your other events at ${esc(m.loc||"this place")} stay.</p><div class="nope-chips">${chips}</div>`:'<p class="sub">Only this event goes away — not the place or the category.</p>'}
+    <button type="button" class="opt" data-k="series"><span id="nopeGo"></span><small>This event${m._also||m.series?" and its repeats":""}, plus anything about the topics above</small></button>
+    <button type="button" class="opt cancel" data-k="x">Cancel</button>
+    <details style="margin-top:6px"><summary style="cursor:pointer;font-size:12px;color:var(--muted)">More options</summary>
     <button type="button" class="opt" data-k="venue">Hide everything at ${esc(m.loc||"this place")}<small>Every event listed there</small></button>
-    <button type="button" class="opt" data-k="cats">Hide all ${esc(activityLabel(m.cat))}<small>The whole category</small></button>
-    <button type="button" class="opt cancel" data-k="x">Cancel</button>`);
-  sh.querySelectorAll("button.opt").forEach(b=>b.onclick=()=>b.dataset.k==="x"?closeSheet():applyNope(b.dataset.k,m));
+    <button type="button" class="opt" data-k="cats">Hide all ${esc(activityLabel(m.cat))}<small>The whole category</small></button></details>`);
+  const picked=()=>choices.filter((c,i)=>sh.querySelector(`.tchip[data-i="${i}"]`)?.classList.contains("on"));
+  const upd=()=>{const n=picked().length;sh.querySelector("#nopeGo").textContent=n?`Hide this + ${n} topic${n>1?"s":""}`:"Hide just this";};
+  sh.querySelectorAll(".tchip").forEach(b=>b.onclick=()=>{b.classList.toggle("on");b.setAttribute("aria-pressed",b.classList.contains("on"));upd();});
+  upd();
+  sh.querySelectorAll("button.opt").forEach(b=>b.onclick=()=>b.dataset.k==="x"?closeSheet():applyNope(b.dataset.k,m,b.dataset.k==="series"?picked():[]));
 }
 function openHiddenList(){
   const rows=[];
+  Object.entries(NOPE.topics).forEach(([k,l])=>rows.push(["topics",k,`Anything about ${l}`]));
   Object.entries(NOPE.cats).forEach(([k,l])=>rows.push(["cats",k,`All ${l}`]));
   Object.entries(NOPE.venue).forEach(([k,l])=>rows.push(["venue",k,`Everything at ${l}`]));
   Object.entries(NOPE.series).forEach(([k,l])=>rows.push(["series",k,l]));
@@ -1492,11 +1534,11 @@ function openHiddenList(){
   sh.querySelector("[data-auto]")?.addEventListener("click",()=>{SHOW_AUTO=!SHOW_AUTO;closeSheet();buildQuickFilters();render();});
   sh.querySelectorAll(".nope-row button:not([data-auto])").forEach(b=>b.onclick=()=>{
     const [kind,key]=rows[+b.dataset.i];
-    delete (kind==="series"?NOPE.series:kind==="venue"?NOPE.venue:NOPE.cats)[key];
+    delete (kind==="series"?NOPE.series:kind==="venue"?NOPE.venue:kind==="topics"?NOPE.topics:NOPE.cats)[key];
     persistNope();closeSheet();buildQuickFilters();render();if(nopeCount())openHiddenList();
   });
   sh.querySelector('[data-k="reset"]').onclick=()=>{
-    NOPE.series={};NOPE.venue={};NOPE.cats={};TASTE.cat={};TASTE.venue={};TASTE.word={};SHOW_AUTO=false;
+    NOPE.series={};NOPE.venue={};NOPE.cats={};NOPE.topics={};TASTE.cat={};TASTE.venue={};TASTE.word={};SHOW_AUTO=false;
     persistNope();closeSheet();buildQuickFilters();render();toast("Reset — everything is back");
   };
   sh.querySelector('[data-k="x"]').onclick=closeSheet;
