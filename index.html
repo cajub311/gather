@@ -1218,7 +1218,7 @@ let _vibeStored="all";
 try{const v=localStorage.getItem("gather-vibe");if(v==="all"||v==="social")_vibeStored=v;}catch(e){}
 // Things to do open most-popular-first; Soonest is one tap away and sticks.
 let _sortStored="soon";
-try{const v=localStorage.getItem("gather-sort");if(v==="soon"||v==="near"||v==="popular")_sortStored=v;}catch(e){}
+try{const v=localStorage.getItem("gather-sort-v2");if(v==="soon"||v==="near"||v==="popular")_sortStored=v;}catch(e){}
 const state={qAhead:6,mode:"activities",cat:new Set(),day:null,daySet:null,fmt:null,tod:"",nowOnly:false,q:"",near:null,nearGps:false,quick:new Set(),savedOnly:false,preset:"",area:"",horizon:6,radius:0,hideSeries:false,soonOnly:false,flag:"",hideEnded:true,vibe:_vibeStored,sort:_sortStored,limit:80};
 let _urlTimer=null;
 function todayDay(){return nowInfo().day;}
@@ -1363,7 +1363,7 @@ function buildVibeBar(){
 }
 function setSort(v){
   state.sort=v==="soon"||v==="near"?v:"popular";
-  try{localStorage.setItem("gather-sort",state.sort);}catch(e){}
+  try{localStorage.setItem("gather-sort-v2",state.sort);}catch(e){}
   buildVibeBar();render();
 }
 // "near" falls back to Popular while Near me is off
@@ -1429,7 +1429,7 @@ function isExplicitNope(m){
 // "Hidden" shows them so you can bring any back.
 const AUTO_AT=-12;
 let SHOW_AUTO=false;
-function isAuto(m){return !SAVED.has(m._id)&&!isExplicitNope(m)&&tasteScore(m)<=AUTO_AT;}
+function isAuto(m){return m.cat!=="Civic"&&!state.cat.has(m.cat)&&!SAVED.has(m._id)&&!isExplicitNope(m)&&tasteScore(m)<=AUTO_AT;}
 function autoCount(){return state.mode==="activities"?DATA.reduce((n,m)=>n+(isAuto(m)?1:0),0):0;}
 function isNope(m){return isExplicitNope(m)||(!SHOW_AUTO&&isAuto(m));}
 function nopeCount(){return Object.keys(NOPE.series).length+Object.keys(NOPE.venue).length+Object.keys(NOPE.cats).length;}
