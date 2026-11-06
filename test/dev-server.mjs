@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const events = require("../api/events.js");
 const meetings = require("../api/meetings.js");
+const agent = require("../api/agent.js");
 const root = new URL("../", import.meta.url).pathname;
 
 // Vercel caches these responses for 15 minutes; without the same cache here, a
@@ -35,9 +36,11 @@ createServer(async (req, res) => {
     setHeader: (k, v) => res.setHeader(k, v),
     status(c) { res.statusCode = c; return this; },
     json(d) { res.end(JSON.stringify(d)); },
+    send(t) { res.end(t); },
   };
   try {
     if (path === "/api/events") return void (await cached("events", events, req, res));
+    if (path === "/api/agent") { req.query = Object.fromEntries(new URL(req.url, "http://x").searchParams); return void (await agent(req, shim)); }
     if (path === "/api/meetings") return void (await cached("meetings", meetings, req, res));
     const file = path === "/" ? "index.html" : path.replace(/^\//, "");
     const body = readFileSync(root + file);
