@@ -98,7 +98,8 @@ async function main() {
   ok(
     "shipped HTML has radius lat/lng check",
     /if\s*\(\s*m\.lat\s*==\s*null\s*\|\|\s*m\.lng\s*==\s*null/.test(html) ||
-      html.includes("m.lat==null||m.lng==null"),
+      html.includes("m.lat==null||m.lng==null") ||
+      html.includes("m.lat!=null&&m.lng!=null"),
     "lat/lng null check"
   );
   ok("shipped HTML has _sortD", html.includes("_sortD"));
@@ -238,13 +239,11 @@ const browser = await chromium.launch({ headless: true, executablePath: process.
   await page.reload({ waitUntil: "domcontentloaded" });
   await waitLoaded(page);
   await page.waitForTimeout(900);
-  const chips = await page.locator(".qchip").allInnerTexts();
-  ok("20 mi chip when near known", chips.some((c) => c.includes("20")), chips.join(" | ").slice(0, 160));
-
-  // Select 20 mi explicitly if not already
-  const chip20 = page.locator(".qchip", { hasText: "20" });
-  if ((await chip20.count()) > 0) {
-    await chip20.first().click();
+  const hasMiles = (await page.locator("#milesSel").count()) > 0;
+  ok("Miles away picker present", hasMiles, "select#milesSel");
+  if (hasMiles) {
+    await page.selectOption("#milesSel", "15");
+    await page.selectOption("#milesSel", "25");
     await page.waitForTimeout(600);
   }
 

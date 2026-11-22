@@ -13,7 +13,7 @@ const checks = [
   // Everything is the default (smoke.mjs checks the same thing in a browser).
   ["Everything is the default activity view", html.includes('let _vibeStored="all"')],
   ["Soonest (date, then time) is the default activity sort", html.includes('let _sortStored="soon"')],
-  ["20 mile radius option", html.includes('[20,"\\u226420 mi"]')],
+  ["Miles away picker (2-50 mi, default 25)", html.includes('id="milesSel"') && html.includes("let _miles=25")],
   ["dayboard metadata", html.includes('name="gather-design" content="dayboard-v4"')],
   [
     "desktop and mobile Map/List stay visible",
@@ -30,9 +30,8 @@ const checks = [
       !html.includes("m.approx || m.lat == null"),
   ],
   [
-    "radius filter uses lat/lng null check",
-    /if\s*\(\s*state\.radius\s*&&\s*state\.near\s*\)\s*\{[\s\S]{0,200}?m\.lat\s*==\s*null/.test(html) ||
-      html.includes("m.lat==null||m.lng==null"),
+    "miles filter checks lat/lng and skips online",
+    html.includes('m.fmt!=="online"&&m.lat!=null&&m.lng!=null')&&html.includes("dist(o[0],o[1],m.lat,m.lng)>state.miles"),
   ],
   ["soft distance sort for approx", html.includes("_sortD")],
   ["automatic startup does not request location", !initBody.includes("getCurrentPosition") && !initBody.includes("requestMyArea")],

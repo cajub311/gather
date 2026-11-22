@@ -707,6 +707,8 @@
   .guide li{margin-bottom:4px}
   .guide-actions{display:flex;gap:8px;margin-top:12px}
 
+  .milesel{display:inline-flex;align-items:center;gap:6px;cursor:default}
+  .milesel select{border:0;background:transparent;font:inherit;font-weight:800;color:inherit;cursor:pointer;outline:none}
   .nopebtn{position:absolute;right:12px;top:48px;width:28px;height:28px;border-radius:50%;border:1px solid transparent;
     background:transparent;color:var(--muted2);font-size:15px;line-height:1;cursor:pointer;opacity:.55;padding:0}
   .nopebtn:hover,.nopebtn:focus-visible{opacity:1;background:#fff;border-color:var(--line,#d8dee6);color:#b42318}
@@ -1222,7 +1224,8 @@ try{const v=localStorage.getItem("gather-vibe");if(v==="all"||v==="social")_vibe
 // Things to do open most-popular-first; Soonest is one tap away and sticks.
 let _sortStored="soon";
 try{const v=localStorage.getItem("gather-sort-v2");if(v==="soon"||v==="near"||v==="popular")_sortStored=v;}catch(e){}
-const state={qAhead:6,mode:"activities",cat:new Set(),day:null,daySet:null,fmt:null,tod:"",nowOnly:false,q:"",near:null,nearGps:false,quick:new Set(),savedOnly:false,preset:"",area:"",horizon:6,radius:0,hideSeries:false,soonOnly:false,flag:"",hideEnded:true,vibe:_vibeStored,sort:_sortStored,limit:80};
+let _miles=25;try{const v=+localStorage.getItem("gather-miles");if([2,5,10,15,25,35,50].includes(v))_miles=v;}catch(e){}
+const state={miles:_miles,qAhead:6,mode:"activities",cat:new Set(),day:null,daySet:null,fmt:null,tod:"",nowOnly:false,q:"",near:null,nearGps:false,quick:new Set(),savedOnly:false,preset:"",area:"",horizon:6,radius:0,hideSeries:false,soonOnly:false,flag:"",hideEnded:true,vibe:_vibeStored,sort:_sortStored,limit:80};
 let _urlTimer=null;
 function todayDay(){return nowInfo().day;}
 function dayViewLabel(){
@@ -2089,12 +2092,10 @@ function filtered(opts={}){
     if(state.soonOnly&&!(isNow(m)||(m._minsUntil>=-15&&m._minsUntil<=120)))return false;
     if(state.hideSeries&&m.series)return false;
     if(state.flag&&!(m.flags||[]).includes(state.flag))return false;
-    // Radius filter when Near me is on. Approx pins use city-centroid coords —
-    // still filter them (Shoreview vs far suburbs) but never hard-drop the whole
-    // Meetup feed the way we used to with `if (m.approx) return false`.
-    if(state.radius&&state.near){
-      if(m.lat==null||m.lng==null||!isFinite(m.lat)||!isFinite(m.lng))return false;
-      if(dist(state.near[0],state.near[1],m.lat,m.lng)>state.radius)return false;
+    // Miles away (Meetup-style picker): measured from you if Near me is on, else downtown St. Paul.
+    if(state.mode==="activities"&&m.fmt!=="online"&&m.lat!=null&&m.lng!=null&&isFinite(m.lat)&&isFinite(m.lng)){
+      const o=state.near||[44.9537,-93.09];
+      if(dist(o[0],o[1],m.lat,m.lng)>state.miles)return false;
     }
     if(hideEnded&&isOver(m))return false;
     // Default activities feed = his scene (games games / dance / meet people). Kids & zoo sit under Everything.
@@ -2226,18 +2227,16 @@ function buildQuickFilters(){
     row.appendChild(b);
   }
 
-  // Distance only means something once we know where they are.
-  // 20 mi reaches the nearby-ring places the user asked not to miss.
-  if(state.near){
-    [[0,"Any distance"],[5,"\u22645 mi"],[10,"\u226410 mi"],[15,"\u226415 mi"],[20,"\u226420 mi"]].forEach(([r,lbl])=>{
-      const b=document.createElement("button");
-      b.type="button";b.className="qchip"+(state.radius===r?" on":"");
-      b.setAttribute("aria-pressed",state.radius===r?"true":"false");
-      b.textContent=lbl;
-      b.onclick=()=>{state.radius=r;buildQuickFilters();render();};
-      row.appendChild(b);
-    });
-  }
+  // Meetup-style "miles away" picker. Always there; counts from you if Near me is on.
+  const wrap=document.createElement("label");
+  wrap.className="qchip milesel";
+  wrap.innerHTML=`${state.near?"Within":"From St. Paul:"} <select id="milesSel" aria-label="Miles away">${[2,5,10,15,25,35,50].map(n=>`<option value="${n}"${n===state.miles?" selected":""}>${n} miles</option>`).join("")}</select>`;
+  wrap.querySelector("select").onchange=e=>{
+    state.miles=+e.target.value;
+    try{localStorage.setItem("gather-miles",String(state.miles));}catch(_){}
+    render();
+  };
+  row.appendChild(wrap);
 }
 function updateInsight(list){
   const el=document.getElementById("insight");
@@ -3090,7 +3089,6 @@ function init(){
     const s=JSON.parse(localStorage.getItem("gather-near")||"null");
     if(s&&s.c){
       state.near=s.c;state.nearGps=!!s.g;
-      if(!state.radius)state.radius=20;
       setUserMarker();document.getElementById("nearme").classList.add("on");
     }
   }catch(e){}
@@ -3111,7 +3109,6 @@ function persistNear(){
 function applyMyArea(btn){
   if(btn){btn.classList.add("on");btn.classList.remove("locating");btn.textContent="Near me";}
   // Default to the wider nearby ring the user asked for.
-  if(!state.radius)state.radius=20;
   setUserMarker();
   map.setView(state.near,state.nearGps?11:10);
   persistNear();
