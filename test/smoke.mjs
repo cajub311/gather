@@ -160,7 +160,7 @@ const browser = await chromium.launch({ headless: true, executablePath: process.
     await dialog.dismiss();
   });
 
-  await page.goto(BASE + "/", { waitUntil: "domcontentloaded", timeout: 90000 });
+  await page.goto(BASE + "/?mode=activities", { waitUntil: "domcontentloaded", timeout: 90000 });
   await waitLoaded(page);
   await page.waitForTimeout(600);
   await page.screenshot({ path: join(OUT, "desk-activities.png") });

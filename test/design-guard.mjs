@@ -7,6 +7,13 @@ const sw = readFileSync(new URL("../sw.js", import.meta.url), "utf8");
 const initBody = html.match(/function init\(\)\{([\s\S]*?)\n\}\nfunction setUserMarker/)?.[1] || "";
 
 const checks = [
+  // 2026-11-24 redesign: a bare visit lands on For You (top 5 + feed), recovery stays a tab.
+  ["For You home view exists", html.includes('id="fyTop"') && html.includes("function renderHome")],
+  ["Bare visit lands on For You", html.includes('if(!location.search.replace(/^\\?/,""))goHome();')],
+  ["Tabs: For You / All events / Recovery", html.includes('id="mHome"') && html.includes(">All events</button>") && html.includes(">Recovery</button>")],
+  ["Interest picker covers his five goals", ["friends","civic","biz","free","local"].every((k) => html.includes(`{id:"${k}"`))],
+  ["Business category exists", html.includes('Business:{name:"Business & Founders"')],
+  ["One font family (no Syne / Plex)", !/fonts\.googleapis\.com[^"]*(Syne|IBM\+Plex)/.test(html)],
   ["dayboard design marker", html.includes('data-design="dayboard-v4"')],
   // Default is For You (production dayboard); Everything stays one tap away.
   ["For You stays available as an option", html.includes('{id:"social",label:"For You"')],

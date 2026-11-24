@@ -18,7 +18,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&amp;family=IBM+Plex+Mono:wght@500;600&amp;family=Syne:wght@600;700;800&amp;display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&amp;display=swap" rel="stylesheet" />
 <style>
   /* Gather UI — Twin Cities night-pass dayboard
      river night + lake fog + signal coral
@@ -837,6 +837,107 @@
     .meet-card .meet-actions{gap:6px;margin-top:10px}
     .meet-card .act{padding:7px 10px;font-size:12px}
   }
+/* ===== For You redesign (2026-11-24): one font, warm paper, light header ===== */
+:root{
+  --ink:#1f2326;--ink-soft:#3a4146;--paper:#f6f1e8;--surface:#fffdf8;--surface2:#efe7d8;
+  --line:#e6dccb;--line-strong:#d2c5ac;--txt:#1f2326;--muted:#6b6558;--chip:#ece3d2;
+  --accent:#b8401a;--accent-dim:#efc7b6;--ember:#c4441c;--ember-soft:#f3d3c6;--bg:var(--paper);
+  --display:var(--font);--utility:var(--font);--radius:16px;
+  --shadow:0 1px 0 rgba(60,45,20,.04),0 8px 24px rgba(60,45,20,.07);
+}
+body.mode-activities .logo .dot,body:not(.mode-activities) .logo .dot{background:var(--ember)}
+header{background:var(--paper);color:var(--txt);border-bottom:1px solid var(--line);
+  display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;padding:10px 22px}
+header .header-top{padding:0;flex:0 0 auto;flex-wrap:nowrap;gap:12px}
+header .header-controls{padding:0;flex:1 1 380px}
+.logo{color:var(--txt);font-size:20px;letter-spacing:-.03em}
+.logo .dot{box-shadow:none;width:12px;height:12px}
+.city-tag,.brand h1,.tagline,.day-kicker{display:none}
+.hero-live{margin:0 0 0 4px;font-size:12px;color:var(--muted);font-weight:500}
+.brand{flex-direction:row;align-items:center;gap:10px}
+.iconbtn{background:transparent;border:1px solid var(--line-strong);color:var(--txt)}
+.iconbtn:hover{background:var(--surface);color:var(--txt);border-color:var(--ink)}
+.iconbtn.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+header .btn{background:var(--surface);border-color:var(--line-strong);color:var(--txt)}
+header .btn:hover{background:#fff;color:var(--txt);border-color:var(--ink)}
+header .btn.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.crisis a{color:#8a3a1c;background:transparent;border-color:var(--line-strong);font-weight:500}
+.crisis a:hover{background:var(--surface);border-color:#8a3a1c}
+.modes{background:var(--surface2);border:none}
+.modes button{color:var(--muted);font-weight:600}
+.modes button:hover{color:var(--txt)}
+.modes button.on{background:var(--ink);color:#fff;box-shadow:none}
+.modes button.on.support,.modes button.on.play{color:#fff}
+.searchbar input{background:var(--surface);border:1px solid var(--line-strong);color:var(--txt)}
+.searchbar input::placeholder{color:#9a9384}
+.searchbar input:focus{background:#fff;border-color:var(--ink);box-shadow:0 0 0 3px rgba(31,35,38,.08)}
+.btn:focus-visible,.chip:focus-visible,.fy-int:focus-visible,.fy-lens button:focus-visible,.fy-btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.mode-activities main{background:var(--paper)}
+
+/* ----- home ----- */
+#home{display:none;max-width:720px;margin:0 auto;padding:26px 16px 96px}
+body.home #home{display:block}
+body.home #sidebar,body.home #map,body.home #viewtabs{display:none!important}
+body.home main{display:block;overflow:auto;background:var(--paper)}
+body.home #nearme,body.home #nowbtn{display:none}
+.fy-date{font-size:13px;font-weight:600;color:var(--muted);letter-spacing:.01em}
+#home h2{margin:4px 0 6px;font-size:clamp(28px,6vw,40px);line-height:1.05;letter-spacing:-.035em;font-weight:800}
+.fy-sub{margin:0 0 18px;color:var(--muted);font-size:15px;line-height:1.45;max-width:520px}
+.fy-tuned{margin:0 0 22px;padding:14px 0 2px;border-top:1px solid var(--line)}
+.fy-tuned-h{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:9px}
+.fy-ints{display:flex;flex-wrap:wrap;gap:8px}
+.fy-int{border:1px solid var(--line-strong);background:var(--surface);color:var(--txt);border-radius:999px;padding:9px 15px;font-size:14px;font-weight:600;transition:background .12s,color .12s,border-color .12s}
+.fy-int:hover{border-color:var(--ink)}
+.fy-int.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.fy-card{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);margin:0 0 14px;display:flex;flex-direction:column;cursor:pointer;transition:transform .12s,box-shadow .12s}
+.fy-card:hover{transform:translateY(-1px);box-shadow:0 2px 0 rgba(60,45,20,.05),0 14px 30px rgba(60,45,20,.1)}
+.fy-media{position:relative;background-size:cover;background-position:center;aspect-ratio:16/7;display:flex;align-items:flex-end;padding:12px 14px;color:#fff}
+.fy-media .fy-cat{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;background:rgba(20,18,14,.55);padding:5px 10px;border-radius:999px;backdrop-filter:blur(4px)}
+.fy-rank{position:absolute;top:10px;left:12px;width:32px;height:32px;border-radius:50%;background:var(--surface);color:var(--ink);font-weight:800;font-size:16px;display:grid;place-items:center;box-shadow:var(--shadow)}
+.fy-new{position:absolute;top:12px;right:12px;background:var(--ember);color:#fff;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:4px 9px;border-radius:999px}
+.fy-body{padding:14px 16px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.fy-when{font-size:13px;font-weight:700;color:var(--accent)}
+.fy-title{margin:0;font-size:19px;line-height:1.2;letter-spacing:-.02em;font-weight:800;overflow-wrap:anywhere}
+.fy-card.top .fy-title{font-size:23px}
+.fy-place{font-size:14px;color:var(--muted)}
+.fy-why{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.fy-why span{font-size:12.5px;font-weight:600;color:var(--ink-soft);background:var(--chip);padding:4px 10px;border-radius:999px}
+.fy-why span.key{background:var(--ink);color:#fff}
+.fy-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;align-items:center}
+.fy-btn{border:1px solid var(--line-strong);background:transparent;color:var(--txt);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600;text-decoration:none;cursor:pointer;font-family:inherit}
+.fy-btn:hover{border-color:var(--ink);background:#fff}
+.fy-btn.go{background:var(--ink);border-color:var(--ink);color:#fff}
+.fy-btn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.fy-btn.quiet{border-color:transparent;color:var(--muted);margin-left:auto}
+.fy-card.row{flex-direction:row}
+.fy-card.row .fy-media{width:96px;min-width:96px;aspect-ratio:auto;padding:0;align-items:flex-start}
+.fy-card.row .fy-media .fy-cat{display:none}
+.fy-card.row .fy-new{top:6px;right:auto;left:6px;font-size:10px;padding:3px 7px}
+.fy-feedh{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:30px 0 8px;padding-top:18px;border-top:1px solid var(--line)}
+.fy-feedh h3{margin:0;font-size:22px;letter-spacing:-.025em}
+.fy-lens{display:flex;gap:6px;flex-wrap:wrap}
+.fy-lens button{border:none;background:transparent;color:var(--muted);font-weight:600;font-size:14px;padding:6px 10px;border-radius:999px;cursor:pointer;font-family:inherit}
+.fy-lens button.on{background:var(--ink);color:#fff}
+.fy-day{margin:22px 0 10px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.fy-more{display:block;margin:10px auto 0;padding:12px 26px}
+.fy-empty{padding:34px 8px;color:var(--muted);text-align:center;font-size:15px;line-height:1.5}
+.fy-skel{height:150px;border-radius:var(--radius);background:linear-gradient(90deg,var(--surface2),var(--surface),var(--surface2));background-size:200% 100%;animation:fyshim 1.4s infinite linear;margin-bottom:14px}
+@keyframes fyshim{to{background-position:-200% 0}}
+.fy-card.noimg{border-left:5px solid var(--cc,var(--line-strong))}
+.fy-card.noimg .fy-media{background:none!important;aspect-ratio:auto;padding:14px 16px 0;color:var(--muted);align-items:center;gap:10px;justify-content:flex-start}
+.fy-card.noimg .fy-media .fy-cat{background:none;backdrop-filter:none;padding:0;color:var(--muted);font-size:12px}
+.fy-card.noimg .fy-rank{position:static;box-shadow:none;background:var(--ink);color:#fff;width:28px;height:28px;font-size:14px;flex:none}
+.fy-card.noimg .fy-new{position:static;margin-left:auto}
+.fy-card.row.noimg .fy-media{display:none}
+.fy-card.noimg .fy-body{padding-top:8px}
+@media (prefers-reduced-motion:reduce){.fy-skel{animation:none}.fy-card{transition:none}}
+@media (max-width:760px){
+  header{padding:8px 14px;gap:6px 10px}
+  header .header-controls{flex:1 1 100%}
+  #home{padding:18px 14px 90px}
+  .fy-card.row .fy-media{width:78px;min-width:78px}
+  .fy-title{font-size:17px}.fy-card.top .fy-title{font-size:20px}
+}
 </style>
 
 </head>
@@ -859,8 +960,9 @@
     </div>
     <div class="header-controls">
       <div class="modes" role="tablist" aria-label="App mode">
-        <button id="mPlay" class="on play" data-mode="activities" role="tab" aria-selected="true">Things to do</button>
-        <button id="mSupport" data-mode="support" role="tab" aria-selected="false">Support meetings</button>
+        <button id="mHome" class="on" role="tab" aria-selected="true">For You</button>
+        <button id="mPlay" class="play" data-mode="activities" role="tab" aria-selected="false">All events</button>
+        <button id="mSupport" data-mode="support" role="tab" aria-selected="false">Recovery</button>
       </div>
       <div class="searchbar">
         <input id="q" type="search" placeholder="Search music, games, dance, AA…" autocomplete="off" aria-label="Search events and meetings" />
@@ -870,6 +972,16 @@
     </div>
   </header>
   <main>
+    <section id="home" aria-label="For You">
+      <div class="fy-date" id="fyDate"></div>
+      <h2>Your top 5 today</h2>
+      <p class="fy-sub" id="fySub">Looking around St. Paul…</p>
+      <div class="fy-tuned"><div class="fy-tuned-h">Tuned to you · tap to change</div><div class="fy-ints" id="fyInts"></div></div>
+      <div id="fyTop"></div>
+      <div class="fy-feedh"><h3>Keep scrolling</h3><div class="fy-lens" id="fyLens" role="group" aria-label="Show only"></div></div>
+      <div id="fyFeed"></div>
+      <button type="button" class="fy-btn fy-more" id="fyMore" hidden>Show more</button>
+    </section>
     <div class="viewtabs" id="viewtabs" role="tablist" aria-label="Map or list">
       <button type="button" role="tab" data-view="map" aria-selected="false">Map</button>
       <button type="button" role="tab" class="on" data-view="list" aria-selected="true">List</button>
@@ -1130,6 +1242,7 @@ const ACTIVITIES = {
   Language:{name:"Language Exchange",color:"#a78bfa"},
   Sports:{name:"Pro & College Sports",color:"#ef4444"},
   Civic:{name:"City Council & Civic",color:"#3b82f6"},
+  Business:{name:"Business & Founders",color:"#0f766e"},
 };
 // Unknown categories used to crash search and the map legend on META[cat].name.
 // A new feed category should degrade to a plain label, not a blank page.
@@ -1198,6 +1311,7 @@ const QUICK={
   activities:[
     {id:"games",label:"🎲 Board games",match:m=>m.cat==="Games"||/trivia|bingo|board game|tabletop|d&d|dungeons|game night|card game/i.test(m.name||"")},
     {id:"civic",label:"🏛️ City Council & hearings",match:m=>m.cat==="Civic"},
+    {id:"biz",label:"💼 Business & founders",match:m=>m.cat==="Business"},
     {id:"dance",label:"💃 Dance",match:m=>/dance|dj\b|communion|edm|techno|rave|dance church|zouk|salsa|swing dance/i.test((m.name||"")+" "+(m.desc||"")+" "+(m.types||[]).join(" "))},
     {id:"music",label:"🎵 Music & shows",match:m=>m.cat==="Music"},
     {id:"sports",label:"🏟️ Pro sports",match:m=>m.cat==="Sports"},
@@ -1587,6 +1701,8 @@ function meetingBlurb(m){
 function pushUrl(){
   clearTimeout(_urlTimer);
   _urlTimer=setTimeout(()=>{
+    // For You keeps a clean address so a reload or bookmark lands on For You again
+    if(document.body.classList.contains("home")){if(location.search)history.replaceState(null,"",location.pathname);return;}
     const p=new URLSearchParams();
     p.set("mode",state.mode);
     if(state.daySet)p.set("weekend","1");
@@ -1718,10 +1834,10 @@ function wxChip(m){
   return `<span class="b wx${wet?" wet":""}" title="${esc(w.summary)}">${icon} ${w.temp}\u00B0${esc(w.unit)}${pop}</span>`;
 }
 function activityEmoji(cat){
-  return {Music:"🎵",Art:"🎨",Outdoors:"🌿",Games:"🎲",Social:"🤝",Zen:"🧘",Fitness:"🏃",Books:"📚",Volunteer:"🤲",Language:"💬",Family:"🧒",Learn:"🎓",Food:"🍽️",Sports:"🏟️",Civic:"🏛️"}[cat]||"✨";
+  return {Music:"🎵",Art:"🎨",Outdoors:"🌿",Games:"🎲",Social:"🤝",Zen:"🧘",Fitness:"🏃",Books:"📚",Volunteer:"🤲",Language:"💬",Family:"🧒",Learn:"🎓",Food:"🍽️",Sports:"🏟️",Civic:"🏛️",Business:"💼"}[cat]||"✨";
 }
 function activityLabel(cat){
-  return {Music:"Music",Art:"Art & film",Outdoors:"Outdoors",Games:"Games",Social:"Social",Zen:"Wellness",Fitness:"Fitness",Books:"Books",Volunteer:"Volunteer",Language:"Languages",Family:"Kids & family",Learn:"Classes & talks",Food:"Food & drink",Sports:"Sports",Civic:"Council & civic"}[cat]||cat;
+  return {Music:"Music",Art:"Art & film",Outdoors:"Outdoors",Games:"Games",Social:"Social",Zen:"Wellness",Fitness:"Fitness",Books:"Books",Volunteer:"Volunteer",Language:"Languages",Family:"Kids & family",Learn:"Classes & talks",Food:"Food & drink",Sports:"Sports",Civic:"Council & civic",Business:"Business"}[cat]||cat;
 }
 function mapsDir(m){return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((m.loc?m.loc+" ":"")+m.addr)}`;}
 function icsFor(m){
@@ -2574,6 +2690,7 @@ function fitMapToResults(list){
   }
 }
 function render(){
+  if(document.body.classList.contains("home")){renderHome();return;}
   // every field that changes the result set must be here, or "show more" stays
   // expanded across an unrelated filter change and shows the wrong slice
   const sig=[state.mode,state.vibe,[...state.cat].sort().join(","),[...state.quick].sort().join(","),state.day,state.daySet?"wknd":"",effectiveFmt(),state.tod,state.nowOnly,state.q,state.near,state.savedOnly,state.area,state.horizon,state.hideEnded,state.radius,state.hideSeries,state.soonOnly,state.flag,state.sort].join("|");
@@ -2957,6 +3074,207 @@ async function loadEvents(){
   }
 }
 
+/* ===== FOR YOU home: top 5 + endless feed, tuned by what he said he wants ===== */
+const INTERESTS=[
+  {id:"friends",label:"Make friends"},
+  {id:"civic",label:"Government meetings"},
+  {id:"biz",label:"Business"},
+  {id:"free",label:"Free stuff"},
+  {id:"local",label:"Run by locals"},
+];
+let INT=new Set(INTERESTS.map(i=>i.id));
+try{const v=JSON.parse(localStorage.getItem("gather-int")||"null");if(Array.isArray(v))INT=new Set(v.filter(x=>INTERESTS.some(i=>i.id===x)));}catch(e){}
+let SEEN=null;            // series seen on earlier visits (null = first visit, nothing is "new")
+try{const v=JSON.parse(localStorage.getItem("gather-seen")||"null");if(Array.isArray(v))SEEN=new Set(v);}catch(e){}
+let homeLens="all",homeLimit=20;
+const BIG_VENUE=/xcel|target center|armory|first avenue|orpheum|state theatre|palace theatre|fillmore|turf club|ticketmaster|allianz|u\.s\. bank|vikings|timberwolves|\blynx\b|minnesota wild|twins|loons|gophers/i;
+const LOCAL_HINT=/meetup|library|council|association|district|co-?op|maker|community|neighborhood|zen center|church|market|club|collective|guild|society|volunteer|open mic|jam\b|bike|hike|run club|farm|garden|coffee|bookstore|books/i;
+function fyIsLocal(m){
+  if(m.cat==="Sports")return false;
+  const t=(m.source||"")+" "+(m.name||"")+" "+(m.loc||"");
+  if(BIG_VENUE.test(t))return false;
+  return LOCAL_HINT.test(t)||m.cat==="Civic"||m.cat==="Business";
+}
+function fyIsFriends(m){
+  if(["Social","Language","Games","Volunteer"].includes(m.cat))return true;
+  return /meetup|mixer|social|new in town|newcomer|trivia|game night|open mic|run club|hike|club\b|group\b|class\b|workshop/i.test((m.name||"")+" "+(m.source||""));
+}
+function fyOff(m){return m.date?dateOffset(m.date):dayOffset(m.day,todayDay());}
+function fyHash(str){let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0);}
+function fyScore(m){
+  const off=fyOff(m);
+  let s=Math.min(30,(m.pop||0)*0.3);
+  s+=off===0?14:off===1?8:off<=3?3:0;s-=off*1.2;
+  if(m.cat==="Civic"){s+=INT.has("civic")?24:4;if(m.hearing||/hearing/i.test(m.name||""))s+=3;}
+  if(m.cat==="Business")s+=INT.has("biz")?26:4;
+  if(fyIsFriends(m))s+=INT.has("friends")?20:3;
+  if(m.free||(m.types||[]).some(t=>/^free$/i.test(t)))s+=INT.has("free")?18:3;
+  if(fyIsLocal(m))s+=INT.has("local")?14:2;
+  let t=0;try{t=tasteScore(m)||0;}catch(e){}
+  s+=Math.max(-20,Math.min(20,t));
+  if(isKidsy(m)||m.cat==="Family")s-=60;
+  if(m.cat==="Sports")s-=12;
+  if(m.fmt==="online")s-=12;
+  if(m.timeGuess)s-=4;
+  if(m.image)s+=3;
+  s+=(fyHash(todayDateKey()+m._id)%700)/100; // small daily shuffle so the picks change
+  return s;
+}
+function fyLensMatch(m){
+  if(homeLens==="all")return true;
+  if(homeLens==="civic")return m.cat==="Civic";
+  if(homeLens==="biz")return m.cat==="Business";
+  if(homeLens==="free")return !!(m.free||(m.types||[]).some(t=>/^free$/i.test(t)));
+  if(homeLens==="friends")return fyIsFriends(m);
+  if(homeLens==="local")return fyIsLocal(m);
+  return true;
+}
+function fyWhy(m,isNew){
+  const r=[];
+  if(m.cat==="Civic")r.push({t:(m.hearing||/hearing/i.test(m.name||""))?"Public hearing: have your say":"Public meeting",k:1});
+  if(m.cat==="Business")r.push({t:"Business & founders",k:1});
+  if(fyIsFriends(m)&&m.cat!=="Civic"&&m.cat!=="Business")r.push({t:"Good for meeting people"});
+  if(m.free||(m.types||[]).some(t=>/^free$/i.test(t)))r.push({t:"Free"});
+  if(fyIsLocal(m)&&m.cat!=="Civic"&&m.cat!=="Business")r.push({t:"Run by locals"});
+  if(m.going>=3)r.push({t:m.going+" going"});
+  if(!r.length&&m.popWhy&&m.popWhy[0])r.push({t:String(m.popWhy[0])});
+  return r.slice(0,3);
+}
+function fyWhen(m){
+  const rel=relWhen(m);
+  return `${whenDay(m)} · ${whenTime(m)}${rel?` · ${rel}`:""}`;
+}
+function fyCard(m,o){
+  const color=meta(m.cat).color||"#999",img=safeHref(m.image),href=safeHref(m.url);
+  const media=img?`background-image:url('${img.replace(/'/g,"%27")}')`:`background:linear-gradient(135deg,${color},color-mix(in srgb,${color} 45%,#1f2326))`;
+  const why=fyWhy(m).map(x=>`<span class="${x.k?"key":""}">${esc(x.t)}</span>`).join("");
+  const el=document.createElement("article");
+  el.className="fy-card"+(o.top?" top":" row")+(img?"":" noimg");el.style.setProperty("--cc",color);el.dataset.id=m._id;
+  el.innerHTML=`<div class="fy-media" style="${media}">${o.top?`<span class="fy-rank">${o.rank}</span>`:""}${o.isNew?'<span class="fy-new">New</span>':""}<span class="fy-cat">${esc(activityLabel(m.cat))}</span></div>
+    <div class="fy-body">
+      <div class="fy-when">${esc(fyWhen(m))}</div>
+      <h3 class="fy-title">${esc(m.name)}</h3>
+      <div class="fy-place">${esc(m.loc||"")}${m._d!=null?` · ${m._d.toFixed(1)} mi`:""}</div>
+      ${why?`<div class="fy-why">${why}</div>`:""}
+      <div class="fy-acts">
+        ${href?`<a class="fy-btn go" href="${href}" target="_blank" rel="noopener">Details</a>`:""}
+        ${hasMapPin(m)?`<a class="fy-btn" href="${mapsDir(m)}" target="_blank" rel="noopener">Directions</a>`:""}
+        <button type="button" class="fy-btn${SAVED.has(m._id)?" on":""}" data-act="save">${SAVED.has(m._id)?"Saved":"Save"}</button>
+        <button type="button" class="fy-btn quiet" data-act="nope" aria-label="Not interested in ${esc(m.name)}">Not for me</button>
+      </div>
+    </div>`;
+  el.addEventListener("click",e=>{
+    const a=e.target.closest("[data-act]");
+    if(a){
+      e.stopPropagation();
+      if(a.dataset.act==="nope"){openNope(m);return;}
+      const was=SAVED.has(m._id);was?SAVED.delete(m._id):SAVED.add(m._id);
+      try{bumpTaste(m,was?-2:2);}catch(_){}
+      persistSaved();updateSavedBtn();
+      a.classList.toggle("on",!was);a.textContent=was?"Save":"Saved";return;
+    }
+    if(e.target.closest("a"))return;
+    if(href)window.open(href,"_blank","noopener");
+    else if(hasMapPin(m))window.open(mapsDir(m),"_blank","noopener");
+  });
+  return el;
+}
+function fyPool(){
+  return DATA.filter(m=>!isOver(m)&&!isNope(m)&&fyOff(m)<=9&&!isKidsy(m)&&m.cat!=="Family");
+}
+function fyPickTop(pool){
+  const seen=new Set(),ranked=[];
+  pool.map(m=>({m,s:fyScore(m)})).sort((a,b)=>b.s-a.s).forEach(x=>{
+    const k=seriesKeyOf(x.m);if(seen.has(k))return;seen.add(k);ranked.push(x);
+  });
+  const picks=[],used={};
+  const take=x=>{picks.push(x);used[x.m.cat]=(used[x.m.cat]||0)+1;};
+  // make sure the scarce things he asked for show up if they exist this week
+  for(const [id,cat] of [["civic","Civic"],["biz","Business"]]){
+    if(!INT.has(id))continue;
+    const c=ranked.find(x=>x.m.cat===cat&&!picks.includes(x)&&fyOff(x.m)<=6);
+    if(c)take(c);
+  }
+  while(picks.length<5){
+    let best=null,bs=-1e9;
+    for(const x of ranked){
+      if(picks.includes(x))continue;
+      const sc=x.s-(used[x.m.cat]||0)*24;
+      if(sc>bs){bs=sc;best=x;}
+    }
+    if(!best)break;take(best);
+  }
+  picks.sort((a,b)=>b.s-a.s);
+  return {picks:picks.map(x=>x.m),ranked:ranked.map(x=>x.m)};
+}
+function fyIsNew(m){return !!SEEN&&!SEEN.has(seriesKeyOf(m));}
+function renderHome(){
+  const top=document.getElementById("fyTop"),feed=document.getElementById("fyFeed");
+  if(!top||!feed)return;
+  document.getElementById("fyDate").textContent=new Intl.DateTimeFormat("en-US",{timeZone:"America/Chicago",weekday:"long",month:"long",day:"numeric"}).format(new Date());
+  const ints=document.getElementById("fyInts");
+  ints.innerHTML="";
+  INTERESTS.forEach(i=>{
+    const b=document.createElement("button");b.type="button";b.className="fy-int"+(INT.has(i.id)?" on":"");b.textContent=i.label;b.setAttribute("aria-pressed",INT.has(i.id)?"true":"false");
+    b.onclick=()=>{INT.has(i.id)?INT.delete(i.id):INT.add(i.id);try{localStorage.setItem("gather-int",JSON.stringify([...INT]));}catch(e){}homeLimit=20;renderHome();};
+    ints.appendChild(b);
+  });
+  const lens=document.getElementById("fyLens");lens.innerHTML="";
+  [["all","All"],["civic","Government"],["biz","Business"],["friends","People"],["free","Free"]].forEach(([id,l])=>{
+    const b=document.createElement("button");b.type="button";b.textContent=l;b.className=homeLens===id?"on":"";
+    b.onclick=()=>{homeLens=id;homeLimit=20;renderHome();};lens.appendChild(b);
+  });
+  top.innerHTML="";feed.innerHTML="";
+  const loading=EVENTS_LOADING&&!LIVE_EVENTS.length;
+  const sub=document.getElementById("fySub");
+  const more=document.getElementById("fyMore");more.hidden=true;
+  if(loading){
+    sub.textContent="Looking around St. Paul…";
+    for(let i=0;i<3;i++){const d=document.createElement("div");d.className="fy-skel";top.appendChild(d);}
+    return;
+  }
+  const pool=fyPool();
+  const {picks,ranked}=fyPickTop(pool);
+  sub.textContent=`Chosen from ${pool.length.toLocaleString()} things coming up near you. The list changes every day.`;
+  if(!picks.length){top.innerHTML='<div class="fy-empty">Nothing matched yet. Try turning more of the buttons above on, or look at All events.</div>';return;}
+  picks.forEach((m,i)=>top.appendChild(fyCard(m,{top:true,rank:i+1,isNew:fyIsNew(m)})));
+  const pickSet=new Set(picks);
+  const rest=ranked.filter(m=>!pickSet.has(m)&&fyLensMatch(m));
+  // feed reads in time order inside each day, best-for-you days first isn't needed: group by day
+  const shown=rest.slice(0,homeLimit).sort((a,b)=>(fyOff(a)-fyOff(b))||String(a.time).localeCompare(String(b.time)));
+  let lastDay=null;
+  if(!shown.length)feed.innerHTML='<div class="fy-empty">Nothing in this view this week.</div>';
+  shown.forEach(m=>{
+    const off=fyOff(m);
+    if(off!==lastDay){lastDay=off;const h=document.createElement("div");h.className="fy-day";h.textContent=off===0?"Today":off===1?"Tomorrow":whenDay(m);feed.appendChild(h);}
+    feed.appendChild(fyCard(m,{isNew:fyIsNew(m)}));
+  });
+  if(rest.length>homeLimit){more.hidden=false;more.textContent=`Show more (${Math.min(20,rest.length-homeLimit)} of ${rest.length-homeLimit} left)`;more.onclick=()=>{homeLimit+=20;renderHome();};}
+  // remember what he has now seen, so tomorrow's "New" means new
+  if(LIVE_EVENTS.length){
+    try{
+      const all=new Set(SEEN||[]);ranked.forEach(m=>all.add(seriesKeyOf(m)));
+      const arr=[...all];localStorage.setItem("gather-seen",JSON.stringify(arr.slice(-2500)));
+      if(!SEEN)SEEN=new Set(); // first visit: from now on, unseen series count as new
+    }catch(e){}
+  }
+  const hl=document.getElementById("heroLive");
+  if(hl)hl.innerHTML=`<span></span>${LIVE_EVENTS.length.toLocaleString()} live listings`;
+}
+function goHome(){
+  const mh=document.getElementById("mHome"),mp=document.getElementById("mPlay"),ms=document.getElementById("mSupport");
+  if(state.mode!=="activities")setMode("activities",{keepFilters:true});
+  document.body.classList.add("home");
+  mh.classList.add("on");mh.setAttribute("aria-selected","true");
+  [mp,ms].forEach(b=>{b.classList.remove("on");b.setAttribute("aria-selected","false");});
+  homeLimit=20;renderHome();
+  try{document.querySelector("main").scrollTop=0;}catch(e){}
+}
+function leaveHome(){
+  if(!document.body.classList.contains("home"))return;
+  document.body.classList.remove("home");
+  const mh=document.getElementById("mHome");mh.classList.remove("on");mh.setAttribute("aria-selected","false");
+}
 function init(){
   map=L.map("map",{zoomControl:true}).setView(TC_CENTER,11);
   // CARTO's free basemaps started answering every tile with an "API KEY
@@ -2998,8 +3316,12 @@ function init(){
       };
     });
   });
-  document.getElementById("mSupport").onclick=()=>setMode("support");
-  document.getElementById("mPlay").onclick=()=>setMode("activities");
+  document.getElementById("mSupport").onclick=()=>{leaveHome();setMode("support");};
+  document.getElementById("mPlay").onclick=()=>{leaveHome();setMode("activities");};
+  document.getElementById("mHome").onclick=goHome;
+  // searching or opening Saved means he wants the full list
+  document.getElementById("q").addEventListener("input",e=>{if(e.target.value&&document.body.classList.contains("home")){leaveHome();setMode("activities",{keepFilters:true});}},true);
+  document.getElementById("btnSaved").addEventListener("click",()=>{if(document.body.classList.contains("home")){leaveHome();setMode("activities",{keepFilters:true});}},true);
   buildPresets();
   document.querySelectorAll("#todbar .tod").forEach(btn=>{
     btn.onclick=()=>{
@@ -3094,6 +3416,8 @@ function init(){
   }catch(e){}
   setMode(state.mode,{keepFilters:true});
   buildPresets();
+  // A bare visit lands on For You; any link with settings in it (shared view, search, support) keeps working as before.
+  if(!location.search.replace(/^\?/,""))goHome();
   loadLive();
   loadEvents();
   if(urlId)setTimeout(()=>focusFromId(urlId),800);

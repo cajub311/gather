@@ -162,6 +162,12 @@ const SOURCES = [
   { type: "meetup", name: "Meetup Writing", url: "https://www.meetup.com/find/?keywords=writing&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Books" },
   { type: "meetup", name: "Meetup Pickleball", url: "https://www.meetup.com/find/?keywords=pickleball&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Fitness" },
   // Active board-game groups (weekly brewery / shop nights around the metro)
+  // Business & local founders (cat Business keeps "networking" from being dropped as junk)
+  { type: "eventbrite", name: "Eventbrite Business St Paul", url: "https://www.eventbrite.com/d/mn--saint-paul/business--events--this-week/", cat: "Business" },
+  { type: "eventbrite", name: "Eventbrite Business Mpls", url: "https://www.eventbrite.com/d/mn--minneapolis/business--events--this-week/", cat: "Business" },
+  { type: "meetup", name: "Meetup Startups", url: "https://www.meetup.com/find/?keywords=startup&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Business" },
+  { type: "meetup", name: "Meetup Entrepreneurs", url: "https://www.meetup.com/find/?keywords=entrepreneur&location=us--mn--saint-paul&source=EVENTS&eventType=inPerson", cat: "Business" },
+  { type: "meetup", name: "Meetup Bitcoin", url: "https://www.meetup.com/find/?keywords=bitcoin&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Business" },
   // Civic / neighborhood hangouts
   { type: "meetup", name: "Meetup Civic", url: "https://www.meetup.com/find/?keywords=civic%20engagement&location=us--mn--saint-paul&source=EVENTS&eventType=inPerson", fallback: "Social" },
   { type: "meetup", name: "Meetup Neighborhood", url: "https://www.meetup.com/find/?keywords=neighborhood&location=us--mn--saint-paul&source=EVENTS&eventType=inPerson", cat: "Social" },
@@ -245,8 +251,11 @@ const JUNK = [
   // self-guided phone-app city hunts listed for every day of the year
   /\bexam prep\b|certification\b.*\b(?:bootcamp|exam)\b|\b(?:pmp|capm|six sigma|scrum master)\b|masterclass for (?:new )?managers|leadership excellence|real estate invest|property deals?|passive income|\bforex\b|financial freedom|\b(?:minneapolis|saint paul|st\.? paul)\b.*scavenger hunt|mystery quest|adventure quest|let.?s roam/i,
 ];
-function isJunk(title) {
-  const t = title || "";
+function isJunk(title, biz) {
+  let t = title || "";
+  // Business rows only lose their "networking"/"info session" junk hit; the
+  // spam and exam-prep rules still apply.
+  if (biz) { if (BIZ_SPAM.test(t)) return true; t = t.replace(/business networking|\(BNI\)|info(?:rmation)? session/gi, "meetup"); }
   return JUNK.some((re) => re.test(t));
 }
 
@@ -287,6 +296,11 @@ function isFillerOnly(catNames) {
 // venue's `fallback` instead of dumping everything into "Social".
 // Public meetings and hearings. Kept narrow on purpose: "council" alone also
 // means a youth council or a book-club "council of readers".
+// Local founders, small-business and money events. Kept out of the JUNK list on
+// purpose: "business networking" there is mostly deal-flow ads, but a startup
+// meetup or a chamber after-hours is exactly what this category is for.
+const BIZ_RE = /\b(start-?ups?|entrepreneur\w*|founders?|small business(?:es)?|business owners?|business (?:networking|after hours|mixer)|pitch (?:night|competition|event)|1 million cups|angel invest\w*|venture capital|bitcoin|chamber of commerce|freelanc\w*|side hustle|sbdc|co-?working|product (?:meetup|managers?)|ai (?:meetup|builders)|hackathon)\b/i;
+const BIZ_SPAM = /\b(real estate invest\w*|property deals?|passive income|forex|financial freedom|exam prep|certification|six sigma|scrum master|mlm|network marketing|crypto (?:trading )?signals?|get rich|webinar replay|test drive|free trial|office space|workspace day|day office|co-?working (?:space|for the day)|small business saturday|market\\b|festival|pop-?up|protest|recovery|support group)\b/i;
 const CIVIC_RE = /\b(city council|county board|board of commissioners|school board|park board|planning commission|zoning (?:board|committee|hearing)|public hearing|budget hearing|truth in taxation|town hall|community council|district council|neighborhood (?:association|council)|listening session|public comment|city hall|legislative hearing|charter commission|met(?:ropolitan)? council|candidate forum|ward meeting)\b/i;
 function classify(text, catNames) {
   const cats = (catNames || []).filter(Boolean).join(" ").toLowerCase();
@@ -309,6 +323,7 @@ function classify(text, catNames) {
   const t = ((text || "") + " " + cats).toLowerCase();
   const has = (re) => re.test(t);
   if (CIVIC_RE.test(t)) return "Civic";
+  if (BIZ_RE.test(t) && !BIZ_SPAM.test(t)) return "Business";
   if (has(/trivia|quiz night|\bbingo\b|board game|tabletop|chess|d&d|dungeons|magic the|euchre|card game|crokinole|jigsaw|puzzl|pinball|arcade|karaoke|game night|clocktower|free pool|pool (?:league|tournament|night)|billiards|\bdarts?\b|cribbage|mah ?jongg?|shuffleboard|skee-?ball|\bkubb\b/)) return "Games";
   // Hands-on craft classes: their blurbs mention "build", "beginners" or
   // "skills" and landed in Fitness or Music.
@@ -1864,8 +1879,11 @@ module.exports = async (req, res) => {
       // and a Squarespace or Eventbrite pin can land in New York or Mankato
       let list = r.value.list.filter((e) => e.date >= todayStr && e.date <= endStr &&
         inMetro(e.lat, e.lng) && !isUnavailableTitle(e.name) &&
-        ((e.cat === "Civic" && (src.civic || src.type === "legistar" || src.type === "civicstatic" || CIVIC_RE.test(e.name))) || (!isNoise(e.name) && !isJunk(e.name))));
+        ((e.cat === "Civic" && (src.civic || src.type === "legistar" || src.type === "civicstatic" || CIVIC_RE.test(e.name))) || (!isNoise(e.name) && !isJunk(e.name, e.cat === "Business"))));
       if (src.civic) list = list.filter((e) => !/truth in taxation/i.test(e.name));
+      // Meetup/Eventbrite keyword pages are fuzzy ("bitcoin" finds a pet-store
+      // protest): a Business-source row has to read like a business event.
+      if (src.cat === "Business") list = list.filter((e) => BIZ_RE.test(e.name + " " + (e.desc || "")) && !BIZ_SPAM.test(e.name));
       for (const e of list) {
         // "November Board Meeting" means nothing without whose board it is
         if (src.civic) {
