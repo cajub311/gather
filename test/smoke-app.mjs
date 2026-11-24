@@ -69,6 +69,28 @@ try {
   await p.waitForTimeout(400);
   check("Hide removes it from For You", !(await p.locator("#top5 .title").allInnerTexts()).includes(firstTitle));
 
+  // Interesting / Not for me teach it
+  await p.evaluate(() => window.scrollTo(0, 0));
+  const t0v = await p.evaluate(() => pickTop(pool()).top.map((e) => e.id).join());
+  const downTitle = await p.locator("#top5 .title").nth(1).innerText();
+  await p.locator('#top5 .card [data-r="down"]').nth(1).click();
+  await p.waitForTimeout(400);
+  check("Not for me removes the card", !(await p.locator("#top5 .title").allInnerTexts()).includes(downTitle));
+  await p.locator('#feed .card [data-r="up"]').first().click();
+  check("Interesting lights up", (await p.locator('#feed .card [data-r="up"]').first().getAttribute("aria-pressed")) === "true");
+  // teach deck: 10 quick picks
+  await p.locator("#teachBtn").click();
+  await p.waitForSelector("#sheet.on #deck");
+  for (let i = 0; i < 10; i++) await p.locator(`#deck [data-d="${i % 3 === 0 ? "up" : i % 3 === 1 ? "down" : "skip"}"]`).click();
+  check("teach deck finishes", (await p.locator("#deck h2").innerText()).startsWith("Thanks"));
+  await p.locator('#deck [data-d="done"]').click();
+  await p.waitForTimeout(400);
+  const nv = await p.evaluate(() => Object.keys(TASTE.votes).length);
+  check("taps are remembered", nv >= 8, `votes=${nv}`);
+  check("taps change the top 5", t0v !== (await p.evaluate(() => pickTop(pool()).top.map((e) => e.id).join())));
+  await p.locator('.bnav [data-tab="plans"]').click();
+  check("Plans shows what it learned", (await p.locator("#learned .learned span").count()) >= 3);
+
   // interests change the picks, and survive reload
   await p.locator('.bnav [data-tab="plans"]').click();
   const t0 = await p.evaluate(() => pickTop(pool()).top.map((e) => e.id).join());
