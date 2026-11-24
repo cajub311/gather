@@ -2,18 +2,17 @@
 /** Structural guard: reject deployments that erase Gather's working dayboard. */
 import { readFileSync } from "node:fs";
 
-const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+const html = readFileSync(new URL("../classic.html", import.meta.url), "utf8");
 const sw = readFileSync(new URL("../sw.js", import.meta.url), "utf8");
 const initBody = html.match(/function init\(\)\{([\s\S]*?)\n\}\nfunction setUserMarker/)?.[1] || "";
 
+const app = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const checks = [
-  // 2026-11-24 redesign: a bare visit lands on For You (top 5 + feed), recovery stays a tab.
-  ["For You home view exists", html.includes('id="fyTop"') && html.includes("function renderHome")],
-  ["Bare visit lands on For You", html.includes('if(!location.search.replace(/^\\?/,""))goHome();')],
-  ["Tabs: For You / All events / Recovery", html.includes('id="mHome"') && html.includes(">All events</button>") && html.includes(">Recovery</button>")],
-  ["Interest picker covers his five goals", ["friends","civic","biz","free","local"].every((k) => html.includes(`{id:"${k}"`))],
-  ["Business category exists", html.includes('Business:{name:"Business & Founders"')],
-  ["One font family (no Syne / Plex)", !/fonts\.googleapis\.com[^"]*(Syne|IBM\+Plex)/.test(html)],
+  // Gather 2 (2026-11-24): new app at /, the old dayboard lives on at /classic.html
+  ["Gather 2 app marker", app.includes('name="gather-design" content="gather-2"')],
+  ["Gather 2 has For You, Groups, Explore, Plans", ["you", "groups", "explore", "plans"].every((t) => app.includes(`data-tab="${t}"`))],
+  ["Recovery meetings stay one tap away", app.includes('href="/classic.html?mode=support"')],
+  ["Crisis line stays", app.includes('href="tel:988"')],
   ["dayboard design marker", html.includes('data-design="dayboard-v4"')],
   // Default is For You (production dayboard); Everything stays one tap away.
   ["For You stays available as an option", html.includes('{id:"social",label:"For You"')],
@@ -43,7 +42,7 @@ const checks = [
   ["soft distance sort for approx", html.includes("_sortD")],
   ["automatic startup does not request location", !initBody.includes("getCurrentPosition") && !initBody.includes("requestMyArea")],
   ["installed app refreshes itself", html.includes('serviceWorker.addEventListener("controllerchange"')],
-  ["current app cache", sw.includes('const CACHE = "gather-v11"')],
+  ["current app cache", sw.includes('const CACHE = "gather-v12"')],
 ];
 
 const failed = checks.filter(([, ok]) => !ok);

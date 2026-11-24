@@ -1,7 +1,7 @@
 // Gather service worker — network-first for the page and APIs (so updates and
 // live events always win), cache fallback so the app still opens offline.
-const CACHE = "gather-v11";
-const SHELL = ["/", "/manifest.json", "/icons/icon-192.png", "/icons/icon-512.png"];
+const CACHE = "gather-v12";
+const SHELL = ["/", "/classic.html", "/manifest.json", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));

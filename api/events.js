@@ -165,6 +165,16 @@ const SOURCES = [
   // Business & local founders (cat Business keeps "networking" from being dropped as junk)
   { type: "eventbrite", name: "Eventbrite Business St Paul", url: "https://www.eventbrite.com/d/mn--saint-paul/business--events--this-week/", cat: "Business" },
   { type: "eventbrite", name: "Eventbrite Business Mpls", url: "https://www.eventbrite.com/d/mn--minneapolis/business--events--this-week/", cat: "Business" },
+  // Picked for Charlie (2026-11-24): fantasy reader, Bitcoin + Rand, AI and vibe
+  // coding, retro games and modding, chess, making friends in St. Paul.
+  { type: "meetup", name: "Meetup Fantasy & Sci-Fi", url: "https://www.meetup.com/find/?keywords=fantasy%20sci-fi&location=us--mn--saint-paul&source=EVENTS&eventType=inPerson", cat: "Books" },
+  { type: "meetup", name: "Meetup AI", url: "https://www.meetup.com/find/?keywords=artificial%20intelligence&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Learn" },
+  { type: "meetup", name: "Meetup Coding", url: "https://www.meetup.com/find/?keywords=coding&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Learn" },
+  { type: "meetup", name: "Meetup Game Dev", url: "https://www.meetup.com/find/?keywords=game%20development&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Games" },
+  { type: "meetup", name: "Meetup Video Games", url: "https://www.meetup.com/find/?keywords=video%20games&location=us--mn--saint-paul&source=EVENTS&eventType=inPerson", cat: "Games" },
+  { type: "meetup", name: "Meetup Chess", url: "https://www.meetup.com/find/?keywords=chess&location=us--mn--saint-paul&source=EVENTS&eventType=inPerson", cat: "Games" },
+  { type: "meetup", name: "Meetup Philosophy", url: "https://www.meetup.com/find/?keywords=philosophy&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Learn" },
+  { type: "meetup", name: "Meetup Make Friends", url: "https://www.meetup.com/find/?keywords=make%20friends&location=us--mn--saint-paul&source=EVENTS&eventType=inPerson", cat: "Social" },
   { type: "meetup", name: "Meetup Startups", url: "https://www.meetup.com/find/?keywords=startup&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Business" },
   { type: "meetup", name: "Meetup Entrepreneurs", url: "https://www.meetup.com/find/?keywords=entrepreneur&location=us--mn--saint-paul&source=EVENTS&eventType=inPerson", cat: "Business" },
   { type: "meetup", name: "Meetup Bitcoin", url: "https://www.meetup.com/find/?keywords=bitcoin&location=us--mn--minneapolis&source=EVENTS&eventType=inPerson", cat: "Business" },
@@ -916,12 +926,29 @@ async function fromMeetup(src) {
     Object.values(value).forEach(walk);
   }
   walk(data.props && data.props.pageProps);
+  // Meetup's page keeps an Apollo cache: an event's group, venue and photos are
+  // {__ref:"Group:123"} links into it, not the objects. Follow them, or every
+  // Meetup row loses its group name, photo and rating (found 2026-11-24).
+  const apollo = (data.props && data.props.pageProps && data.props.pageProps.__APOLLO_STATE__) || {};
+  const deref = (v) => (v && v.__ref ? apollo[v.__ref] || null : v || null);
+  const photoUrl = (v) => {
+    const ph = deref(v);
+    if (!ph) return undefined;
+    if (ph.highResUrl) return ph.highResUrl;
+    if (ph.baseUrl && ph.id) return `${ph.baseUrl}${ph.id}/676x380.webp`;
+    return undefined;
+  };
   return found.map((e) => {
     const p = chicagoParts(Date.parse(e.dateTime));
-    const venue = e.venue || {};
+    const g = deref(e.group) || {};
+    e.group = g;
+    const venue = deref(e.venue) || {};
+    const rating = g.stats && g.stats.eventRatings;
+    const rsvpN = Number((e.rsvps && e.rsvps.totalCount) || (e.going && e.going.totalCount) || 0);
     const point = cityPoint(venue.city);
     const address = [venue.address, venue.city, venue.state].filter(Boolean).join(", ");
-    const going = e.going && Number(e.going.totalCount);
+    const going = rsvpN;
+    const fee = e.feeSettings && Number(e.feeSettings.amount);
     const guessed = classify(`${e.title} ${(e.group && e.group.name) || ""}`);
     return {
       // Keyword Meetup scrapes pass cat so "board games" doesn't land in Social
@@ -942,8 +969,13 @@ async function fromMeetup(src) {
       approx: true,
       types: [going ? `${going} going` : "", e.group && e.group.name].filter(Boolean).slice(0, 2),
       url: e.eventUrl,
-      image: e.displayPhoto && e.displayPhoto.highResUrl,
+      image: photoUrl(e.displayPhoto) || photoUrl(e.featuredEventPhoto) || photoUrl(g.keyGroupPhoto) || photoUrl(g.groupPhoto),
       going: going > 0 ? going : undefined,
+      group: g.name ? decode(g.name) : undefined,
+      groupUrl: g.urlname ? `https://www.meetup.com/${g.urlname}/` : undefined,
+      groupRating: rating && rating.totalRatings >= 5 ? Math.round(rating.average * 10) / 10 : undefined,
+      groupRatings: rating && rating.totalRatings >= 5 ? rating.totalRatings : undefined,
+      price: fee > 0 ? `$${fee}` : undefined,
       date: `${p.y}-${String(p.mo).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`,
       dateLabel: `${DOW[dayKey(p)]}, ${MON[p.mo - 1]} ${p.d}`,
       source: src.name,

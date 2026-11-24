@@ -89,7 +89,7 @@ async function main() {
   L(`BASE ${BASE}`);
 
   // Static proof: shipped HTML must include radius fix markers
-  const html = await (await fetch(BASE + "/")).text();
+  const html = await (await fetch(BASE + "/classic.html")).text();
   ok(
     "shipped HTML no approx hard-drop",
     !html.includes("m.approx||m.lat==null") && !html.includes("m.approx || m.lat == null"),
@@ -160,7 +160,7 @@ const browser = await chromium.launch({ headless: true, executablePath: process.
     await dialog.dismiss();
   });
 
-  await page.goto(BASE + "/?mode=activities", { waitUntil: "domcontentloaded", timeout: 90000 });
+  await page.goto(BASE + "/classic.html?mode=activities", { waitUntil: "domcontentloaded", timeout: 90000 });
   await waitLoaded(page);
   await page.waitForTimeout(600);
   await page.screenshot({ path: join(OUT, "desk-activities.png") });
