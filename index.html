@@ -375,6 +375,8 @@ const $=s=>document.querySelector(s);
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function safeUrl(u){if(!u||typeof u!=="string")return "";try{const x=new URL(u,location.href);return /^https?:$/.test(x.protocol)?x.href:"";}catch(e){return "";}}
 function cssUrl(u){const s=safeUrl(u);return s?`url('${s.replace(/['"\\()]/g,c=>"%"+c.charCodeAt(0).toString(16))}')`:"";}
+// search words match at a word start; "ai" must be its own word (not the ai in "training")
+function wordRe(w){const x=w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");return new RegExp(w.length<=3?`(?:^|[^a-z0-9])${x}(?:$|[^a-z0-9])`:`(?:^|[^a-z0-9])${x}`,"i");}
 function hash(str){let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
 function seriesName(n){return String(n||"").toLowerCase().replace(/\(.*?\)|\[.*?\]/g,"").replace(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s*\d{1,2}(st|nd|rd|th)?\b/g,"").replace(/\b\d{1,2}\/\d{1,2}(\/\d{2,4})?\b/g,"").replace(/[^a-z0-9 ]+/g," ").replace(/\s+/g," ").trim();}
 const CAT_COLOR={Games:"#8b5cf6",Books:"#c98a12",Social:"#e0622f",Language:"#7c6ae0",Business:"#0f766e",Civic:"#2f5fd0",Learn:"#0e8aa8",Music:"#d43f7a",Art:"#c0487d",Outdoors:"#4f8a2b",Fitness:"#d24a3a",Food:"#d26a3a",Zen:"#3aa28f",Volunteer:"#2f9e6a",Sports:"#b33",Family:"#c9a227"};
@@ -832,7 +834,7 @@ function renderGroups(){
   if(gLens==="following")list=list.filter(x=>FOLLOW.has(x.key));
   else if(gLens==="meetup")list=list.filter(x=>x.meetup);
   else if(gLens!=="mine")list=list.filter(x=>x.events.some(e=>interestHits(e).includes(gLens)));
-  if(q)list=list.filter(x=>q.split(/\s+/).every(w=>x.text.includes(w)));
+  if(q){const res=q.split(/\s+/).map(wordRe);list=list.filter(x=>res.every(r=>r.test(x.text)));}
   $("#gCount").textContent=`${list.length.toLocaleString()} groups meeting in the next two weeks`;
   list.slice(0,gLimit).forEach(x=>box.appendChild(groupCard(x)));
   if(!list.length)box.innerHTML=`<div class="empty">${gLens==="following"?"You're not following any groups yet. Tap Follow on one you like.":"No groups match."}</div>`;
@@ -863,7 +865,7 @@ function renderExplore(){
   const words=$("#q").value.trim().toLowerCase().split(/\s+/).filter(Boolean);
   let list=EVENTS.filter(e=>whenMatch(e)&&!isHidden(e)&&(!xFree||e.free)&&(!xAfter||e.afterWork));
   if(xTopics.size)list=list.filter(e=>interestHits(e).some(h=>xTopics.has(h)));
-  if(words.length)list=list.filter(e=>words.every(w=>e.text.includes(w)||String(e.loc||"").toLowerCase().includes(w)));
+  if(words.length){const res=words.map(wordRe);list=list.filter(e=>{const t=e.text+" "+String(e.loc||"").toLowerCase();return res.every(r=>r.test(t));});}
   else list=list.filter(e=>!e.kids);
   $("#xCount").textContent=`${list.length.toLocaleString()} events`;
   let last=null;

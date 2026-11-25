@@ -338,7 +338,7 @@ function classify(text, catNames) {
   // Hands-on craft classes: their blurbs mention "build", "beginners" or
   // "skills" and landed in Fitness or Music.
   if (has(/ceramic|pottery|bookmaking|stained glass|woodwork|woodturn|letterpress|weaving|glassblow|jewelry making|hand-building|wheel throwing|laser (?:engrav|cut)|engraving|3d print/)) return "Art";
-  if (has(/music|concert|\bband\b|\bjam\b|\bdj\b|open mic|singer|songwriter|orchestra|jazz|acoustic|hip[- ]?hop|\bpunk\b|\bmetal\b|indie|bluegrass|\bchoir\b|recital|trumpet|organist|symphon|violin|\bcello|pianist|saxophon|honky tonk|\bfest\b|on stage|\blive at\b|\btrio\b|quartet|quintet|\bduo\b|\bvinyl\b|communion|\bedm\b|techno|house music|dance party|dance church|\brave(?!n|l)|nightclub|live show|comedy|stand[- ]?up/)) return "Music";
+  if (has(/music|concert|\bband\b|\bjam\b|\bdj\b|open mic|singer|songwriter|orchestra|jazz|acoustic|hip[- ]?hop|\bpunk\b|\bmetal\b|indie|bluegrass|\bchoir\b|recital|trumpet|organist|symphon|violin|\bcello|pianist|saxophon|honky tonk|\bfest\b|on stage|\blive at\b|\btrio\b|quartet|quintet|\bduo\b|\bvinyl\b|communion|\bedm\b|\btechno\b|house music|dance party|dance church|\brave(?!n|l)|nightclub|live show|comedy|stand[- ]?up/)) return "Music";
   // board games / trivia often land as "Social" without this
   if (has(/trivia|quiz night|\bbingo\b|board game|tabletop|game night|mario kart|canasta|euchre|d&d|dungeons|domino|scrabble/)) return "Games";
   if (has(/meditat|mindful|sound bath|breathwork|yin yoga|restorative|reiki|sangha|zazen|dharma/)) return "Zen";

@@ -20,6 +20,10 @@ const ymd = (d) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago
 const hm = (d) => new Intl.DateTimeFormat("en-GB", { timeZone: "America/Chicago", hour: "2-digit", minute: "2-digit" }).format(d);
 const clock = (t) => { const [h, m] = (t || "00:00").split(":").map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
 
+function wordRe(w) {
+  const x = w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(w.length <= 3 ? `(?:^|[^a-z0-9])${x}(?:$|[^a-z0-9])` : `(?:^|[^a-z0-9])${x}`, "i");
+}
 module.exports = async (req, res) => {
   const q = req.query || Object.fromEntries(new URL(req.url, "http://x").searchParams);
   const now = new Date(), today = ymd(now), plus = (n) => ymd(new Date(now.getTime() + n * 864e5));
@@ -46,8 +50,9 @@ module.exports = async (req, res) => {
       if (minTime && e.date === today && (e.time || "") < minTime) return false;
       if (e.fmt !== "online" && Number.isFinite(e.lat) && miles(lat, lng, e.lat, e.lng) > mi) return false;
       if (cats.length && !cats.includes(String(e.cat).toLowerCase())) return false;
-      const text = `${e.name} ${(e.types || []).join(" ")} ${String(e.desc || "").slice(0, 160)}`.toLowerCase();
-      if (words.length && !words.every((w) => text.includes(w))) return false;
+      const text = `${e.name} ${e.group || ""} ${(e.types || []).join(" ")} ${String(e.desc || "").slice(0, 160)}`.toLowerCase();
+      // words match at a word start ("game" finds "games"); short ones like "ai" must be the whole word, not the "ai" in "training"
+      if (words.length && !words.every((w) => wordRe(w).test(text))) return false;
       if (skip.some((s) => (TOPICS[s] || new RegExp("\\b" + s.replace(/[^a-z0-9]/g, "") + "\\b", "i")).test(text))) return false;
       return true;
     });
