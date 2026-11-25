@@ -89,6 +89,10 @@ img{display:block;max-width:100%}
 .newtag{position:absolute;right:12px;top:12px;background:var(--accent);color:#fff;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 9px;border-radius:999px}
 .body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:5px;min-width:0}
 .when{font-size:13px;font-weight:700;color:var(--accent)}
+.wline{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cost{flex:none;font-size:12.5px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--sunk);color:var(--muted);white-space:nowrap}
+.cost.free{background:color-mix(in srgb,var(--good) 16%,var(--card));color:var(--good)}
+.cost.paid{background:var(--ink);color:var(--paper)}
 .title{font-weight:700;font-size:18px;line-height:1.22;letter-spacing:-.01em;overflow-wrap:anywhere;margin:0}
 .big .title{font-family:var(--serif);font-size:23px;font-weight:700;letter-spacing:-.015em}
 .host{font-size:14px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
@@ -399,6 +403,7 @@ function enrich(raw){
     e.text=(e.name+" "+(e.group||"")+" "+(e.desc||"")+" "+(e.types||[]).join(" ")+" "+(e.source||"")).toLowerCase();
     e.kids=e.cat==="Family"||KIDS.test(e.name);
     e.free=e.free===true||(e.types||[]).some(t=>/^free$/i.test(t))||/\bfree\b/i.test(e.name);
+    if(!e.free&&!e.price&&(e.cat==="Civic"||FREE_TXT.test(e.desc||"")))e.free=true; // public meetings are free
     e.dow=(NOW.dow+e.off)%7;
     e.afterWork=e.dow===0||e.dow===6||e.mins>=16*60+30;
     out.push(e);
@@ -464,6 +469,17 @@ function score(e){
   s+=(hash(NOW.date+e.id)%800)/100; // small daily shuffle
   return s;
 }
+/* cost: only what the calendar says. Never a guess. */
+const FREE_TXT=/\b(free (?:admission|entry|event|and open|to (?:attend|the public|join))|admission is free|no (?:cost|charge|cover)|free of charge)\b/i;
+const PRICE_TXT=/(?:tickets?|admission|cover|entry|cost|registration|fee)\s*(?:is|are|:)?\s*(\$\s?\d+(?:\.\d\d)?)|(\$\s?\d+(?:\.\d\d)?)\s*(?:admission|cover|entry|tickets?|per person|registration|suggested donation)/i;
+function costOf(e){
+  if(e.free)return ["Free","free"];
+  if(e.price)return [e.price,"paid"];
+  const m=(e.desc||"").match(PRICE_TXT);if(m)return [(m[1]||m[2]).replace(/\s/g,""),"paid"];
+  if(e.freeJoin)return ["Free to join","free"];
+  return ["Cost: check page",""];
+}
+function costHtml(e){const [t,k]=costOf(e);return `<span class="cost ${k}">${esc(t)}</span>`;}
 function whyChips(e){
   const out=[];
   if(FOLLOW.has(e.gkey))out.push(["Your group",1]);
@@ -471,7 +487,6 @@ function whyChips(e){
   if(e.cat==="Civic")out.push([/hearing/i.test(e.name)?"Public hearing: speak up":"Public meeting",1]);
   const hits=interestHits(e).filter(h=>MY_INT.has(h)&&h!=="free"&&h!=="civic");
   if(hits[0])out.push([INT_BY_ID[hits[0]].label,!out.length]);
-  if(e.free)out.push(["Free"]);
   if(e.going>=8)out.push([`${e.going} going`]);
   if(e.groupRating>=4.7&&e.groupRatings>=20)out.push([`★ ${e.groupRating} group`]);
   if(e.afterWork&&e.dow>=1&&e.dow<=5&&e.off<=1)out.push(["After work"]);
@@ -510,7 +525,7 @@ function bigCard(e,rank){
   const bg=cssUrl(e.image);
   el.innerHTML=`<div class="ph${bg?"":" none"}" style="${bg?`background-image:${bg}`:""}"><span class="rank">${rank}</span>${isNew(e)?'<span class="newtag">New</span>':""}</div>
   <div class="body">
-    <div class="when">${esc(whenText(e))}</div>
+    <div class="wline"><div class="when">${esc(whenText(e))}</div>${costHtml(e)}</div>
     <h3 class="title">${esc(e.name)}</h3>
     <div class="host">${e.group?`<b>${esc(e.group)}</b>`:`<b>${esc(e.loc||"")}</b>`}${e.groupRating&&e.groupRatings>=10?`<span class="star">★ ${e.groupRating}</span>`:""}${e.going?`<span class="going">${e.going} going</span>`:""}</div>
     ${chipsHtml(e)}
@@ -525,7 +540,7 @@ function rowCard(e){
   el.style.setProperty("--cc",CAT_COLOR[e.cat]||"var(--line2)");
   el.innerHTML=`<div class="thumb${bg?"":" none"}" style="${bg?`background-image:${bg}`:""}"></div>
   <div class="body">
-    <div class="when">${esc(whenText(e))}</div>
+    <div class="wline"><div class="when">${esc(whenText(e))}</div>${costHtml(e)}</div>
     <h3 class="title">${esc(e.name)}</h3>
     <div class="host"><span>${esc(e.group||e.loc||"")}</span>${e.going?`<span class="going">${e.going} going</span>`:""}</div>
     ${GOING.has(e.id)?'<span class="mine">You\'re going</span>':""}
@@ -628,7 +643,7 @@ function openEvent(e){
     ${chipsHtml(e)}
     <dl class="facts">
       <div><dt>Where</dt><dd style="margin:0">${esc(e.loc||"")}${e.addr&&e.addr!==e.loc&&e.addr!=="Twin Cities"?`<br><span style="color:var(--muted)">${esc(e.addr)}</span>`:""}</dd></div>
-      <div><dt>Cost</dt><dd style="margin:0">${e.free?"Free":e.price?esc(e.price):"See the event page"}</dd></div>
+      <div><dt>Cost</dt><dd style="margin:0">${costHtml(e)}${costOf(e)[1]?"":` <span style="color:var(--muted)">the calendar didn't say</span>`}</dd></div>
       ${e.going?`<div><dt>Going</dt><dd style="margin:0">${e.going} people${e.groupRating?` · group rated ★ ${e.groupRating}${e.groupRatings?` by ${e.groupRatings.toLocaleString()}`:""}`:""}</dd></div>`:""}
       ${e.wx?`<div><dt>Weather</dt><dd style="margin:0">${esc(e.wx.temp)}°${esc(e.wx.unit||"F")} · ${esc(e.wx.summary||"")}</dd></div>`:""}
     </dl>
@@ -706,7 +721,7 @@ function openDeck(){
     box.innerHTML=`<div class="prog" aria-hidden="true"><i style="width:${i*10}%"></i></div>
       <small style="color:var(--muted);font-weight:600">${i+1} of ${list.length} · would you go?</small>
       ${bg?`<div class="ph" style="background-image:${bg};border-radius:14px"></div>`:""}
-      <div class="when">${esc(whenText(e))}</div><h2>${esc(e.name)}</h2>
+      <div class="wline"><div class="when">${esc(whenText(e))}</div>${costHtml(e)}</div><h2>${esc(e.name)}</h2>
       <div class="host"><b>${esc(e.group||e.loc||"")}</b>${e.going?`<span class="going">${e.going} going</span>`:""}<span>${esc(CAT_LABEL[e.cat]||e.cat)}</span></div>
       <div class="big3"><button class="btn" data-d="down">👎 Not for me</button><button class="btn ghost" data-d="skip">Skip</button><button class="btn go" data-d="up">👍 Interesting</button></div>`;
   };

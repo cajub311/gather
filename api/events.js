@@ -533,6 +533,7 @@ async function fromTribe(src, startISO, endISO) {
       approx: !(isFinite(lat) && isFinite(lng)) || undefined,
       types: [e.cost ? decode(e.cost) : "", catNames[0] || ""].filter(Boolean).slice(0, 2),
       free: isFreeCost(decode(e.cost)) || undefined,
+      price: costPrice(decode(e.cost)),
       desc: short(e.description || "") || undefined,
       url: e.url,
       date: `${p.y}-${String(p.mo).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`,
@@ -864,6 +865,7 @@ async function fromLiveWhale(src) {
       lat: src.lat, lng: src.lng, approx: true,
       types: e.cost ? [decode(e.cost).slice(0, 18)] : [],
       free: isFreeCost(decode(e.cost)) || undefined,
+      price: costPrice(decode(e.cost)),
       desc: short(e.description || "") || undefined,
       url: e.url,
       date: `${p.y}-${String(p.mo).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`,
@@ -976,6 +978,8 @@ async function fromMeetup(src) {
       groupRating: rating && rating.totalRatings >= 5 ? Math.round(rating.average * 10) / 10 : undefined,
       groupRatings: rating && rating.totalRatings >= 5 ? rating.totalRatings : undefined,
       price: fee > 0 ? `$${fee}` : undefined,
+      // Meetup shows a fee when there is one; none means RSVP costs nothing
+      freeJoin: fee > 0 ? undefined : true,
       date: `${p.y}-${String(p.mo).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`,
       dateLabel: `${DOW[dayKey(p)]}, ${MON[p.mo - 1]} ${p.d}`,
       source: src.name,
@@ -1737,6 +1741,12 @@ function fromCivicStatic(src) {
 // Only trust "free" when the source says so. Eventbrite's search payload carries
 // no price at all, so the front-end chip means "stated free by the venue/library",
 // not "we checked" — better a smaller honest set than a chip that lies.
+// "$15", "$10 - $25", "$12 adv / $15 door" -> short price text; anything else -> undefined
+function costPrice(cost) {
+  const c = String(cost || "").replace(/\s+/g, " ").trim();
+  if (!c || isFreeCost(c) || !/\$\s?\d/.test(c)) return undefined;
+  return c.length > 22 ? (c.match(/\$\s?\d+(?:\.\d\d)?(?:\s?[-–]\s?\$?\d+(?:\.\d\d)?)?/) || [c.slice(0, 22)])[0] : c;
+}
 function isFreeCost(cost) {
   const c = String(cost || "").trim();
   if (!c) return false;
